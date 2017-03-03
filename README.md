@@ -6,3 +6,7 @@ Begin with Vulkan 1.042, step by step
 * glslang
 * spirv-tools
 * Samples
+
+## Questions
+* what is nullptr? (difference from NULL ?)
+* why structure = {} ?
