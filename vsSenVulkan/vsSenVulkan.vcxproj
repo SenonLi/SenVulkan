@@ -19,8 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{056D57F3-AD11-4A6B-9AE2-D6EEC5425A28}</ProjectGuid>
-    <RootNamespace>vsVulkan</RootNamespace>
+    <ProjectGuid>{458EBB06-3AC5-4FF3-AF22-077ECF3FC215}</ProjectGuid>
+    <RootNamespace>vsSenVulkan</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -68,29 +68,29 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>$(SolutionDir)\..\..\$(ProjectName)$(Platform)$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\..\..\$(ProjectName)$(Platform)$(Configuration)\</IntDir>
-    <IncludePath>C:\SenVulkanUsr\VS2015\Include;C:\SenGraphicsUsr\VS2015\Include;C:\SenGraphicsUsr\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\SenVulkanUsr\VS2015\Bin;C:\SenVulkanUsr\VS2015\Lib;C:\SenGraphicsUsr\VS2015\Lib;$(LibraryPath)</LibraryPath>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(SolutionDir)\..\..\$(ProjectName)$(Platform)$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\..\..\$(ProjectName)$(Platform)$(Configuration)\</IntDir>
-    <IncludePath>C:\SenVulkanUsr\VS2015\Include;C:\SenGraphicsUsr\VS2015\Include;C:\SenGraphicsUsr\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\SenVulkanUsr\VS2015\Lib32;C:\SenVulkanUsr\VS2015\Bin32;C:\SenGraphicsUsr\VS2015\Lib32;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)\..\..\2015$(ProjectName)$(Platform)$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\..\..\2015$(ProjectName)$(Platform)$(Configuration)\</IntDir>
+    <IncludePath>C:\SenGraphicsUsr\Include;C:\SenGraphicsUsr\VS2015\Include;C:\SenVulkanUsr\VS2015\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\SenVulkanUsr\VS2015\Lib32;C:\SenVulkanUsr\VS2015\Bin32;C:\SenGraphicsUsr\VS2015\Lib32;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(SolutionDir)\..\..\$(ProjectName)$(Platform)$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\..\..\$(ProjectName)$(Platform)$(Configuration)\</IntDir>
-    <IncludePath>C:\SenVulkanUsr\VS2015\Include;C:\SenGraphicsUsr\VS2015\Include;C:\SenGraphicsUsr\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\SenVulkanUsr\VS2015\Lib32;C:\SenVulkanUsr\VS2015\Bin32;C:\SenGraphicsUsr\VS2015\Lib32;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)\..\..\2015$(ProjectName)$(Platform)$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\..\..\2015$(ProjectName)$(Platform)$(Configuration)\</IntDir>
+    <IncludePath>C:\SenGraphicsUsr\Include;C:\SenGraphicsUsr\VS2015\Include;C:\SenVulkanUsr\VS2015\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\SenVulkanUsr\VS2015\Lib32;C:\SenVulkanUsr\VS2015\Bin32;C:\SenGraphicsUsr\VS2015\Lib32;$(VC_LibraryPath_x86);$(WindowsSDK_LibraryPath_x86);$(NETFXKitsDir)Lib\um\x86</LibraryPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)\..\..\2015$(ProjectName)$(Platform)$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\..\..\2015$(ProjectName)$(Platform)$(Configuration)\</IntDir>
+    <IncludePath>C:\SenGraphicsUsr\Include;C:\SenGraphicsUsr\VS2015\Include;C:\SenVulkanUsr\VS2015\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\SenVulkanUsr\VS2015\Bin;C:\SenVulkanUsr\VS2015\Lib;C:\SenGraphicsUsr\VS2015\Lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>C:\SenVulkanUsr\VS2015\Include;C:\SenGraphicsUsr\VS2015\Include;C:\SenGraphicsUsr\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\SenVulkanUsr\VS2015\Bin;C:\SenVulkanUsr\VS2015\Lib;C:\SenGraphicsUsr\VS2015\Lib;$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)\..\..\$(ProjectName)$(Platform)$(Configuration)\</OutDir>
-    <IntDir>$(SolutionDir)\..\..\$(ProjectName)$(Platform)$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)\..\..\2015$(ProjectName)$(Platform)$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)\..\..\2015$(ProjectName)$(Platform)$(Configuration)\</IntDir>
+    <IncludePath>C:\SenGraphicsUsr\Include;C:\SenGraphicsUsr\VS2015\Include;C:\SenVulkanUsr\VS2015\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\SenVulkanUsr\VS2015\Bin;C:\SenVulkanUsr\VS2015\Lib;C:\SenGraphicsUsr\VS2015\Lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(NETFXKitsDir)Lib\um\x64</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -98,12 +98,13 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
     </ClCompile>
-    <Link>
-      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
     <BuildLog>
       <Path>..\$(IntDir)$(MSBuildProjectName).log</Path>
     </BuildLog>
+    <Link>
+      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -111,12 +112,13 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
     </ClCompile>
-    <Link>
-      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
     <BuildLog>
       <Path>..\$(IntDir)$(MSBuildProjectName).log</Path>
     </BuildLog>
+    <Link>
+      <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -130,6 +132,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
     <BuildLog>
       <Path>..\$(IntDir)$(MSBuildProjectName).log</Path>
@@ -147,6 +150,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>glfw3.lib;vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>msvcrt.lib</IgnoreSpecificDefaultLibraries>
     </Link>
     <BuildLog>
       <Path>..\$(IntDir)$(MSBuildProjectName).log</Path>
@@ -154,10 +158,18 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="VulkanAPI\SenRenderer.cpp" />
+    <ClCompile Include="SenVulkanTutorial\Sen_00_Triangle.cpp" />
+    <ClCompile Include="Support\SenAbstractGLFW.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="VulkanAPI\SenRenderer.h" />
+    <ClInclude Include="SenVulkanTutorial\Sen_00_Triangle.h" />
+    <ClInclude Include="SenVulkanTutorial\Tutorial_Triangle.h" />
+    <ClInclude Include="Support\SenAbstractGLFW.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\README.md" />
+    <None Include="SenVulkanTutorial\Shaders\Triangle.frag" />
+    <None Include="SenVulkanTutorial\Shaders\Triangle.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
