@@ -17,4 +17,4 @@ Begin with Vulkan 1.042, step by step
 std::string strExtension = std::to_string(i) + ". " + std::string(glfwInstanceExtensions[i]) + "\n";
 OutputDebugString(strExtension.c_str());
 
-* 2. 
+* 2. If you want to enable a device layer, that layer should also be enabled as an active instance layer (otherwise crash)		<br>

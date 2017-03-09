@@ -2,6 +2,7 @@
 
 SenRenderer::SenRenderer()
 {
+	_SetupDebug();
 	_InitInstance();
 	_InitDevice();
 }
@@ -18,13 +19,18 @@ void SenRenderer::_InitInstance()
 {
 	VkApplicationInfo applicationInfo{};
 	applicationInfo.sType					= VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	applicationInfo.apiVersion				= VK_MAKE_VERSION(1, 0, 0);
+	applicationInfo.apiVersion				= VK_MAKE_VERSION(1, 0, 3);
 	applicationInfo.applicationVersion		= VK_MAKE_VERSION(0, 1, 0);
 	applicationInfo.pApplicationName = "Sen Learn Vulkan";
 
 	VkInstanceCreateInfo instanceCreateInfo {};
 	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCreateInfo.pApplicationInfo = &applicationInfo;
+	instanceCreateInfo.enabledLayerCount = _instanceLayersList.size();
+	instanceCreateInfo.ppEnabledLayerNames = _instanceLayersList.data();
+
+	instanceCreateInfo.enabledExtensionCount = _instanceExtensionsList.size();
+	instanceCreateInfo.ppEnabledExtensionNames = _instanceExtensionsList.data();
 
 	auto error = vkCreateInstance(&instanceCreateInfo, nullptr, &_instance);
 	if (VK_SUCCESS != error) {
@@ -70,6 +76,31 @@ void SenRenderer::_InitDevice()
 
 	}
 
+	{
+		uint32_t layerCount = 0;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+		std::vector<VkLayerProperties> layerPropertyList(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, layerPropertyList.data());
+
+		std::cout << "Instance Layers: \n";
+		for (auto &i : layerPropertyList) {
+			std::cout << " " << i.layerName << "\t\t | " << i.description << std::endl;
+		}
+		std::cout << std::endl;
+	} 
+
+	{
+		uint32_t layerCount = 0;
+		vkEnumerateDeviceLayerProperties( _gpu, &layerCount, nullptr);
+		std::vector<VkLayerProperties> layerPropertyList(layerCount);
+		vkEnumerateDeviceLayerProperties(_gpu, &layerCount, layerPropertyList.data());
+
+		std::cout << "Device Layers: \n";
+		for (auto &i : layerPropertyList) {
+			std::cout << " " << i.layerName << "\t\t | " << i.description << std::endl;
+		}
+		std::cout << std::endl;
+	}
 
 	float queuePriorities[]{ 1.0f };
 	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
@@ -83,6 +114,12 @@ void SenRenderer::_InitDevice()
 	deviceCreateInfo.queueCreateInfoCount		= 1;
 	deviceCreateInfo.pQueueCreateInfos			= &deviceQueueCreateInfo;
 
+	deviceCreateInfo.enabledLayerCount = _deviceLayersList.size();
+	deviceCreateInfo.ppEnabledLayerNames = _deviceLayersList.data();
+
+	deviceCreateInfo.enabledExtensionCount = _deviceExtensionsList.size();
+	deviceCreateInfo.ppEnabledExtensionNames = _deviceExtensionsList.data();
+
 	auto error = vkCreateDevice( _gpu, &deviceCreateInfo, nullptr, &_device);
 	if (VK_SUCCESS != error) {
 		assert(0 && "Vulkan Error:Device creation failed.");
@@ -94,4 +131,18 @@ void SenRenderer::_DeInitDevice()
 {
 	vkDestroyDevice(_device, nullptr);
 	_device = nullptr;
+}
+
+void SenRenderer::_SetupDebug()
+{
+	_instanceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
+
+	_instanceExtensionsList.push_back("VK_EXT_DEBUG_REPORT_EXTENSION_NAME");
+
+	_deviceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
+}
+
+void SenRenderer::_InitDebug()
+{
+	vkCreateDebugReportCallbackEXT(_instance, nullptr, nullptr, nullptr);
 }
