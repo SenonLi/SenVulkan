@@ -8,5 +8,13 @@ Begin with Vulkan 1.042, step by step
 * Samples
 
 ## Questions
-* what is nullptr? (difference from NULL ?)
-* why structure = {} ?
+* the resource delete management VDeleter templete ? 
+
+## Tips
+* 0. nullptr is special NULL in C++ for solving Overriding problem <br>
+* 1. OutputDebugString <br>
+#include <string>
+std::string strExtension = std::to_string(i) + ". " + std::string(glfwInstanceExtensions[i]) + "\n";
+OutputDebugString(strExtension.c_str());
+
+* 2. 

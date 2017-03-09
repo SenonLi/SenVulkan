@@ -9,8 +9,9 @@
 //	return 0;
 //}
 
-#include "Support/SenAbstractGLFW.h"
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include "Support/SenAbstractGLFW.h"
 #include <functional>
 
 template <typename T>
@@ -87,13 +88,12 @@ int main() {
 
 
 //#include "SenVulkanTutorial/Tutorial_Triangle.h"
-//#include "SenVulkanTutorial/Sen_00_Triangle.h"
 //
 //int main() {
-//	Sen_00_Triangle widget;
+//	Tutorial_Triangle widget;
 //
 //	try {
-//		//widget.run();
+//		widget.run();
 //	}
 //	catch (const std::runtime_error& e) {
 //		std::cerr << e.what() << std::endl;

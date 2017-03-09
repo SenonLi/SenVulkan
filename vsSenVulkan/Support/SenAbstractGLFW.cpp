@@ -44,7 +44,7 @@ void SenAbstractGLFW::initGlfwVulkan()
 	// Set the required callback functions
 	//keyboardRegister();
 
-
+	createInstance();
 
 
 	// Clear the colorbuffer
@@ -57,6 +57,8 @@ void SenAbstractGLFW::initGlfwVulkan()
 
 void SenAbstractGLFW::showWidget()
 {
+	showVulkanSupportedInstanceExtensions(); // Not Useful Functions
+
 	initGlfwVulkan();
 
 	// Game loop
@@ -81,8 +83,78 @@ void SenAbstractGLFW::showWidget()
 	glfwTerminate();
 }
 
+/*******************************************************************
+* 1. vkCreateInstance requires VkInstanceCreateInfo
+* 2. VkInstanceCreateInfo requires VkApplicationInfo, setup of extensions (instance and device) and layers
+* Sum: createInstance requires basic appInfo, InstanceExtensionInfo, DeviceExtensionInfo and LayerInfo
+*********************************************************************/
+void SenAbstractGLFW::createInstance()
+{
+	//if (enableValidationLayers && !checkValidationLayerSupport()) {
+	//	throw std::runtime_error("validation layers requested, but not available!");
+	//}
+
+	VkApplicationInfo appInfo = {};
+	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+	appInfo.pApplicationName = "Sen Triangle";
+	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.pEngineName = "No Engine";
+	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+	appInfo.apiVersion = VK_MAKE_VERSION(1, 0, 0);
+
+	VkInstanceCreateInfo createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+	createInfo.pApplicationInfo = &appInfo;
+	
+	std::vector<const char*> instanceExtensionsVector = getInstanceExtensions(); // Combine InstanceExtensions in need
+	createInfo.enabledExtensionCount = (uint32_t)instanceExtensionsVector.size();
+	createInfo.ppEnabledExtensionNames = instanceExtensionsVector.data();
+
+	//if (enableValidationLayers) {
+	//	createInfo.enabledLayerCount = validationLayers.size();
+	//	createInfo.ppEnabledLayerNames = validationLayers.data();
+	//}
+	//else {
+	//	createInfo.enabledLayerCount = 0;
+	//}
 
 
+	
+	if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create instance!");
+	}
+}
+
+std::vector<const char *> SenAbstractGLFW::getInstanceExtensions()
+{
+	std::vector<const char*> glfwInstanceExtensionsVector;
+
+	uint32_t glfwInstanceExtensionsCount = 0;
+	const char** glfwInstanceExtensions;
+	
+	glfwInstanceExtensions = glfwGetRequiredInstanceExtensions(&glfwInstanceExtensionsCount);
+
+	//OutputDebugString("\nGLFW required Vulkan Instance Extensions: \n");
+	for (uint32_t i = 0; i < glfwInstanceExtensionsCount; i++) {
+		glfwInstanceExtensionsVector.push_back(glfwInstanceExtensions[i]);
+		//std::string strExtension = std::to_string(i) + ". " + std::string(glfwInstanceExtensions[i]) + "\n";
+		//OutputDebugString(strExtension.c_str());
+	}
+
+
+
+	//if (enableValidationLayers) {
+	//	extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+	//}
+
+
+	return glfwInstanceExtensionsVector;
+}
+
+
+void SenAbstractGLFW::finalize() {
+	vkDestroyInstance(_instance, nullptr); //	_instance = nullptr;
+}
 
 
 
@@ -109,3 +181,31 @@ void SenAbstractGLFW::showWidget()
 //}
 //
 //
+
+
+
+
+
+
+
+
+
+//*************************************************/
+//*************                       *************/
+//*************  Not Useful Functions *************/
+//*************       Below           *************/
+//*************************************************/
+void SenAbstractGLFW::showVulkanSupportedInstanceExtensions()
+{
+	uint32_t extensionsCount = 0;
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, nullptr);
+
+	std::vector<VkExtensionProperties> instanceExtensions(extensionsCount);
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, instanceExtensions.data());
+
+	OutputDebugString("\nVulkan Supported Instance Extensions: \n");
+	for (uint32_t i = 0; i < extensionsCount; i++) {
+		std::string strExtension = std::to_string(i) + ". " + std::string(instanceExtensions[i].extensionName) + "\n";
+		OutputDebugString(strExtension.c_str());
+	}
+}

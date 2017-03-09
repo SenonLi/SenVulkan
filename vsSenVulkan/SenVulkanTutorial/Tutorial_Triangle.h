@@ -121,7 +121,7 @@ void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT
 	}
 }
 
-class HelloTriangleApplication {
+class Tutorial_Triangle {
 public:
 	void run() {
 		initWindow();

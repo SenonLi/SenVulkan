@@ -25,6 +25,12 @@
     <Filter Include="Shaders\SenVulkanTutorial">
       <UniqueIdentifier>{903a9620-eefb-492a-a65c-88489481adcb}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Sources\VulkanVPI">
+      <UniqueIdentifier>{3b8cc579-8d58-45c2-aafc-9b0d690b102e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Headers\VulkanVPI">
+      <UniqueIdentifier>{bc0edf09-beb7-45c5-b7a6-f190d8325547}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Support\SenAbstractGLFW.cpp">
@@ -33,6 +39,9 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_00_Triangle.cpp">
       <Filter>Sources\SenVulkanTutorial</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanAPI\SenRenderer.cpp">
+      <Filter>Sources\VulkanVPI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -44,6 +53,9 @@
     </ClInclude>
     <ClInclude Include="SenVulkanTutorial\Sen_00_Triangle.h">
       <Filter>Headers\SenVulkanTutorial</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanAPI\SenRenderer.h">
+      <Filter>Headers\VulkanVPI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
