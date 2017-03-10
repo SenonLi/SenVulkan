@@ -27,10 +27,10 @@ private:
 	void _SetupDebug();
 	void _InitDebug();
 	void _DeInitDebug();
-	
-	VkInstance			_instance			= nullptr;
-	VkPhysicalDevice	_gpu				= nullptr;
-	VkDevice			_device				= nullptr;
+
+	VkInstance			_instance = nullptr;
+	VkPhysicalDevice	_gpu = nullptr;
+	VkDevice			_device = nullptr;
 	VkPhysicalDeviceProperties   _gpuProperties = {};
 
 	uint32_t			_graphicsFamilyIndex = 0;

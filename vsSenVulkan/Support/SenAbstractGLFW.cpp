@@ -7,6 +7,8 @@ SenAbstractGLFW::SenAbstractGLFW()
 
 	widgetWidth = DEFAULT_widgetWidth;
 	widgetHeight = DEFAULT_widgetHeight;
+
+	expectedInstanceLayersVector.push_back("VK_LAYER_LUNARG_standard_validation");
 }
 
 SenAbstractGLFW::~SenAbstractGLFW()
@@ -52,12 +54,12 @@ void SenAbstractGLFW::initGlfwVulkan()
 	//glViewport(0, 0, widgetWidth, widgetHeight);
 	//glEnable(GL_DEPTH_TEST);
 
-	OutputDebugString("\n Finish Initial initGlfwVulkan\n");
+	std::cout << "\n Finish Initial initGlfwVulkan\n";
 }
 
 void SenAbstractGLFW::showWidget()
 {
-	showVulkanSupportedInstanceExtensions(); // Not Useful Functions
+	//showVulkanSupportedInstanceExtensions(); // Not Useful Functions
 
 	initGlfwVulkan();
 
@@ -90,9 +92,9 @@ void SenAbstractGLFW::showWidget()
 *********************************************************************/
 void SenAbstractGLFW::createInstance()
 {
-	//if (enableValidationLayers && !checkValidationLayerSupport()) {
-	//	throw std::runtime_error("validation layers requested, but not available!");
-	//}
+	if (instanceLayersEnabled && !checkInstanceLayersSupport()) {
+		throw std::runtime_error("Validation layers requested, but not available!");
+	}
 
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -106,28 +108,48 @@ void SenAbstractGLFW::createInstance()
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
 	
-	std::vector<const char*> instanceExtensionsVector = getInstanceExtensions(); // Combine InstanceExtensions in need
+	std::vector<const char*> instanceExtensionsVector = getRequiredInstanceExtensions(); // Combine InstanceExtensions in need
 	createInfo.enabledExtensionCount = (uint32_t)instanceExtensionsVector.size();
 	createInfo.ppEnabledExtensionNames = instanceExtensionsVector.data();
 
-	//if (enableValidationLayers) {
-	//	createInfo.enabledLayerCount = validationLayers.size();
-	//	createInfo.ppEnabledLayerNames = validationLayers.data();
-	//}
-	//else {
-	//	createInfo.enabledLayerCount = 0;
-	//}
-
-
+	if (instanceLayersEnabled) {
+		createInfo.enabledLayerCount = (uint32_t)expectedInstanceLayersVector.size();
+		createInfo.ppEnabledLayerNames = expectedInstanceLayersVector.data();
+	}
 	
 	if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create instance!");
+		throw std::runtime_error("Failed to create instance!");
 	}
 }
 
-std::vector<const char *> SenAbstractGLFW::getInstanceExtensions()
+bool SenAbstractGLFW::checkInstanceLayersSupport() {
+	uint32_t layersCount;
+	vkEnumerateInstanceLayerProperties(&layersCount, nullptr);
+
+	std::vector<VkLayerProperties> availableInstanceLayers(layersCount);
+	vkEnumerateInstanceLayerProperties(&layersCount, availableInstanceLayers.data());
+
+	for (const char* expectedLayerName : expectedInstanceLayersVector) {
+		bool layerFound = false;
+
+		for (const auto& availableLayerProperties : availableInstanceLayers) {
+			if (strcmp(expectedLayerName, availableLayerProperties.layerName) == 0) {
+				layerFound = true;
+				break;
+			}
+		}
+
+		if (!layerFound) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+std::vector<const char *> SenAbstractGLFW::getRequiredInstanceExtensions()
 {
-	std::vector<const char*> glfwInstanceExtensionsVector;
+	std::vector<const char*> instanceExtensionsVector;
 
 	uint32_t glfwInstanceExtensionsCount = 0;
 	const char** glfwInstanceExtensions;
@@ -136,19 +158,16 @@ std::vector<const char *> SenAbstractGLFW::getInstanceExtensions()
 
 	//OutputDebugString("\nGLFW required Vulkan Instance Extensions: \n");
 	for (uint32_t i = 0; i < glfwInstanceExtensionsCount; i++) {
-		glfwInstanceExtensionsVector.push_back(glfwInstanceExtensions[i]);
+		instanceExtensionsVector.push_back(glfwInstanceExtensions[i]);
 		//std::string strExtension = std::to_string(i) + ". " + std::string(glfwInstanceExtensions[i]) + "\n";
 		//OutputDebugString(strExtension.c_str());
 	}
 
+	if (instanceLayersEnabled) {
+		instanceExtensionsVector.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+	}
 
-
-	//if (enableValidationLayers) {
-	//	extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
-	//}
-
-
-	return glfwInstanceExtensionsVector;
+	return instanceExtensionsVector;
 }
 
 
@@ -203,9 +222,9 @@ void SenAbstractGLFW::showVulkanSupportedInstanceExtensions()
 	std::vector<VkExtensionProperties> instanceExtensions(extensionsCount);
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, instanceExtensions.data());
 
-	OutputDebugString("\nVulkan Supported Instance Extensions: \n");
+	std::cout << "\nVulkan Supported Instance Extensions: \n";
 	for (uint32_t i = 0; i < extensionsCount; i++) {
 		std::string strExtension = std::to_string(i) + ". " + std::string(instanceExtensions[i].extensionName) + "\n";
-		OutputDebugString(strExtension.c_str());
+		std::cout << strExtension.c_str();
 	}
 }

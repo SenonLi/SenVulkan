@@ -24,9 +24,9 @@ const std::vector<const char*> deviceExtensions = {
 };
 
 #ifdef NDEBUG
-const bool enableValidationLayers = false;
+const bool instanceLayersEnabled = false;
 #else
-const bool enableValidationLayers = true;
+const bool instanceLayersEnabled = true;
 #endif
 
 
@@ -198,7 +198,7 @@ private:
 	}
 
 	void createInstance() {
-		if (enableValidationLayers && !checkValidationLayerSupport()) {
+		if (instanceLayersEnabled && !checkValidationLayerSupport()) {
 			throw std::runtime_error("validation layers requested, but not available!");
 		}
 
@@ -218,7 +218,7 @@ private:
 		createInfo.enabledExtensionCount = extensions.size();
 		createInfo.ppEnabledExtensionNames = extensions.data();
 
-		if (enableValidationLayers) {
+		if (instanceLayersEnabled) {
 			createInfo.enabledLayerCount = validationLayers.size();
 			createInfo.ppEnabledLayerNames = validationLayers.data();
 		}
@@ -232,7 +232,7 @@ private:
 	}
 
 	void setupDebugCallback() {
-		if (!enableValidationLayers) return;
+		if (!instanceLayersEnabled) return;
 
 		VkDebugReportCallbackCreateInfoEXT createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
@@ -302,7 +302,7 @@ private:
 		createInfo.enabledExtensionCount = deviceExtensions.size();
 		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-		if (enableValidationLayers) {
+		if (instanceLayersEnabled) {
 			createInfo.enabledLayerCount = validationLayers.size();
 			createInfo.ppEnabledLayerNames = validationLayers.data();
 		}
@@ -826,7 +826,7 @@ private:
 			extensions.push_back(glfwExtensions[i]);
 		}
 
-		if (enableValidationLayers) {
+		if (instanceLayersEnabled) {
 			extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}
 

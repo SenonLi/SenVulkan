@@ -35,6 +35,7 @@ protected:
 	char* strWindowName;
 
 	VkInstance			_instance = nullptr;
+	std::vector<const char*> expectedInstanceLayersVector;
 
 //	float xRot, yRot;
 //	float aspect;
@@ -60,24 +61,24 @@ protected:
 	const int DEFAULT_widgetWidth = 800;	// 640;
 	const int DEFAULT_widgetHeight = 600; // 640;
 
+#ifdef _DEBUG
+	const bool instanceLayersEnabled = true;
+#else
+	const bool instanceLayersEnabled = false;
+#endif
+
 private:
-
-	void createInstance();
-
-
-	std::vector<const char*> getInstanceExtensions();
-
-
-
-
 	void showVulkanSupportedInstanceExtensions();
 
+	void createInstance();
+	std::vector<const char*> getRequiredInstanceExtensions();
+	bool checkInstanceLayersSupport();
 
 
 
 
 //	void keyboardRegister();
-//
+
 };
 
 

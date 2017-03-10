@@ -1,6 +1,10 @@
 # SenVulkan
 Begin with Vulkan 1.042, step by step
 
+* Fixed Release build issue. (cannot ignore MVCT lib)
+* Add Validation Layer (as Instance Layer) check function
+
+
 ### Use VS2015 to directly push to github
 ## Compile three folders (cmake, vs2015) before using VulkanSDK:
 * glslang
@@ -9,6 +13,9 @@ Begin with Vulkan 1.042, step by step
 
 ## Questions
 * the resource delete management VDeleter templete ? 
+* namespace and extern in C++?
+* What is SPIR-V ?
+
 
 ## Tips
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>
