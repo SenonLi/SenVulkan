@@ -67,4 +67,9 @@
     </None>
     <None Include="..\README.md" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="Support\CMakeLists.txt">
+      <Filter>Suppport</Filter>
+    </Text>
+  </ItemGroup>
 </Project>

@@ -4,6 +4,7 @@ SenRenderer::SenRenderer()
 {
 	_SetupDebug();
 	_InitInstance();
+	_InitDebug();
 	_InitDevice();
 }
 
@@ -11,7 +12,7 @@ SenRenderer::SenRenderer()
 SenRenderer::~SenRenderer()
 {
 	_DeInitDevice();
-
+	_DeInitDebug();
 	_DeInitInstance();
 }
 
@@ -133,6 +134,23 @@ void SenRenderer::_DeInitDevice()
 	_device = nullptr;
 }
 
+VKAPI_ATTR VkBool32 VKAPI_CALL
+VulkanDebugCallback(
+	VkDebugReportFlagsEXT		msgFlags,
+	VkDebugReportObjectTypeEXT	objType,
+	uint64_t					srcObj,
+	size_t						location,
+	int32_t						msgCode,
+	const char *				layerPrefix,
+	const char *				msg,
+	void *						userData	)
+{
+	std::cout << msg << std::endl;
+
+	return false;
+}
+
+
 void SenRenderer::_SetupDebug()
 {
 	_instanceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
@@ -142,7 +160,36 @@ void SenRenderer::_SetupDebug()
 	_deviceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
 }
 
+PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = nullptr;
+PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = nullptr;
+
 void SenRenderer::_InitDebug()
 {
+	fetch_vkCreateDebugReportCallbackEXT = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(vkGetInstanceProcAddr(_instance, "vkCreateDebugReportCallbackEXT"));
+	fetch_vkDestroyDebugReportCallbackEXT = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(vkGetInstanceProcAddr(_instance, "vkDestroyDebugReportCallbackEXT"));
+	
+	if (nullptr == fetch_vkCreateDebugReportCallbackEXT || nullptr == fetch_vkDestroyDebugReportCallbackEXT) {
+		assert(0 && "Vulkan Error: Can't fetch debug function pointers.");
+		std::exit(-1);
+	}
+	
+	VkDebugReportCallbackCreateInfoEXT debugCallbackCreateInfo{};
+	debugCallbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+	debugCallbackCreateInfo.pfnCallback = VulkanDebugCallback;
+	debugCallbackCreateInfo.flags = 
+		VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
+		VK_DEBUG_REPORT_WARNING_BIT_EXT |
+		VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
+		VK_DEBUG_REPORT_ERROR_BIT_EXT |
+		VK_DEBUG_REPORT_DEBUG_BIT_EXT |
+		0;
+
+	fetch_vkCreateDebugReportCallbackEXT(_instance, &debugCallbackCreateInfo, nullptr, &_debugReport);
 	//vkCreateDebugReportCallbackEXT(_instance, nullptr, nullptr, nullptr);
+}
+
+void SenRenderer::_DeInitDebug()
+{
+	fetch_vkDestroyDebugReportCallbackEXT(_instance, _debugReport, nullptr);
+	_debugReport = nullptr;
 }

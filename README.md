@@ -25,3 +25,4 @@ std::string strExtension = std::to_string(i) + ". " + std::string(glfwInstanceEx
 OutputDebugString(strExtension.c_str());
 
 * 2. If you want to enable a device layer, that layer should also be enabled as an active instance layer (otherwise crash)		<br>
+* 3. Use reinterpret_cast to do cast between two unrelated types

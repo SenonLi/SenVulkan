@@ -39,6 +39,9 @@ private:
 	std::vector<const char*>	_instanceExtensionsList;
 	std::vector<const char*>	_deviceLayersList;
 	std::vector<const char*>	_deviceExtensionsList;
+
+	VkDebugReportCallbackEXT	_debugReport = nullptr;
+
 };
 
 #endif // __SenRenderer__
