@@ -10,6 +10,11 @@
 #include <assert.h>
 #include <vector>
 #include <iostream>
+#include <sstream>
+
+#ifdef _WIN32
+#include <Windows.h>
+#endif
 
 class SenRenderer
 {
@@ -18,6 +23,7 @@ public:
 	virtual ~SenRenderer();
 
 private:
+public:
 	void _InitInstance();
 	void _DeInitInstance();
 
@@ -41,7 +47,7 @@ private:
 	std::vector<const char*>	_deviceExtensionsList;
 
 	VkDebugReportCallbackEXT	_debugReport = nullptr;
-
+	VkDebugReportCallbackCreateInfoEXT debugCallbackCreateInfo = {};
 };
 
 #endif // __SenRenderer__

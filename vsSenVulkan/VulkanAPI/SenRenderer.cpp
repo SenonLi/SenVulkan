@@ -14,6 +14,7 @@ SenRenderer::~SenRenderer()
 	_DeInitDevice();
 	_DeInitDebug();
 	_DeInitInstance();
+	_DeInitDevice();
 }
 
 void SenRenderer::_InitInstance()
@@ -27,11 +28,13 @@ void SenRenderer::_InitInstance()
 	VkInstanceCreateInfo instanceCreateInfo{};
 	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCreateInfo.pApplicationInfo = &applicationInfo;
-	instanceCreateInfo.enabledLayerCount = _instanceLayersList.size();
+	instanceCreateInfo.enabledLayerCount = (uint32_t)_instanceLayersList.size();
 	instanceCreateInfo.ppEnabledLayerNames = _instanceLayersList.data();
 
-	//instanceCreateInfo.enabledExtensionCount = _instanceExtensionsList.size();
-	//instanceCreateInfo.ppEnabledExtensionNames = _instanceExtensionsList.data();
+	instanceCreateInfo.enabledExtensionCount = (uint32_t)_instanceExtensionsList.size();
+	instanceCreateInfo.ppEnabledExtensionNames = _instanceExtensionsList.data();
+
+	instanceCreateInfo.pNext = &debugCallbackCreateInfo;
 
 	auto error = vkCreateInstance(&instanceCreateInfo, nullptr, &_instance);
 	if (VK_SUCCESS != error) {
@@ -130,8 +133,16 @@ void SenRenderer::_InitDevice()
 
 void SenRenderer::_DeInitDevice()
 {
-	vkDestroyDevice(_device, nullptr);
-	_device = nullptr;
+	if (nullptr != _device)
+	{
+		vkDestroyDevice(_device, nullptr);
+		_device = nullptr;
+	}
+	if (nullptr != _device)
+	{
+		vkDestroyDevice(_device, nullptr);
+		_device = nullptr;
+	}
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
@@ -145,7 +156,47 @@ VulkanDebugCallback(
 	const char *				msg,
 	void *						userData	)
 {
-	std::cout << msg << std::endl;
+	std::ostringstream stream;
+	//if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
+	//	std::cout << "INFO:\t";
+	//}
+	//if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+	//	std::cout << "WARNING:\t";
+	//}
+	//if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+	//	std::cout << "PERFORMANCE:\t";
+	//}
+	//if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+	//	std::cout << "ERROR:\t";
+	//}
+	//if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+	//	std::cout << "DEBUG:\t";
+	//}
+	//std::cout << "@[" << layerPrefix << "]: \t";
+	//std::cout << msg << std::endl;
+
+	if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
+		stream << "INFO:\t";
+	}
+	if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
+		stream << "WARNING:\t";
+	}
+	if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
+		stream << "PERFORMANCE:\t";
+	}
+	if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
+		stream << "ERROR:\t";
+	}
+	if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
+		stream << "DEBUG:\t";
+	}
+	stream << "@[" << layerPrefix << "]: \t";
+	stream << msg << std::endl;
+	std::cout << stream.str();
+
+#ifdef _WIN32
+	if(msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT)	MessageBox(NULL, stream.str().c_str(), "Vulkan Error!", 0);
+#endif
 
 	return false;
 }
@@ -153,11 +204,23 @@ VulkanDebugCallback(
 
 void SenRenderer::_SetupDebug()
 {
+	debugCallbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+	debugCallbackCreateInfo.pfnCallback = VulkanDebugCallback;
+	debugCallbackCreateInfo.flags =
+		VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
+		VK_DEBUG_REPORT_WARNING_BIT_EXT |
+		VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
+		VK_DEBUG_REPORT_ERROR_BIT_EXT |
+		VK_DEBUG_REPORT_DEBUG_BIT_EXT |
+		0;
+
 	_instanceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
 
-	_instanceExtensionsList.push_back("VK_EXT_DEBUG_REPORT_EXTENSION_NAME");
+	_instanceExtensionsList.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); //There is no quote here
 
 	_deviceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
+
+	//_deviceExtensionsList.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); //There is no quote here
 }
 
 PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = nullptr;
@@ -173,17 +236,6 @@ void SenRenderer::_InitDebug()
 		std::exit(-1);
 	}
 	
-	VkDebugReportCallbackCreateInfoEXT debugCallbackCreateInfo{};
-	debugCallbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
-	debugCallbackCreateInfo.pfnCallback = VulkanDebugCallback;
-	debugCallbackCreateInfo.flags = 
-		VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
-		VK_DEBUG_REPORT_WARNING_BIT_EXT |
-		VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
-		VK_DEBUG_REPORT_ERROR_BIT_EXT |
-		VK_DEBUG_REPORT_DEBUG_BIT_EXT |
-		0;
-
 	fetch_vkCreateDebugReportCallbackEXT(_instance, &debugCallbackCreateInfo, nullptr, &_debugReport);
 	//vkCreateDebugReportCallbackEXT(_instance, nullptr, nullptr, nullptr);
 }

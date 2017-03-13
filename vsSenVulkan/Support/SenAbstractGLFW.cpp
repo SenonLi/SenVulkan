@@ -147,6 +147,11 @@ bool SenAbstractGLFW::checkInstanceLayersSupport() {
 	return true;
 }
 
+/*******************************************************************
+* 1. GLFW for Vulkan creating window
+* 2. glfw offer "const char**", we create and return vector<const char*>
+* Sum: other instanceExtensions could also be added into this vector
+*********************************************************************/
 std::vector<const char *> SenAbstractGLFW::getRequiredInstanceExtensions()
 {
 	std::vector<const char*> instanceExtensionsVector;

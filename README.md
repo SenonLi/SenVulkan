@@ -14,8 +14,12 @@ Begin with Vulkan 1.042, step by step
 ## Questions
 * the resource delete management VDeleter templete ? 
 * namespace and extern in C++?
-* What is SPIR-V ?
+* Staging buffer? 
+* Asynchronous transfer?
 
+## Terminologies
+Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan Loader, Vulkan Layers and Installable Client Drivers)
+* ICDs: Installable Client Drivers (talked in conjunction with Vulkan Loader and Vulkan Layers)
 
 ## Tips
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>

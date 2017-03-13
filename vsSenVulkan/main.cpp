@@ -5,6 +5,12 @@ int main()
 {
 	SenRenderer renderer;
 
+	VkCommandPool cmdPool;
+	VkCommandPoolCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	createInfo.queueFamilyIndex = renderer._graphicsFamilyIndex;
+
+	vkCreateCommandPool(renderer._device, &createInfo, nullptr, &cmdPool);
 
 	return 0;
 }
