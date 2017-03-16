@@ -43,6 +43,9 @@
     <ClCompile Include="VulkanAPI\SenRenderer.cpp">
       <Filter>Sources\VulkanVPI</Filter>
     </ClCompile>
+    <ClCompile Include="VulkanAPI\Shared.cpp">
+      <Filter>Sources\VulkanVPI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Support\SenAbstractGLFW.h">
@@ -55,6 +58,9 @@
       <Filter>Headers\SenVulkanTutorial</Filter>
     </ClInclude>
     <ClInclude Include="VulkanAPI\SenRenderer.h">
+      <Filter>Headers\VulkanVPI</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanAPI\Shared.h">
       <Filter>Headers\VulkanVPI</Filter>
     </ClInclude>
   </ItemGroup>

@@ -16,17 +16,41 @@ Begin with Vulkan 1.042, step by step
 * namespace and extern in C++?
 * Staging buffer? 
 * Asynchronous transfer?
+*
+std::unique_ptr<VulkanApplication> VulkanApplication::instance;
+std::once_flag VulkanApplication::onlyOnce;
+
+extern std::vector<const char *> instanceExtensionNames;
+extern std::vector<const char *> layerNames;
+extern std::vector<const char *> deviceExtensionNames;
+
+// Returns the Single ton object of VulkanApplication
+VulkanApplication* VulkanApplication::GetInstance(){
+    std::call_once(onlyOnce, [](){instance.reset(new VulkanApplication()); });
+    return instance.get();
+}
+
+
+
 
 ## Terminologies
 Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan Loader, Vulkan Layers and Installable Client Drivers)
 * ICDs: Installable Client Drivers (talked in conjunction with Vulkan Loader and Vulkan Layers)
 
 ## Tips
+### Vulkan
+* 1. Extensions are to support vulkan applications, and layers are for runtime debugging that may even cover the extensions debugging at runtime;
+in other words, each of the layers means to support some extensions, which means the supportable extentions could be found enumerated based on the layerName.
+* 2. Queues are automatically created when a logical device object is created; 
+
+### V++ / Debug
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>
 * 1. OutputDebugString <br>
 #include <string>
 std::string strExtension = std::to_string(i) + ". " + std::string(glfwInstanceExtensions[i]) + "\n";
 OutputDebugString(strExtension.c_str());
 
-* 2. If you want to enable a device layer, that layer should also be enabled as an active instance layer (otherwise crash)		<br>
-* 3. Use reinterpret_cast to do cast between two unrelated types
+* 2. Use reinterpret_cast to do cast between two unrelated types
+* 3. Even though nullptr can handle the overloaded function problem of NULL, it cannot handle the 64bit to 32bit Vulkan handle transfer problem.
+VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullptr.
+* 4. 

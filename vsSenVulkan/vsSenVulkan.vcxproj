@@ -165,12 +165,14 @@
     <ClCompile Include="SenVulkanTutorial\Sen_00_Triangle.cpp" />
     <ClCompile Include="Support\SenAbstractGLFW.cpp" />
     <ClCompile Include="VulkanAPI\SenRenderer.cpp" />
+    <ClCompile Include="VulkanAPI\Shared.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SenVulkanTutorial\Sen_00_Triangle.h" />
     <ClInclude Include="SenVulkanTutorial\Tutorial_Triangle.h" />
     <ClInclude Include="Support\SenAbstractGLFW.h" />
     <ClInclude Include="VulkanAPI\SenRenderer.h" />
+    <ClInclude Include="VulkanAPI\Shared.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />

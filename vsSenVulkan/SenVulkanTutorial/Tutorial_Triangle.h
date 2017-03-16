@@ -24,9 +24,9 @@ const std::vector<const char*> deviceExtensions = {
 };
 
 #ifdef NDEBUG
-const bool instanceLayersEnabled = false;
+const bool layersEnabled = false;
 #else
-const bool instanceLayersEnabled = true;
+const bool layersEnabled = true;
 #endif
 
 
@@ -171,9 +171,14 @@ private:
 	void initVulkan() {
 		createInstance();
 		setupDebugCallback();
+
 		createSurface();
+
 		pickPhysicalDevice();
 		createLogicalDevice();
+
+
+
 		createSwapChain();
 		createImageViews();
 		createRenderPass();
@@ -198,7 +203,7 @@ private:
 	}
 
 	void createInstance() {
-		if (instanceLayersEnabled && !checkValidationLayerSupport()) {
+		if (layersEnabled && !checkValidationLayerSupport()) {
 			throw std::runtime_error("validation layers requested, but not available!");
 		}
 
@@ -218,7 +223,7 @@ private:
 		createInfo.enabledExtensionCount = extensions.size();
 		createInfo.ppEnabledExtensionNames = extensions.data();
 
-		if (instanceLayersEnabled) {
+		if (layersEnabled) {
 			createInfo.enabledLayerCount = validationLayers.size();
 			createInfo.ppEnabledLayerNames = validationLayers.data();
 		}
@@ -232,7 +237,7 @@ private:
 	}
 
 	void setupDebugCallback() {
-		if (!instanceLayersEnabled) return;
+		if (!layersEnabled) return;
 
 		VkDebugReportCallbackCreateInfoEXT createInfo = {};
 		createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
@@ -302,7 +307,7 @@ private:
 		createInfo.enabledExtensionCount = deviceExtensions.size();
 		createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-		if (instanceLayersEnabled) {
+		if (layersEnabled) {
 			createInfo.enabledLayerCount = validationLayers.size();
 			createInfo.ppEnabledLayerNames = validationLayers.data();
 		}
@@ -826,7 +831,7 @@ private:
 			extensions.push_back(glfwExtensions[i]);
 		}
 
-		if (instanceLayersEnabled) {
+		if (layersEnabled) {
 			extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}
 
@@ -844,7 +849,7 @@ private:
 			bool layerFound = false;
 
 			for (const auto& layerProperties : availableLayers) {
-				if (strcmp(layerName, layerProperties.layerName) == 0) {
+				if (std::strcmp(layerName, layerProperties.layerName) == 0) {
 					layerFound = true;
 					break;
 				}

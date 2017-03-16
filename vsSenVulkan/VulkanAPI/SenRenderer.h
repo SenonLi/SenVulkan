@@ -16,6 +16,9 @@
 #include <Windows.h>
 #endif
 
+#include "Shared.h"
+
+
 class SenRenderer
 {
 public:
@@ -34,9 +37,9 @@ public:
 	void _InitDebug();
 	void _DeInitDebug();
 
-	VkInstance			_instance = nullptr;
-	VkPhysicalDevice	_gpu = nullptr;
-	VkDevice			_device = nullptr;
+	VkInstance			_instance = VK_NULL_HANDLE;
+	VkPhysicalDevice	_gpu = VK_NULL_HANDLE;
+	VkDevice			_device = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties   _gpuProperties = {};
 
 	uint32_t			_graphicsFamilyIndex = 0;
@@ -46,7 +49,10 @@ public:
 	std::vector<const char*>	_deviceLayersList;
 	std::vector<const char*>	_deviceExtensionsList;
 
-	VkDebugReportCallbackEXT	_debugReport = nullptr;
+	PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = VK_NULL_HANDLE;
+	PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = VK_NULL_HANDLE;
+
+	VkDebugReportCallbackEXT	_debugReport = VK_NULL_HANDLE;
 	VkDebugReportCallbackCreateInfoEXT debugCallbackCreateInfo = {};
 };
 

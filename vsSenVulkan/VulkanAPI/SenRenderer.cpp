@@ -36,11 +36,11 @@ void SenRenderer::_InitInstance()
 
 	instanceCreateInfo.pNext = &debugCallbackCreateInfo;
 
-	auto error = vkCreateInstance(&instanceCreateInfo, nullptr, &_instance);
-	if (VK_SUCCESS != error) {
-		assert(0 && "Vulkan ERROR: Create instance failed.");
-		std::exit(-1);
-	}
+	ErrorCheck(vkCreateInstance(&instanceCreateInfo, nullptr, &_instance));
+	//if (VK_SUCCESS != error) {
+	//	assert(0 && "Vulkan ERROR: Create instance failed.");
+	//	std::exit(-1);
+	//}
 }
 
 void SenRenderer::_DeInitInstance()
@@ -118,17 +118,17 @@ void SenRenderer::_InitDevice()
 	deviceCreateInfo.queueCreateInfoCount = 1;
 	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
 
-	deviceCreateInfo.enabledLayerCount = _deviceLayersList.size();
-	deviceCreateInfo.ppEnabledLayerNames = _deviceLayersList.data();
+	//deviceCreateInfo.enabledLayerCount = _deviceLayersList.size();   				// depricated
+	//deviceCreateInfo.ppEnabledLayerNames = _deviceLayersList.data();				// depricated
 
 	deviceCreateInfo.enabledExtensionCount = _deviceExtensionsList.size();
 	deviceCreateInfo.ppEnabledExtensionNames = _deviceExtensionsList.data();
 
-	auto error = vkCreateDevice(_gpu, &deviceCreateInfo, nullptr, &_device);
-	if (VK_SUCCESS != error) {
-		assert(0 && "Vulkan Error:Device creation failed.");
-		std::exit(-1);
-	}
+	ErrorCheck(vkCreateDevice(_gpu, &deviceCreateInfo, nullptr, &_device));
+	//if (VK_SUCCESS != error) {
+	//	assert(0 && "Vulkan Error:Device creation failed.");
+	//	std::exit(-1);
+	//}
 }
 
 void SenRenderer::_DeInitDevice()
@@ -157,39 +157,11 @@ VulkanDebugCallback(
 	void *						userData	)
 {
 	std::ostringstream stream;
-	//if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
-	//	std::cout << "INFO:\t";
-	//}
-	//if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-	//	std::cout << "WARNING:\t";
-	//}
-	//if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-	//	std::cout << "PERFORMANCE:\t";
-	//}
-	//if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-	//	std::cout << "ERROR:\t";
-	//}
-	//if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-	//	std::cout << "DEBUG:\t";
-	//}
-	//std::cout << "@[" << layerPrefix << "]: \t";
-	//std::cout << msg << std::endl;
-
-	if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
-		stream << "INFO:\t";
-	}
-	if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT) {
-		stream << "WARNING:\t";
-	}
-	if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-		stream << "PERFORMANCE:\t";
-	}
-	if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-		stream << "ERROR:\t";
-	}
-	if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-		stream << "DEBUG:\t";
-	}
+	if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT)		{			stream << "INFO:\t";		}
+	if (msgFlags & VK_DEBUG_REPORT_WARNING_BIT_EXT)			{			stream << "WARNING:\t";		}
+	if (msgFlags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {		stream << "PERFORMANCE:\t";	}
+	if (msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT)			{			stream << "ERROR:\t";		}
+	if (msgFlags & VK_DEBUG_REPORT_DEBUG_BIT_EXT)			{			stream << "DEBUG:\t";		}
 	stream << "@[" << layerPrefix << "]: \t";
 	stream << msg << std::endl;
 	std::cout << stream.str();
@@ -198,7 +170,7 @@ VulkanDebugCallback(
 	if(msgFlags & VK_DEBUG_REPORT_ERROR_BIT_EXT)	MessageBox(NULL, stream.str().c_str(), "Vulkan Error!", 0);
 #endif
 
-	return false;
+	return VK_FALSE;
 }
 
 
@@ -207,11 +179,11 @@ void SenRenderer::_SetupDebug()
 	debugCallbackCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
 	debugCallbackCreateInfo.pfnCallback = VulkanDebugCallback;
 	debugCallbackCreateInfo.flags =
-		VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
+		//VK_DEBUG_REPORT_INFORMATION_BIT_EXT |
 		VK_DEBUG_REPORT_WARNING_BIT_EXT |
 		VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT |
 		VK_DEBUG_REPORT_ERROR_BIT_EXT |
-		VK_DEBUG_REPORT_DEBUG_BIT_EXT |
+		//VK_DEBUG_REPORT_DEBUG_BIT_EXT |
 		0;
 
 	_instanceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
@@ -220,11 +192,11 @@ void SenRenderer::_SetupDebug()
 
 	_deviceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
 
-	//_deviceExtensionsList.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); //There is no quote here
+	_deviceExtensionsList.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME); //There is no quote here
 }
 
-PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = nullptr;
-PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = nullptr;
+//PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = nullptr;
+//PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = nullptr;
 
 void SenRenderer::_InitDebug()
 {
@@ -237,11 +209,10 @@ void SenRenderer::_InitDebug()
 	}
 	
 	fetch_vkCreateDebugReportCallbackEXT(_instance, &debugCallbackCreateInfo, nullptr, &_debugReport);
-	//vkCreateDebugReportCallbackEXT(_instance, nullptr, nullptr, nullptr);
 }
 
 void SenRenderer::_DeInitDebug()
 {
 	fetch_vkDestroyDebugReportCallbackEXT(_instance, _debugReport, nullptr);
-	_debugReport = nullptr;
+	_debugReport = VK_NULL_HANDLE;
 }
