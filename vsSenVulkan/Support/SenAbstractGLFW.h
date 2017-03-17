@@ -12,6 +12,7 @@
 #include <string>
 #include <iostream> // for cout, cin
 #include <sstream>  // for quick chunch cout
+#include <map>
 
 #define GLFW_INCLUDE_VULKAN // Let GLFW know Vulkan is utilized
 #include <GLFW/glfw3.h>
@@ -37,7 +38,14 @@ protected:
 	int widgetWidth, widgetHeight;
 	char* strWindowName;
 
-	VkInstance			instance = nullptr;
+	VkInstance						instance		= VK_NULL_HANDLE;
+	
+	VkPhysicalDevice				physicalDevice	= VK_NULL_HANDLE;
+	VkPhysicalDeviceProperties		physicalDeviceProperties = {};	// GPU name, type (discrete)
+	int32_t							graphicsQueueFamilyIndex = -1;  // Index of Graphics QueueFamily of GPU that we will choose to 
+
+	VkDevice						device			= VK_NULL_HANDLE;
+	VkQueue							graphicsQueue	= VK_NULL_HANDLE;
 
 //	float xRot, yRot;
 //	float aspect;
@@ -77,24 +85,22 @@ private:
 
 	VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo = {}; // important for creations of both instance and debugReportCallback
 	VkDebugReportCallbackEXT	debugReportCallback = VK_NULL_HANDLE;
-	PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = nullptr;
-	PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = nullptr;
+	PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = VK_NULL_HANDLE;
+	PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = VK_NULL_HANDLE;
 
-	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags msgFlags,
-		VkDebugReportObjectTypeEXT objType,
-		uint64_t srcObject,
-		size_t location,
-		int32_t msgCode,
-		const char *layerPrefix,
-		const char *msg,
-		void *userData);
+	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags,VkDebugReportObjectTypeEXT,uint64_t,size_t,int32_t,const char*,const char*,void *);
 
 	void initDebugLayers();
 	void initExtensions();
 	void createInstance();
 	void initDebugReportCallback();
 	
+	void showPhysicalDeviceInfo(const VkPhysicalDevice& gpuToCheck);
+	bool isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck);
+	int  ratePhysicalDevice(const VkPhysicalDevice& gpuToCheck);
+	void pickPhysicalDevice();
 
+	void createLogicalDevice();
 
 //	void keyboardRegister();
 
@@ -111,6 +117,7 @@ private:
 	void showAllSupportedInstanceExtensions();
 	void showAllSupportedInstanceLayers();
 	void showAllSupportedExtensionsEachUnderInstanceLayer();
+	void showPhysicalDeviceSupportedLayersAndExtensions(const VkPhysicalDevice& gpuToCheck);
 };
 
 

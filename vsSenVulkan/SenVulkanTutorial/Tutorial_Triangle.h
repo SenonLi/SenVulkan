@@ -800,7 +800,7 @@ private:
 		int i = 0;
 		for (const auto& queueFamily : queueFamilies) {
 			if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-				indices.graphicsFamily = i;
+				indices.graphicsFamily = i;// graphicsQueueFamilyIndex
 			}
 
 			VkBool32 presentSupport = false;

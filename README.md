@@ -16,7 +16,7 @@ Begin with Vulkan 1.042, step by step
 * namespace and extern in C++?
 * Staging buffer? 
 * Asynchronous transfer?
-*
+* 
 std::unique_ptr<VulkanApplication> VulkanApplication::instance;
 std::once_flag VulkanApplication::onlyOnce;
 
@@ -30,7 +30,8 @@ VulkanApplication* VulkanApplication::GetInstance(){
     return instance.get();
 }
 
-
+* Difference between std::multimap and std::map?
+* also std::unordered_set and unordered_map
 
 
 ## Terminologies
@@ -41,7 +42,8 @@ Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan
 ### Vulkan
 * 1. Extensions are to support vulkan applications, and layers are for runtime debugging that may even cover the extensions debugging at runtime;
 in other words, each of the layers means to support some extensions, which means the supportable extentions could be found enumerated based on the layerName.
-* 2. Queues are automatically created when a logical device object is created; 
+* 2. Physical device will be implicitly destroyed when the VkInstance is destroyed, so we don't need to, and there is no command to destroy a phisicalDevice.
+* 3. Queues are automatically created when a logical device object is created; 
 
 ### V++ / Debug
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>

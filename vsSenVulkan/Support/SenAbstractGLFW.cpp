@@ -15,6 +15,7 @@ SenAbstractGLFW::SenAbstractGLFW()
 
 SenAbstractGLFW::~SenAbstractGLFW()
 {
+	finalize();
 	OutputDebugString("\n ~SenAbstractGLWidget()\n");
 }
 
@@ -52,12 +53,16 @@ void SenAbstractGLFW::initGlfwVulkan()
 		initDebugReportCallback();
 	}
 
+	pickPhysicalDevice();
+	//showPhysicalDeviceSupportedLayersAndExtensions(physicalDevice);// only show physicalDevice after pickPhysicalDevice()
+	createLogicalDevice();
+
 	// Clear the colorbuffer
 	//glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 	//glViewport(0, 0, widgetWidth, widgetHeight);
 	//glEnable(GL_DEPTH_TEST);
 
-	std::cout << "\n Finish Initial initGlfwVulkan\n";
+	std::cout << "\n Finish  initGlfwVulkan()\n";
 }
 
 void SenAbstractGLFW::showWidget()
@@ -87,7 +92,16 @@ void SenAbstractGLFW::showWidget()
 }
 
 
-VKAPI_ATTR VkBool32 VKAPI_CALL SenAbstractGLFW::pfnDebugCallback(VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char * layerPrefix, const char * msg, void * userData)
+VKAPI_ATTR VkBool32 VKAPI_CALL SenAbstractGLFW::pfnDebugCallback(
+	VkFlags msgFlags,
+	VkDebugReportObjectTypeEXT objType,
+	uint64_t srcObject,
+	size_t location, 
+	int32_t msgCode, 
+	const char * layerPrefix,
+	const char * msg, 
+	void * userData
+)
 {
 	std::ostringstream stream;
 	if (msgFlags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) { stream << "INFO:\t"; }
@@ -136,22 +150,26 @@ void SenAbstractGLFW::initDebugLayers()
 
 void SenAbstractGLFW::initExtensions()
 {
+	/*****************************************************************************************************************************/
+	/*************  For Instance Extensions  *************************************************************************************/
+	/*****************************************************************************************************************************/
 	uint32_t glfwInstanceExtensionsCount = 0;
 	const char** glfwInstanceExtensions;
 
 	glfwInstanceExtensions = glfwGetRequiredInstanceExtensions(&glfwInstanceExtensionsCount);
-
-	//OutputDebugString("\nGLFW required Vulkan Instance Extensions: \n");
+	//std::cout << "\nGLFW required Vulkan Instance Extensions: \n");
 	for (uint32_t i = 0; i < glfwInstanceExtensionsCount; i++) {
 		debugInstanceExtensionsVector.push_back(glfwInstanceExtensions[i]);
 		//std::string strExtension = std::to_string(i) + ". " + std::string(glfwInstanceExtensions[i]) + "\n";
-		//OutputDebugString(strExtension.c_str());
+		//std::cout << strExtension;
 	}
-
 	if (layersEnabled) {
 		debugInstanceExtensionsVector.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 	}
 
+	/*****************************************************************************************************************************/
+	/*************  For Physical Device Extensions  ******************************************************************************/
+	/*****************************************************************************************************************************/
 	debugDeviceExtensionsVector.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME); //There is no quote here
 }
 
@@ -208,18 +226,215 @@ void SenAbstractGLFW::initDebugReportCallback()
 		fetch_vkCreateDebugReportCallbackEXT(instance, &debugReportCallbackCreateInfo, nullptr, &debugReportCallback),
 		std::string("Create debugReportCallback Error!")
 	);
+}
 
+void SenAbstractGLFW::pickPhysicalDevice()
+{
+	uint32_t physicalDevicesCount = 0;
+	vkEnumeratePhysicalDevices(instance, &physicalDevicesCount, nullptr);
+
+	if (physicalDevicesCount == 0) {
+		throw std::runtime_error("failed to find GPUs with Vulkan support!");
+	}
+
+	std::vector<VkPhysicalDevice> physicalDevicesVector(physicalDevicesCount);
+	vkEnumeratePhysicalDevices(instance, &physicalDevicesCount, physicalDevicesVector.data());
+
+	/******************************************************************************************************/
+	/******** Select the first suitable GPU  **************************************************************/
+
+	//for (const auto& detectedGPU : physicalDevicesVector) {
+	//	if (isPhysicalDeviceSuitable(detectedGPU)) {
+	//		physicalDevice = detectedGPU;
+	//		break;
+	//	}
+	//}
+
+	//if (VK_NULL_HANDLE == physicalDevice) {
+	//	throw std::runtime_error("failed to find a suitable GPU!");
+	//}
+
+	/******************************************************************************************************/
+	/******** Rate all available PhysicalDevices and  Pick the best suitable one  *************************/
+
+	// Use an ordered map to automatically sort candidates by increasing score
+	std::multimap<int, VkPhysicalDevice> physicalDevicesScoredMap;
+	std::cout << "All Detected GPUs: \n";
+	for (int i = 0; i < physicalDevicesVector.size(); i++) {
+		int score = ratePhysicalDevice(physicalDevicesVector[i]);// Primary check function in this block
+		std::cout << "\t[" << i+1 << "]\t";	showPhysicalDeviceInfo(physicalDevicesVector[i]);
+		physicalDevicesScoredMap.insert(std::make_pair(score, physicalDevicesVector[i]));
+	}
+	// Check if the best candidate is suitable at all
+	if (physicalDevicesScoredMap.rbegin()->first > 0) {
+		physicalDevice = physicalDevicesScoredMap.rbegin()->second;
+	}else {
+		throw std::runtime_error("failed to find a suitable GPU!");
+	}
+	/******************************************************************************************************/
+	/******************************************************************************************************/
+	std::cout << "\n\nSelected GPU:\n\t\t";	showPhysicalDeviceInfo(physicalDevice);
+	std::cout << std::endl;
+}
+
+void SenAbstractGLFW::showPhysicalDeviceInfo(const VkPhysicalDevice & gpuToCheck)
+{
+	if (VK_NULL_HANDLE == gpuToCheck) 		throw std::runtime_error("Wrong GPU!");
+
+	VkPhysicalDeviceProperties physicalDeviceProperties{};
+	vkGetPhysicalDeviceProperties(gpuToCheck, &physicalDeviceProperties);
+	std::ostringstream stream;
+	std::cout << " GPU Name: [" << physicalDeviceProperties.deviceName << "]\tType: \"";
+	switch (physicalDeviceProperties.deviceType) {
+	case 0:			stream << "VK_PHYSICAL_DEVICE_TYPE_OTHER\"\n ";				break;
+	case 1:			stream << "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU\"\n ";	break;
+	case 2:			stream << "VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU\"\n ";		break;
+	case 3:			stream << "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU\"\n ";		break;
+	case 4:			stream << "VK_PHYSICAL_DEVICE_TYPE_CPU\"\n ";				break;
+	case 5:			stream << "VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE\"\n ";		break;
+	default:		stream << "Unrecognized GPU Property.deviceType! \n";		break;
+	}
+	std::cout << stream.str();
+}
+
+bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck)
+{
+	if (VK_NULL_HANDLE == gpuToCheck) return VK_FALSE;
+
+	VkPhysicalDeviceProperties physicalDeviceProperties{};
+	vkGetPhysicalDeviceProperties(gpuToCheck, &physicalDeviceProperties);
+
+	VkPhysicalDeviceFeatures physicalDeviceFeatures{};
+	vkGetPhysicalDeviceFeatures(gpuToCheck, &physicalDeviceFeatures);
+
+	//  Check Graphics Queue Family support of GPU and get QueueFamilyIndex of Graphics 
+	uint32_t gpuQueueFamiliesCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> gpuQueueFamilyVector(gpuQueueFamiliesCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamilyVector.data());
+	
+	bool found = false;
+	for (uint32_t i = 0; i < gpuQueueFamiliesCount; i++) {
+		if (gpuQueueFamilyVector[i].queueCount > 0 
+			&& gpuQueueFamilyVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			graphicsQueueFamilyIndex = i;
+		}
+	}
+
+	return physicalDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU 
+		&&	physicalDeviceFeatures.geometryShader && graphicsQueueFamilyIndex >= 0;
+
+	//QueueFamilyIndices indices = findQueueFamilies(gpuToCheck);
+
+	//bool extensionsSupported = checkDeviceExtensionSupport(gpuToCheck);
+
+	//bool swapChainAdequate = false;
+	//if (extensionsSupported) {
+	//	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(gpuToCheck);
+	//	swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+	//}
+
+	//return indices.isComplete() && extensionsSupported && swapChainAdequate;
+}
+
+int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck)
+{
+	if (VK_NULL_HANDLE == gpuToCheck) return 0;
+	/************************************************************************************************************/
+	/******* Check Graphics Queue Family support of GPU and get QueueFamilyIndex of Graphics ********************/
+	/************************************************************************************************************/
+	uint32_t gpuQueueFamiliesCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, nullptr);
+	std::vector<VkQueueFamilyProperties> gpuQueueFamilyVector(gpuQueueFamiliesCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamilyVector.data());
+
+	//	1. Get the number of Queues supported by the Physical device
+	//	2. Get the properties each Queue type or Queue Family
+	//			There could be 4 Queue type or Queue families supported by physical device - 
+	//			Graphics Queue	- VK_QUEUE_GRAPHICS_BIT 
+	//			Compute Queue	- VK_QUEUE_COMPUTE_BIT
+	//			DMA				- VK_QUEUE_TRANSFER_BIT
+	//			Sparse memory	- VK_QUEUE_SPARSE_BINDING_BIT
+	//	3. Get the index ID for the required Queue family, this ID will act like a handle index to queue.
+
+	for (uint32_t i = 0; i < gpuQueueFamiliesCount; i++) {
+		if (gpuQueueFamilyVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT 
+			&& gpuQueueFamilyVector[i].queueCount > 0) {
+			graphicsQueueFamilyIndex = i;
+		}
+	}
+	if (graphicsQueueFamilyIndex < 0) return 0; // If graphics QueueFamilyIndex is still -1 as default, this GPU doesn't support Graphics drawing
+
+	/************************************************************************************************************/
+	/******* If gets here, Graphics Queue Family support of this this GPU is good *******************************/
+	/************************************************************************************************************/
+	VkPhysicalDeviceFeatures physicalDeviceFeatures{};
+	vkGetPhysicalDeviceFeatures(gpuToCheck, &physicalDeviceFeatures);
+	if (!physicalDeviceFeatures.geometryShader) 	return 0;	// Application can't function without geometry shaders
+	
+	/************************************************************************************************************/
+	/****** If gets here, Geometry Shader of this GPU is good, let's Rate Score *********************************/
+	/************************************************************************************************************/
+	int score = 0;
+	VkPhysicalDeviceProperties physicalDeviceProperties{};
+	vkGetPhysicalDeviceProperties(gpuToCheck, &physicalDeviceProperties);
+	if (physicalDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+		score += 1000;	// Discrete GPUs have a significant performance advantage
+	}
+	score += physicalDeviceProperties.limits.maxImageDimension2D;// Maximum possible size of textures affects graphics quality
+
+	return score;
+}
+
+void SenAbstractGLFW::createLogicalDevice()
+{
+	float queuePriority = 1.0f;
+	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
+	deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	deviceQueueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
+	deviceQueueCreateInfo.queueCount = 1;
+	deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+
+	VkDeviceCreateInfo deviceCreateInfo{};
+	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.queueCreateInfoCount = 1;
+	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+
+	if (layersEnabled) {
+		deviceCreateInfo.enabledLayerCount = debugDeviceLayersVector.size();   				// depricated
+		deviceCreateInfo.ppEnabledLayerNames = debugDeviceLayersVector.data();				// depricated
+	}
+	deviceCreateInfo.enabledExtensionCount = debugDeviceExtensionsVector.size();
+	deviceCreateInfo.ppEnabledExtensionNames = debugDeviceExtensionsVector.data();
+
+	errorCheck(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device),
+		std::string("Fail at Create Logical Device!"));
+
+	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
 }
 
 void SenAbstractGLFW::finalize() {
+	// Destroy logical device
+	if (VK_NULL_HANDLE != device) {
+		vkDestroyDevice(device, VK_NULL_HANDLE);
+		if (VK_NULL_HANDLE != graphicsQueue) {		graphicsQueue = VK_NULL_HANDLE;		}
+
+		device = VK_NULL_HANDLE;
+	}
+
+	//Must destroy debugReportCallback before destroy instance
 	if (layersEnabled) {
-		//Must destroy debugReportCallback before destroy instance
-		fetch_vkDestroyDebugReportCallbackEXT(instance, debugReportCallback, nullptr);
-		debugReportCallback = VK_NULL_HANDLE;
+		if (VK_NULL_HANDLE != debugReportCallback) {
+			fetch_vkDestroyDebugReportCallbackEXT(instance, debugReportCallback, VK_NULL_HANDLE);
+			debugReportCallback = VK_NULL_HANDLE;
+		}
 	}
 
 	// Destroy Instance
-	vkDestroyInstance(instance, nullptr); 	instance = nullptr;
+	if (VK_NULL_HANDLE != instance) {
+		vkDestroyInstance(instance, VK_NULL_HANDLE); 	instance = VK_NULL_HANDLE;
+	}
 }
 
 
@@ -397,7 +612,7 @@ void SenAbstractGLFW::showAllSupportedExtensionsEachUnderInstanceLayer()
 	std::ostringstream stream;
 	stream << "\nAll Supported Instance Extensions under Layers: \n";
 	for (uint32_t i = 0; i < layersCount; i++) {
-		stream << "\t" << i << ". " << instanceLayersVector[i].description << "\t\t\t\t [\t" << instanceLayersVector[i].layerName << "\t]\n";
+		stream << "\t" << i+1 << ". " << instanceLayersVector[i].description << "\t\t\t\t [\t" << instanceLayersVector[i].layerName << "\t]\n";
 
 		uint32_t extensionsCount = 0;
 		errorCheck(vkEnumerateInstanceExtensionProperties(instanceLayersVector[i].layerName, &extensionsCount, NULL), std::string("Extension Count under Layer Error!"));
@@ -410,10 +625,60 @@ void SenAbstractGLFW::showAllSupportedExtensionsEachUnderInstanceLayer()
 			}
 		}
 		else {
-			stream << "\t\t\t|-- [ 0 ] .  None  \n";
+			stream << "\t\t\t|-- [ 0 ] .  None of Instance Extensions \n";
 		}
 		stream << std::endl;
 	}
+	std::cout << stream.str();
+}
+
+void SenAbstractGLFW::showPhysicalDeviceSupportedLayersAndExtensions(const VkPhysicalDevice & gpuToCheck)
+{
+	/************************************************************************************************************/
+	/******* Check PhysicalDevice Layers with each supported Extensions under Layer******************************/
+	/************************************************************************************************************/
+	std::ostringstream stream;
+	stream << "\nAll Supported PysicalDevice Extensions: \n----------------------------------------------------\n";
+	uint32_t gpuExtensionsCount = 0;
+	errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, nullptr, &gpuExtensionsCount, nullptr), std::string("GPU Extension Count under Layer Error!"));
+	std::vector<VkExtensionProperties> gpuExtensionsPropVec(gpuExtensionsCount);
+	errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, nullptr, &gpuExtensionsCount, gpuExtensionsPropVec.data()), std::string("GPU Extension Data() under Layer Error!"));
+	if (gpuExtensionsPropVec.size()) {
+		for (int j = 0; j < gpuExtensionsPropVec.size(); j++) {
+			stream << "\t\t\t    [ " << j + 1 << " ] . " << gpuExtensionsPropVec[j].extensionName << "\n";
+		}
+	}
+	else {
+		stream << "\t\t\t|-- [ 0 ] .  None of PhysicalDevice Extensions \n";
+	}
+	/************************************************************************************************************/
+	/******* Check PhysicalDevice Layers with each supported Extensions under Layer******************************/
+	/************************************************************************************************************/
+	uint32_t gpuLayersCount = 0;
+	vkEnumerateDeviceLayerProperties(gpuToCheck, &gpuLayersCount, nullptr);
+	std::vector<VkLayerProperties> physicalDeviceLayersVector(gpuLayersCount);
+	vkEnumerateDeviceLayerProperties(gpuToCheck, &gpuLayersCount, physicalDeviceLayersVector.data());
+
+	stream << "\nSupported Extensions under PysicalDevice Supported Layers: \n----------------------------------------------------\n";
+	for (uint32_t i = 0; i < gpuLayersCount; i++) {
+		stream << "\t" << i+1 << ". " << physicalDeviceLayersVector[i].description << "\t\t\t\t [\t" << physicalDeviceLayersVector[i].layerName << "\t]\n";
+
+		uint32_t gpuExtensionsCount = 0;
+		errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, physicalDeviceLayersVector[i].layerName, &gpuExtensionsCount, NULL), std::string("GPU Extension Count under Layer Error!"));
+		std::vector<VkExtensionProperties> gpuExtensionsPropVec(gpuExtensionsCount);
+		errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, physicalDeviceLayersVector[i].layerName, &gpuExtensionsCount, gpuExtensionsPropVec.data()), std::string("GPU Extension Data() under Layer Error!"));
+
+		if (gpuExtensionsPropVec.size()) {
+			for (int j = 0; j < gpuExtensionsPropVec.size(); j++) {
+				stream << "\t\t\t|-- [ " << j + 1 << " ] . " << gpuExtensionsPropVec[j].extensionName << "\n";
+			}
+		}
+		else {
+			stream << "\t\t\t|-- [ 0 ] .  None of PhysicalDevice Extensions \n";
+		}
+		stream << "\n";
+	}
+
 	std::cout << stream.str();
 }
 
