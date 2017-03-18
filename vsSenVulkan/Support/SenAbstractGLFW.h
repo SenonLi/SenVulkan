@@ -12,7 +12,8 @@
 #include <string>
 #include <iostream> // for cout, cin
 #include <sstream>  // for quick chunch cout
-#include <map>
+#include <map>		// for ratePhysicalDevice to pick the best
+#include <set>		// for unique queue family <==> unique queue
 
 #define GLFW_INCLUDE_VULKAN // Let GLFW know Vulkan is utilized
 #include <GLFW/glfw3.h>
@@ -41,11 +42,19 @@ protected:
 	VkInstance						instance		= VK_NULL_HANDLE;
 	
 	VkPhysicalDevice				physicalDevice	= VK_NULL_HANDLE;
-	VkPhysicalDeviceProperties		physicalDeviceProperties = {};	// GPU name, type (discrete)
-	int32_t							graphicsQueueFamilyIndex = -1;  // Index of Graphics QueueFamily of GPU that we will choose to 
+	VkPhysicalDeviceProperties		physicalDeviceProperties	= {};	// GPU name, type (discrete)
+	int32_t							graphicsQueueFamilyIndex	= -1;  // Index of Graphics QueueFamily of GPU that we will choose to 
+	int32_t							presentQueueFamilyIndex		= -1;  // The Graphics (Drawing) QueueFamily may not support presentation (WSI)
 
 	VkDevice						device			= VK_NULL_HANDLE;
-	VkQueue							graphicsQueue	= VK_NULL_HANDLE;
+	VkQueue							graphicsQueue	= VK_NULL_HANDLE; // Handle to the graphics queue
+	VkQueue							presentQueue	= VK_NULL_HANDLE; // Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
+
+																   /*******************************************************************************************************************************/
+	/********* VkSurfaceKHR object that represents an abstract type of surface to present rendered images to. **********************/
+	/********* The surface in our program will be backed by the window that we've already opened with GLFW.   **********************/
+	VkSurfaceKHR					surface			= VK_NULL_HANDLE; // VK_KHR_surface Instance Extension
+
 
 //	float xRot, yRot;
 //	float aspect;
@@ -94,10 +103,15 @@ private:
 	void initExtensions();
 	void createInstance();
 	void initDebugReportCallback();
-	
+
+	/*******************************************************************************************************************************/
+	/********* The window surface needs to be created right after the instance creation, *******************************************/
+	/********* because it can actually influence the physical device selection.          *******************************************/
+	void createSureface();
+
 	void showPhysicalDeviceInfo(const VkPhysicalDevice& gpuToCheck);
-	bool isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck);
-	int  ratePhysicalDevice(const VkPhysicalDevice& gpuToCheck);
+	bool isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
+	int  ratePhysicalDevice(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
 	void pickPhysicalDevice();
 
 	void createLogicalDevice();
@@ -105,10 +119,6 @@ private:
 //	void keyboardRegister();
 
 
-	//errorCheck(
-	//	vkCreateInstance(&instanceCreateInfo, nullptr, &instance),
-	//	std::string("Failed to create instance! \t Error:\t")
-	//);
 
 	void errorCheck(VkResult result, std::string msg);
 	bool checkInstanceLayersSupport(std::vector<const char*> layersVector);

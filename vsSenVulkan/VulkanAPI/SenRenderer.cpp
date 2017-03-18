@@ -28,10 +28,10 @@ void SenRenderer::_InitInstance()
 	VkInstanceCreateInfo instanceCreateInfo{};
 	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCreateInfo.pApplicationInfo = &applicationInfo;
-	instanceCreateInfo.enabledLayerCount = (uint32_t)_instanceLayersList.size();
+	instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(_instanceLayersList.size());
 	instanceCreateInfo.ppEnabledLayerNames = _instanceLayersList.data();
 
-	instanceCreateInfo.enabledExtensionCount = (uint32_t)_instanceExtensionsList.size();
+	instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(_instanceExtensionsList.size());
 	instanceCreateInfo.ppEnabledExtensionNames = _instanceExtensionsList.data();
 
 	instanceCreateInfo.pNext = &debugCallbackCreateInfo;

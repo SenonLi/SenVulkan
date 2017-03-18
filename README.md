@@ -31,8 +31,9 @@ VulkanApplication* VulkanApplication::GetInstance(){
 }
 
 * Difference between std::multimap and std::map?
-* also std::unordered_set and unordered_map
-
+* also  std::set, std::unordered_set and std::unordered_map, std::multimap
+* constexpr specifier (since C++11)?
+*
 
 ## Terminologies
 Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan Loader, Vulkan Layers and Installable Client Drivers)
@@ -44,6 +45,7 @@ Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan
 in other words, each of the layers means to support some extensions, which means the supportable extentions could be found enumerated based on the layerName.
 * 2. Physical device will be implicitly destroyed when the VkInstance is destroyed, so we don't need to, and there is no command to destroy a phisicalDevice.
 * 3. Queues are automatically created when a logical device object is created; 
+* 4. Vulkan lets you VkDeviceQueueCreateInfo.pQueuePriorities to queues to influence the scheduling of command buffer execution using floating point numbers between 0.0 and 1.0. This is required even if there is only a single queue.
 
 ### V++ / Debug
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>

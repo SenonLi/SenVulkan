@@ -50,9 +50,13 @@ void SenAbstractGLFW::initGlfwVulkan()
 	initExtensions();
 	createInstance();
 	if (layersEnabled) {
-		initDebugReportCallback();
+		initDebugReportCallback(); // Need created Instance
 	}
 
+	/*******************************************************************************************************************************/
+	/********* The window surface needs to be created right after the instance creation, *******************************************/
+	/********* because the check of "surface" support will influence the physical device selection.     ****************************/
+	createSureface(); 
 	pickPhysicalDevice();
 	//showPhysicalDeviceSupportedLayersAndExtensions(physicalDevice);// only show physicalDevice after pickPhysicalDevice()
 	createLogicalDevice();
@@ -192,11 +196,11 @@ void SenAbstractGLFW::createInstance()
 	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceCreateInfo.pApplicationInfo = &appInfo;
 
-	instanceCreateInfo.enabledExtensionCount = (uint32_t)debugInstanceExtensionsVector.size();
+	instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(debugInstanceExtensionsVector.size());
 	instanceCreateInfo.ppEnabledExtensionNames = debugInstanceExtensionsVector.data();
 
 	if (layersEnabled) {
-		instanceCreateInfo.enabledLayerCount = (uint32_t)debugInstanceLayersVector.size();
+		instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(debugInstanceLayersVector.size());
 		instanceCreateInfo.ppEnabledLayerNames = debugInstanceLayersVector.data();
 		instanceCreateInfo.pNext = &debugReportCallbackCreateInfo;
 	}
@@ -244,7 +248,7 @@ void SenAbstractGLFW::pickPhysicalDevice()
 	/******** Select the first suitable GPU  **************************************************************/
 
 	//for (const auto& detectedGPU : physicalDevicesVector) {
-	//	if (isPhysicalDeviceSuitable(detectedGPU)) {
+	//	if (isPhysicalDeviceSuitable(detectedGPU, graphicsQueueFamilyIndex, presentQueueFamilyIndex)) {
 	//		physicalDevice = detectedGPU;
 	//		break;
 	//	}
@@ -256,12 +260,12 @@ void SenAbstractGLFW::pickPhysicalDevice()
 
 	/******************************************************************************************************/
 	/******** Rate all available PhysicalDevices and  Pick the best suitable one  *************************/
-
-	// Use an ordered map to automatically sort candidates by increasing score
+	/******** Use an ordered map to automatically sort candidates by increasing score *********************/
+	
 	std::multimap<int, VkPhysicalDevice> physicalDevicesScoredMap;
 	std::cout << "All Detected GPUs: \n";
 	for (int i = 0; i < physicalDevicesVector.size(); i++) {
-		int score = ratePhysicalDevice(physicalDevicesVector[i]);// Primary check function in this block
+		int score = ratePhysicalDevice(physicalDevicesVector[i], graphicsQueueFamilyIndex, presentQueueFamilyIndex);// Primary check function in this block
 		std::cout << "\t[" << i+1 << "]\t";	showPhysicalDeviceInfo(physicalDevicesVector[i]);
 		physicalDevicesScoredMap.insert(std::make_pair(score, physicalDevicesVector[i]));
 	}
@@ -275,6 +279,14 @@ void SenAbstractGLFW::pickPhysicalDevice()
 	/******************************************************************************************************/
 	std::cout << "\n\nSelected GPU:\n\t\t";	showPhysicalDeviceInfo(physicalDevice);
 	std::cout << std::endl;
+}
+
+void SenAbstractGLFW::createSureface()
+{
+	errorCheck(
+		glfwCreateWindowSurface(instance, widgetGLFW, nullptr, &surface),
+		std::string("Failed to create window surface!")
+	);
 }
 
 void SenAbstractGLFW::showPhysicalDeviceInfo(const VkPhysicalDevice & gpuToCheck)
@@ -297,37 +309,49 @@ void SenAbstractGLFW::showPhysicalDeviceInfo(const VkPhysicalDevice & gpuToCheck
 	std::cout << stream.str();
 }
 
-bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck)
+bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex)
 {
+	graphicsQueueIndex = -1; presentQueueIndex = -1;
 	if (VK_NULL_HANDLE == gpuToCheck) return VK_FALSE;
-
+	/**************************************************************************************************************/
+	/**************************************************************************************************************/
 	VkPhysicalDeviceProperties physicalDeviceProperties{};
 	vkGetPhysicalDeviceProperties(gpuToCheck, &physicalDeviceProperties);
-
 	VkPhysicalDeviceFeatures physicalDeviceFeatures{};
 	vkGetPhysicalDeviceFeatures(gpuToCheck, &physicalDeviceFeatures);
 
+	if (!physicalDeviceFeatures.geometryShader)		return VK_FALSE;
+
+	/**************************************************************************************************************/
+	/**************************************************************************************************************/
 	//  Check Graphics Queue Family support of GPU and get QueueFamilyIndex of Graphics 
 	uint32_t gpuQueueFamiliesCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, nullptr);
-
 	std::vector<VkQueueFamilyProperties> gpuQueueFamilyVector(gpuQueueFamiliesCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamilyVector.data());
 	
-	bool found = false;
 	for (uint32_t i = 0; i < gpuQueueFamiliesCount; i++) {
-		if (gpuQueueFamilyVector[i].queueCount > 0 
+		if (graphicsQueueIndex < 0 && gpuQueueFamilyVector[i].queueCount > 0
 			&& gpuQueueFamilyVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-			graphicsQueueFamilyIndex = i;
+			graphicsQueueIndex = i;
 		}
+
+		if (presentQueueIndex < 0 && gpuQueueFamilyVector[i].queueCount > 0) {
+			VkBool32 presentSupport = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR(gpuToCheck, i, surface, &presentSupport);
+			if ( presentSupport) {
+				presentQueueIndex = i;
+			}
+		}
+
+		if (graphicsQueueIndex >= 0 && presentQueueIndex >= 0) 
+			break;
 	}
 
-	return physicalDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU 
-		&&	physicalDeviceFeatures.geometryShader && graphicsQueueFamilyIndex >= 0;
+	return graphicsQueueIndex >= 0 && presentQueueIndex >= 0;
 
 	//QueueFamilyIndices indices = findQueueFamilies(gpuToCheck);
-
-	//bool extensionsSupported = checkDeviceExtensionSupport(gpuToCheck);
+	//bool extensionsSupported = checkDeviceExtensionSupport(gpuToCheck);// Not necessary
 
 	//bool swapChainAdequate = false;
 	//if (extensionsSupported) {
@@ -338,9 +362,11 @@ bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToChec
 	//return indices.isComplete() && extensionsSupported && swapChainAdequate;
 }
 
-int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck)
+int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex)
 {
+	graphicsQueueIndex = -1; presentQueueIndex = -1;
 	if (VK_NULL_HANDLE == gpuToCheck) return 0;
+
 	/************************************************************************************************************/
 	/******* Check Graphics Queue Family support of GPU and get QueueFamilyIndex of Graphics ********************/
 	/************************************************************************************************************/
@@ -359,12 +385,23 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck)
 	//	3. Get the index ID for the required Queue family, this ID will act like a handle index to queue.
 
 	for (uint32_t i = 0; i < gpuQueueFamiliesCount; i++) {
-		if (gpuQueueFamilyVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT 
-			&& gpuQueueFamilyVector[i].queueCount > 0) {
-			graphicsQueueFamilyIndex = i;
+		if (graphicsQueueIndex < 0 && gpuQueueFamilyVector[i].queueCount > 0
+			&& gpuQueueFamilyVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+			graphicsQueueIndex = i;
 		}
+
+		if (presentQueueIndex < 0 && gpuQueueFamilyVector[i].queueCount > 0) {
+			VkBool32 presentSupport = VK_FALSE;
+			vkGetPhysicalDeviceSurfaceSupportKHR(gpuToCheck, i, surface, &presentSupport);
+			if (presentSupport) {
+				presentQueueIndex = i;
+			}
+		}
+
+		if (graphicsQueueIndex >= 0 && presentQueueIndex >= 0)
+			break;
 	}
-	if (graphicsQueueFamilyIndex < 0) return 0; // If graphics QueueFamilyIndex is still -1 as default, this GPU doesn't support Graphics drawing
+	if (graphicsQueueIndex < 0 || presentQueueIndex < 0) return 0; // If graphics QueueFamilyIndex is still -1 as default, this GPU doesn't support Graphics drawing
 
 	/************************************************************************************************************/
 	/******* If gets here, Graphics Queue Family support of this this GPU is good *******************************/
@@ -389,17 +426,27 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck)
 
 void SenAbstractGLFW::createLogicalDevice()
 {
+	std::vector<VkDeviceQueueCreateInfo> deviceQueuesCreateInfosVector;
+	/*************************************************************************************************************/
+	/*** Attension! Two Queues for one logical device have to use two different QueueFamilyIndex *****************/
+	/*************************************************************************************************************/
+	std::set<int> uniqueQueueFamilyIndicesSet = { graphicsQueueFamilyIndex, presentQueueFamilyIndex };
+
 	float queuePriority = 1.0f;
-	VkDeviceQueueCreateInfo deviceQueueCreateInfo{};
-	deviceQueueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	deviceQueueCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
-	deviceQueueCreateInfo.queueCount = 1;
-	deviceQueueCreateInfo.pQueuePriorities = &queuePriority;
+	for (int uniqueQueueFamilyIndex : uniqueQueueFamilyIndicesSet) {
+		VkDeviceQueueCreateInfo queueCreateInfo = {};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = uniqueQueueFamilyIndex;
+		queueCreateInfo.queueCount = 1;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+
+		deviceQueuesCreateInfosVector.push_back(queueCreateInfo);
+	}
 
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	deviceCreateInfo.queueCreateInfoCount = 1;
-	deviceCreateInfo.pQueueCreateInfos = &deviceQueueCreateInfo;
+	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(deviceQueuesCreateInfosVector.size());
+	deviceCreateInfo.pQueueCreateInfos = deviceQueuesCreateInfosVector.data();
 
 	if (layersEnabled) {
 		deviceCreateInfo.enabledLayerCount = debugDeviceLayersVector.size();   				// depricated
@@ -408,21 +455,34 @@ void SenAbstractGLFW::createLogicalDevice()
 	deviceCreateInfo.enabledExtensionCount = debugDeviceExtensionsVector.size();
 	deviceCreateInfo.ppEnabledExtensionNames = debugDeviceExtensionsVector.data();
 
-	errorCheck(vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device),
-		std::string("Fail at Create Logical Device!"));
+	errorCheck(
+		vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device),
+		std::string("Fail at Create Logical Device!")
+	);
 
+	// Retrieve queue handles for each queue family
 	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
+	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue);
 }
 
 void SenAbstractGLFW::finalize() {
 	// Destroy logical device
 	if (VK_NULL_HANDLE != device) {
 		vkDestroyDevice(device, VK_NULL_HANDLE);
-		if (VK_NULL_HANDLE != graphicsQueue) {		graphicsQueue = VK_NULL_HANDLE;		}
+		
+		// Device queues are implicitly cleaned up when the device is destroyed
+		if (VK_NULL_HANDLE != graphicsQueue)	{	graphicsQueue	= VK_NULL_HANDLE;		}
+		if (VK_NULL_HANDLE != presentQueue)		{	presentQueue	= VK_NULL_HANDLE;		}
 
 		device = VK_NULL_HANDLE;
 	}
 
+	// Destroy window surface, Note that this is a native Vulkan API function
+	if (VK_NULL_HANDLE != surface) {
+		vkDestroySurfaceKHR(instance, surface, nullptr);	//  surface was created with GLFW function
+		surface = VK_NULL_HANDLE;
+	}
+	
 	//Must destroy debugReportCallback before destroy instance
 	if (layersEnabled) {
 		if (VK_NULL_HANDLE != debugReportCallback) {
@@ -559,7 +619,7 @@ void SenAbstractGLFW::errorCheck(VkResult result, std::string msg)
 			break;
 		}
 
-		throw std::runtime_error(msg + errString);
+		throw std::runtime_error(msg + "\t" + errString);
 	}
 }
 

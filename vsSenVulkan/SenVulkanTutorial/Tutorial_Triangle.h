@@ -134,7 +134,8 @@ private:
 
 	VDeleter<VkInstance> instance{ vkDestroyInstance };
 	VDeleter<VkDebugReportCallbackEXT> callback{ instance, DestroyDebugReportCallbackEXT };
-	VDeleter<VkSurfaceKHR> surface{ instance, vkDestroySurfaceKHR };
+	// VkSurfaceKHR object that represents an abstract type of surface to present rendered images to.The surface in our program will be backed by the window that we've already opened with GLFW.
+	VDeleter<VkSurfaceKHR> surface{ instance, vkDestroySurfaceKHR }; // VK_KHR_surface Instance Extension
 
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VDeleter<VkDevice> device{ vkDestroyDevice };
@@ -300,7 +301,7 @@ private:
 		createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
 		createInfo.pQueueCreateInfos = queueCreateInfos.data();
-		createInfo.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
+		createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 
 		createInfo.pEnabledFeatures = &deviceFeatures;
 
@@ -347,7 +348,7 @@ private:
 		createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 		QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-		uint32_t queueFamilyIndices[] = { (uint32_t)indices.graphicsFamily, (uint32_t)indices.presentFamily };
+		uint32_t queueFamilyIndices[] = { static_cast<uint32_t>(indices.graphicsFamily), static_cast<uint32_t>(indices.presentFamily) };
 
 		if (indices.graphicsFamily != indices.presentFamily) {
 			createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
@@ -597,7 +598,7 @@ private:
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 		allocInfo.commandPool = commandPool;
 		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+		allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
 
 		if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
 			throw std::runtime_error("failed to allocate command buffers!");
