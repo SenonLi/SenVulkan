@@ -11,10 +11,28 @@ SenRenderer::SenRenderer()
 
 SenRenderer::~SenRenderer()
 {
+	if (_window) {
+		delete _window;
+		_window = nullptr;
+	}
 	_DeInitDevice();
 	_DeInitDebug();
 	_DeInitInstance();
 	_DeInitDevice();
+}
+
+SenWindow * SenRenderer::openSenWindow(uint32_t size_X, uint32_t size_Y, std::string name)
+{
+	_window = new SenWindow(size_X, size_Y, name);
+	return		_window;
+}
+
+bool SenRenderer::run()
+{
+	if (nullptr != _window) {
+		return _window->updateSenWindow();
+	}
+	return true;
 }
 
 void SenRenderer::_InitInstance()
@@ -125,10 +143,9 @@ void SenRenderer::_InitDevice()
 	deviceCreateInfo.ppEnabledExtensionNames = _deviceExtensionsList.data();
 
 	ErrorCheck(vkCreateDevice(_gpu, &deviceCreateInfo, nullptr, &_device));
-	//if (VK_SUCCESS != error) {
-	//	assert(0 && "Vulkan Error:Device creation failed.");
-	//	std::exit(-1);
-	//}
+
+
+	vkGetDeviceQueue(_device, _graphicsFamilyIndex, 0, &_queue);
 }
 
 void SenRenderer::_DeInitDevice()
@@ -144,6 +161,8 @@ void SenRenderer::_DeInitDevice()
 		_device = nullptr;
 	}
 }
+
+#if _SenENABLE_VULKAN_DEBUG
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
 VulkanDebugCallback(
@@ -216,3 +235,11 @@ void SenRenderer::_DeInitDebug()
 	fetch_vkDestroyDebugReportCallbackEXT(_instance, _debugReport, nullptr);
 	_debugReport = VK_NULL_HANDLE;
 }
+
+#else
+
+void SenRenderer::_SetupDebug() {};
+void SenRenderer::_InitDebug() {};
+void SenRenderer::_DeInitDebug() {};
+
+#endif // _SenENABLE_VULKAN_DEBUG

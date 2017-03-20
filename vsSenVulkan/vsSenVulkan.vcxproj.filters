@@ -25,11 +25,11 @@
     <Filter Include="Shaders\SenVulkanTutorial">
       <UniqueIdentifier>{903a9620-eefb-492a-a65c-88489481adcb}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Sources\VulkanVPI">
-      <UniqueIdentifier>{3b8cc579-8d58-45c2-aafc-9b0d690b102e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Headers\VulkanVPI">
+    <Filter Include="Headers\VulkanAPI">
       <UniqueIdentifier>{bc0edf09-beb7-45c5-b7a6-f190d8325547}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Sources\VulkanAPI">
+      <UniqueIdentifier>{3b8cc579-8d58-45c2-aafc-9b0d690b102e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -41,10 +41,22 @@
       <Filter>Sources\SenVulkanTutorial</Filter>
     </ClCompile>
     <ClCompile Include="VulkanAPI\SenRenderer.cpp">
-      <Filter>Sources\VulkanVPI</Filter>
+      <Filter>Sources\VulkanAPI</Filter>
     </ClCompile>
     <ClCompile Include="VulkanAPI\Shared.cpp">
-      <Filter>Sources\VulkanVPI</Filter>
+      <Filter>Sources\VulkanAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanAPI\SenVulkanAPI_Widget.cpp">
+      <Filter>Sources\VulkanAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanAPI\SenWindow.cpp">
+      <Filter>Sources\VulkanAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanAPI\SenWindow_win32.cpp">
+      <Filter>Sources\VulkanAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="VulkanAPI\SenWindow_xcb.cpp">
+      <Filter>Sources\VulkanAPI</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -58,10 +70,16 @@
       <Filter>Headers\SenVulkanTutorial</Filter>
     </ClInclude>
     <ClInclude Include="VulkanAPI\SenRenderer.h">
-      <Filter>Headers\VulkanVPI</Filter>
+      <Filter>Headers\VulkanAPI</Filter>
     </ClInclude>
     <ClInclude Include="VulkanAPI\Shared.h">
-      <Filter>Headers\VulkanVPI</Filter>
+      <Filter>Headers\VulkanAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanAPI\SenVulkanAPI_Widget.h">
+      <Filter>Headers\VulkanAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="VulkanAPI\SenWindow.h">
+      <Filter>Headers\VulkanAPI</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

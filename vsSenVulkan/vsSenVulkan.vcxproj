@@ -165,6 +165,10 @@
     <ClCompile Include="SenVulkanTutorial\Sen_00_Triangle.cpp" />
     <ClCompile Include="Support\SenAbstractGLFW.cpp" />
     <ClCompile Include="VulkanAPI\SenRenderer.cpp" />
+    <ClCompile Include="VulkanAPI\SenVulkanAPI_Widget.cpp" />
+    <ClCompile Include="VulkanAPI\SenWindow.cpp" />
+    <ClCompile Include="VulkanAPI\SenWindow_win32.cpp" />
+    <ClCompile Include="VulkanAPI\SenWindow_xcb.cpp" />
     <ClCompile Include="VulkanAPI\Shared.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -172,6 +176,8 @@
     <ClInclude Include="SenVulkanTutorial\Tutorial_Triangle.h" />
     <ClInclude Include="Support\SenAbstractGLFW.h" />
     <ClInclude Include="VulkanAPI\SenRenderer.h" />
+    <ClInclude Include="VulkanAPI\SenVulkanAPI_Widget.h" />
+    <ClInclude Include="VulkanAPI\SenWindow.h" />
     <ClInclude Include="VulkanAPI\Shared.h" />
   </ItemGroup>
   <ItemGroup>

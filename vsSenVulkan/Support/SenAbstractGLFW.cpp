@@ -19,12 +19,13 @@ SenAbstractGLFW::~SenAbstractGLFW()
 	OutputDebugString("\n ~SenAbstractGLWidget()\n");
 }
 
-//void SenAbstractGLFW::paintVulkan(void)
-//{
-//	// Define the viewport dimensions
-//	glfwGetFramebufferSize(widgetGLFW, &widgetWidth, &widgetHeight);
-//	glViewport(0, 0, widgetWidth, widgetHeight);
-//}
+void SenAbstractGLFW::paintVulkan(void)
+{
+	// make sure we indeed get the surface size we want.
+	glfwGetFramebufferSize(widgetGLFW, &widgetWidth, &widgetHeight);
+	// Define the viewport dimensions
+	//glViewport(0, 0, widgetWidth, widgetHeight);
+}
 
 void SenAbstractGLFW::initGlfwVulkan()
 {
@@ -462,7 +463,7 @@ void SenAbstractGLFW::createLogicalDevice()
 
 	// Retrieve queue handles for each queue family
 	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
-	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue);
+	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue); // Not sure if the third parameter 0 is correct
 }
 
 void SenAbstractGLFW::finalize() {

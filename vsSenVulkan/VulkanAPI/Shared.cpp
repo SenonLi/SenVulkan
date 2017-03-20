@@ -1,5 +1,8 @@
 #include "Shared.h"
 
+
+#if _SenENABLE_VULKAN_RUNTIME_DEBU
+
 void ErrorCheck(VkResult result) {
 	if (result < 0) {
 		switch (result)
@@ -73,3 +76,9 @@ void ErrorCheck(VkResult result) {
 		assert(0 && "Vulkan runtime error. ");
 	}
 }
+
+#else
+
+void ErrorCheck(VkResult result) {};
+
+#endif // _SenENABLE_VULKAN_RUNTIME_DEBU

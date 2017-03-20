@@ -3,10 +3,21 @@
 #ifndef __SenAbstractGLFW__
 #define __SenAbstractGLFW__
 
+#if defined( _WIN32 )  // on Windows OS
+
+#include <Windows.h> // for OutputDebugString() function
+//#define VK_USE_PLATFORM_WIN32_KHR 1 // For Vulkan Surface if not using GLFW
+
+#elif defined( __linux ) // on Linux ( Via XCB library )
+// xcb seems like a popular and well supported option on X11, until wayland and mir take over
+#define VK_USE_PLATFORM_XCB_KHR 1
+#include <xcb/xcb.h>
+#endif
+
+
 #include <stdexcept> // for propagating errors 
 #include <stdlib.h> // for const error catch
 #include <stdio.h>  
-#include <Windows.h> // for OutputDebugString() function
 
 #include <vector>
 #include <string>
@@ -60,7 +71,7 @@ protected:
 //	float aspect;
 
 	virtual void initGlfwVulkan();
-//	virtual void paintVulkan();
+	virtual void paintVulkan();
 	virtual void finalize();
 
 //	virtual void keyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode);
