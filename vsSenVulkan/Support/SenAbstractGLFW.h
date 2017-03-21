@@ -50,21 +50,46 @@ protected:
 	int widgetWidth, widgetHeight;
 	char* strWindowName;
 
-	VkInstance						instance		= VK_NULL_HANDLE;
+	VkInstance						instance = VK_NULL_HANDLE;
+
+	/*******************************************************************************************************************************/
+	/********* VkSurfaceKHR object that represents an abstract type of surface to present rendered images to. **********************/
+	/********* The surface in our program will be backed by the window that we've already opened with GLFW.   **********************/
+	VkSurfaceKHR					surface = VK_NULL_HANDLE; // VK_KHR_surface Instance Extension
+	std::vector<VkSurfaceFormatKHR> surfaceFormatVector;
+	VkSurfaceFormatKHR				surfaceFormat = {};
+	VkSurfaceCapabilitiesKHR		surfaceCapabilities = {};
 	
 	VkPhysicalDevice				physicalDevice	= VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties		physicalDeviceProperties	= {};	// GPU name, type (discrete)
 	int32_t							graphicsQueueFamilyIndex	= -1;  // Index of Graphics QueueFamily of GPU that we will choose to 
 	int32_t							presentQueueFamilyIndex		= -1;  // The Graphics (Drawing) QueueFamily may not support presentation (WSI)
 
-	VkDevice						device			= VK_NULL_HANDLE;
-	VkQueue							graphicsQueue	= VK_NULL_HANDLE; // Handle to the graphics queue
-	VkQueue							presentQueue	= VK_NULL_HANDLE; // Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
+	VkDevice						device					= VK_NULL_HANDLE;
+	VkQueue							graphicsQueue			= VK_NULL_HANDLE; // Handle to the graphics queue
+	VkQueue							presentQueue			= VK_NULL_HANDLE; // Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
 
-																   /*******************************************************************************************************************************/
-	/********* VkSurfaceKHR object that represents an abstract type of surface to present rendered images to. **********************/
-	/********* The surface in our program will be backed by the window that we've already opened with GLFW.   **********************/
-	VkSurfaceKHR					surface			= VK_NULL_HANDLE; // VK_KHR_surface Instance Extension
+	VkSwapchainKHR					swapChain				= VK_NULL_HANDLE;
+	//std::vector<VkImage>			swapChainImages;
+	//VkFormat						swapChainImageFormat;
+	//VkExtent2D						swapChainExtent;
+
+	//std::vector<VkPresentModeKHR>	presentModes;
+
+
+	//std::vector<VkImageView>		swapChainImageViews;
+	//std::vector<VkFramebuffer>		swapChainFramebuffers;
+
+	//VkRenderPass renderPass;
+	//VkPipelineLayout pipelineLayout;
+	//VkPipeline graphicsPipeline;
+
+	//VkCommandPool commandPool;
+	//std::vector<VkCommandBuffer> commandBuffers;
+
+	//VkSemaphore imageAvailableSemaphore;
+	//VkSemaphore renderFinishedSemaphore;
+
 
 
 //	float xRot, yRot;
@@ -118,7 +143,7 @@ private:
 	/*******************************************************************************************************************************/
 	/********* The window surface needs to be created right after the instance creation, *******************************************/
 	/********* because it can actually influence the physical device selection.          *******************************************/
-	void createSureface();
+	void createSurface(); // surface == default framebuffer to draw
 
 	void showPhysicalDeviceInfo(const VkPhysicalDevice& gpuToCheck);
 	bool isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
@@ -126,6 +151,17 @@ private:
 	void pickPhysicalDevice();
 
 	void createLogicalDevice();
+	
+	// Images are a prerequisite of swap buffer creation.
+	void createSwapChain();
+
+	//void createImageViews();
+	//void createRenderPass();
+	//void createGraphicsPipeline();
+	//void createFramebuffers();
+	//void createCommandPool();
+	//void createCommandBuffers();
+	//void createSemaphores();
 
 //	void keyboardRegister();
 

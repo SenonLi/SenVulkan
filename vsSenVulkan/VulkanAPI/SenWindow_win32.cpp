@@ -1,5 +1,6 @@
 #include "SenWindow.h"
 #include <assert.h>
+#include "SenRenderer.h"
 
 //#if _WIN32
 #if defined( _WIN32 ) 
@@ -99,6 +100,15 @@ void SenWindow::_UpdateOSWindow()
 		TranslateMessage( &msg );
 		DispatchMessage( &msg );
 	}
+}
+
+void SenWindow::_InitOSSurface()
+{
+	VkWin32SurfaceCreateInfoKHR create_info{};
+	create_info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	create_info.hinstance = _win32_instance;
+	create_info.hwnd = _win32_window;
+	vkCreateWin32SurfaceKHR(_renderer->getInstance(), &create_info, nullptr, &_surface);
 }
 
 #endif

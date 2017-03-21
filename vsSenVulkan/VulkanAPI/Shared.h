@@ -10,9 +10,9 @@
 
 
 
-#if defined( _WIN32 )  // on Windows OS
+#if defined( _WIN32 )	// on Windows OS
 
-#include <Windows.h> // for OutputDebugString() function
+#include <Windows.h>	// for OutputDebugString() function
 #define VK_USE_PLATFORM_WIN32_KHR 1 // For Vulkan Surface if not using GLFW
 
 #elif defined( __linux ) // on Linux ( Via XCB library )

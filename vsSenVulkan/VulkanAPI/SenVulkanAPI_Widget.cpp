@@ -16,17 +16,7 @@ SenVulkanAPI_Widget::~SenVulkanAPI_Widget()
 
 void SenVulkanAPI_Widget::initGlfwVulkan()
 {
-	//// Init GLFW
-	//glfwInit();
-	//// Set all the required options for GLFW
-	//glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); //tell GLFW to not create an OpenGL context 
-	//glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-	//// Create a GLFWwindow object that we can use for GLFW's functions
-	//widgetGLFW = glfwCreateWindow(widgetWidth, widgetHeight, strWindowName, nullptr, nullptr);
-	//glfwSetWindowPos(widgetGLFW, 400, 240);
-	//glfwMakeContextCurrent(widgetGLFW);
-	
 	initCommandBuffers();
 }
 
@@ -133,12 +123,14 @@ void SenVulkanAPI_Widget::showWidget()
 
 	}
 
-	finalize();// all the clean up works
+	//finalize();// all the clean up works
 }
 
 
 void SenVulkanAPI_Widget::finalize()
 {
+	renderer.closeSenWindow();
+
 	if (VK_NULL_HANDLE != commandPool) {
 		vkDestroyCommandPool(device, commandPool, nullptr);
 		commandPool = VK_NULL_HANDLE;
@@ -152,9 +144,11 @@ void SenVulkanAPI_Widget::finalize()
 		semaphore = VK_NULL_HANDLE;
 	}
 
+	renderer.finalize();
 	// Destroy logical device
 	if (VK_NULL_HANDLE != device) {
 		// device command should be destroyed by Render
+
 		//vkDestroyDevice(device, VK_NULL_HANDLE); 
 
 		//// Device queues are implicitly cleaned up when the device is destroyed
@@ -164,9 +158,5 @@ void SenVulkanAPI_Widget::finalize()
 		device = VK_NULL_HANDLE;
 	}
 
-	//// Destroy window surface, Note that this is a native Vulkan API function
-	//if (VK_NULL_HANDLE != surface) {
-	//	vkDestroySurfaceKHR(instance, surface, nullptr);	//  surface was created with GLFW function
-	//	surface = VK_NULL_HANDLE;
-	//}
+
 }

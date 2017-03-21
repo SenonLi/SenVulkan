@@ -33,11 +33,13 @@ VulkanApplication* VulkanApplication::GetInstance(){
 * Difference between std::multimap and std::map?
 * also  std::set, std::unordered_set and std::unordered_map, std::multimap
 * constexpr specifier (since C++11)?
-*
+* What is the difference between buffer objects and uniform buffer objects?
+* What is suballocation, and why can it make a good performance?
 
 ## Terminologies
 Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan Loader, Vulkan Layers and Installable Client Drivers)
 * ICDs: Installable Client Drivers (talked in conjunction with Vulkan Loader and Vulkan Layers)
+* WSI: Window System Integration, which provides a platform-independent way to implement windowing or surface management.
 
 ## Tips
 ### Vulkan

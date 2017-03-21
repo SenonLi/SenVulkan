@@ -804,8 +804,8 @@ private:
 				indices.graphicsFamily = i;// graphicsQueueFamilyIndex
 			}
 
-			VkBool32 presentSupport = false;
-			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+			VkBool32 presentSupport = false; // WSI_supported
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport); // WSI_supported, or surface support
 
 			if (queueFamily.queueCount > 0 && presentSupport) {
 				indices.presentFamily = i;

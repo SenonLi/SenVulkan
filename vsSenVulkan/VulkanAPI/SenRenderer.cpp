@@ -1,4 +1,6 @@
 #include "SenRenderer.h"
+#include "SenWindow.h"
+#include "Shared.h"
 
 SenRenderer::SenRenderer()
 {
@@ -11,19 +13,26 @@ SenRenderer::SenRenderer()
 
 SenRenderer::~SenRenderer()
 {
+}
+
+void SenRenderer::closeSenWindow()
+{
 	if (_window) {
 		delete _window;
 		_window = nullptr;
 	}
+}
+
+void SenRenderer::finalize()
+{
 	_DeInitDevice();
 	_DeInitDebug();
 	_DeInitInstance();
-	_DeInitDevice();
 }
 
 SenWindow * SenRenderer::openSenWindow(uint32_t size_X, uint32_t size_Y, std::string name)
 {
-	_window = new SenWindow(size_X, size_Y, name);
+	_window = new SenWindow(this, size_X, size_Y, name);
 	return		_window;
 }
 
@@ -63,8 +72,10 @@ void SenRenderer::_InitInstance()
 
 void SenRenderer::_DeInitInstance()
 {
-	vkDestroyInstance(_instance, nullptr);
-	_instance = nullptr;
+	if (nullptr != _instance) {
+		vkDestroyInstance(_instance, nullptr);
+		_instance = nullptr;
+	}
 }
 
 void SenRenderer::_InitDevice()
@@ -207,6 +218,16 @@ void SenRenderer::_SetupDebug()
 
 	_instanceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
 
+	_instanceExtensionsList.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+
+#if defined( _WIN32 )	// on Windows OS
+	_instanceExtensionsList.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+
+#elif defined( __linux ) // on Linux ( Via XCB library )
+	_instanceExtensionsList.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
+#endif
+
+
 	_instanceExtensionsList.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME); //There is no quote here
 
 	_deviceLayersList.push_back("VK_LAYER_LUNARG_standard_validation");
@@ -232,8 +253,10 @@ void SenRenderer::_InitDebug()
 
 void SenRenderer::_DeInitDebug()
 {
-	fetch_vkDestroyDebugReportCallbackEXT(_instance, _debugReport, nullptr);
-	_debugReport = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != _debugReport) {
+		fetch_vkDestroyDebugReportCallbackEXT(_instance, _debugReport, nullptr);
+		_debugReport = VK_NULL_HANDLE;
+	}
 }
 
 #else

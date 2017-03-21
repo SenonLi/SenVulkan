@@ -3,8 +3,6 @@
 #ifndef __SenRenderer__
 #define __SenRenderer__
 
-#include <vulkan/vulkan.h>
-
 #include <cstdlib>
 #include <assert.h>
 #include <vector>
@@ -12,7 +10,10 @@
 #include <sstream>
 
 #include "Shared.h"
-#include "SenWindow.h"
+
+#include <vulkan/vulkan.h>
+
+class SenWindow;
 
 class SenRenderer
 {
@@ -20,6 +21,8 @@ public:
 	SenRenderer();
 	virtual ~SenRenderer();
 
+	void finalize();
+	void closeSenWindow();
 	SenWindow*	openSenWindow(uint32_t size_X, uint32_t size_Y, std::string name);
 	bool		run();
 
@@ -33,6 +36,12 @@ public:
 
 	SenWindow					*_window = nullptr;
 
+	const VkInstance					getInstance()	const					{	return _instance; }
+	const VkPhysicalDevice				getPhysicalDevice() const				{	return _gpu; }
+	const VkDevice						getDevice() const						{	return _device; }
+	const VkQueue						getQueue() const						{	return _queue; }
+	const uint32_t						getGraphicsQueueFamilyIndex() const		{	return _graphicsFamilyIndex; }
+	const VkPhysicalDeviceProperties&	getPhysicalDeviceProperties() const		{	return _gpuProperties; }
 
 private:
 	void _InitInstance();
@@ -45,7 +54,7 @@ private:
 	void _InitDebug();
 	void _DeInitDebug();
 
-	std::vector<const char*> _instanceLayersList;
+	std::vector<const char*>	_instanceLayersList;
 	std::vector<const char*>	_instanceExtensionsList;
 	std::vector<const char*>	_deviceLayersList;
 	std::vector<const char*>	_deviceExtensionsList;

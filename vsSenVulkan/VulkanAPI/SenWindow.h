@@ -3,13 +3,17 @@
 #include "Shared.h"
 
 #include <string>
+#include <vector>
+
+class SenRenderer;
 
 class SenWindow
 {
 public:
-	SenWindow( uint32_t size_x, uint32_t size_y, std::string name );
+	SenWindow( SenRenderer * renderer, uint32_t size_x, uint32_t size_y, std::string name );
 	~SenWindow();
 
+	//void finalize();
 	void closeSenWindow();
 	bool updateSenWindow();
 
@@ -17,13 +21,32 @@ private:
 	void								_InitOSWindow();
 	void								_DeInitOSWindow();
 	void								_UpdateOSWindow();
-	//void								_InitOSSurface();
+	void								_InitOSSurface();
 
-	uint32_t							_surfaceSize_X					= 512;
-	uint32_t							_surfaceSize_Y					= 512;
+	void								_InitSurface();
+	void								_DeInitSurface();
+
+	void								_InitSwapchain();
+	void								_DeInitSwapchain();
+	void								_InitSwapchainImages();
+	void								_DeInitSwapchainImages();
+
+	SenRenderer							*_renderer = nullptr;
+
 	std::string							_window_name;
 
-	bool								_windowShouldRun				= true;
+	VkSurfaceKHR						_surface				= VK_NULL_HANDLE;
+	VkSurfaceFormatKHR					_surface_format			= {};
+	VkSurfaceCapabilitiesKHR			_surface_capabilities	= {};
+	uint32_t							_surfaceSize_X			= 512;
+	uint32_t							_surfaceSize_Y			= 512;
+	bool								_windowShouldRun		= true;
+
+	VkSwapchainKHR						_swapchain = VK_NULL_HANDLE;
+	uint32_t							_swapchainImagesCount = 2;
+	std::vector<VkImage>				_swapChainImagesVector;
+	std::vector<VkImageView>			_swapChainImageViewsVector;
+
 
 #if defined( _WIN32 )  // on Windows OS
 	HINSTANCE							_win32_instance					= NULL;
