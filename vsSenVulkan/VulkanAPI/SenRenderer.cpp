@@ -87,6 +87,7 @@ void SenRenderer::_InitDevice()
 		vkEnumeratePhysicalDevices(_instance, &gpu_count, gpu_list.data());
 		_gpu = gpu_list[0];
 		vkGetPhysicalDeviceProperties(_gpu, &_gpuProperties);
+		vkGetPhysicalDeviceMemoryProperties(_gpu, &_gpuMemoryProperties);
 	}
 	{
 		uint32_t familyCount = 0;

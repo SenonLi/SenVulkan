@@ -31,6 +31,9 @@ private:
 	void								_InitSwapchainImages();
 	void								_DeInitSwapchainImages();
 
+	void								_InitDepthStencilImage();
+	void								_DeInitDepthStencilImage();
+
 	SenRenderer							*_renderer = nullptr;
 
 	std::string							_window_name;
@@ -46,6 +49,13 @@ private:
 	uint32_t							_swapchainImagesCount = 2;
 	std::vector<VkImage>				_swapChainImagesVector;
 	std::vector<VkImageView>			_swapChainImageViewsVector;
+
+	VkImage								_depthStencilImage = VK_NULL_HANDLE;
+	VkDeviceMemory						_depthStencilImageMemory = VK_NULL_HANDLE;
+	VkImageView							_depthStencilImageView = VK_NULL_HANDLE;
+
+	VkFormat							_depthStencilFormat = VK_FORMAT_UNDEFINED;
+	bool								_stencilAvailable = false;
 
 
 #if defined( _WIN32 )  // on Windows OS

@@ -29,6 +29,7 @@
 void ErrorCheck(VkResult result);
 
 
+uint32_t FindMemoryTypeIndex(const VkPhysicalDeviceMemoryProperties * gpu_memory_properties, const VkMemoryRequirements * memory_requirements, const VkMemoryPropertyFlags required_properties);
 
 
 #endif // !__SenVulkanAPI_Shared__

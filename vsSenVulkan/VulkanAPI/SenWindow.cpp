@@ -10,12 +10,15 @@ SenWindow::SenWindow(SenRenderer * renderer, uint32_t size_x, uint32_t size_y, s
 
 	_InitOSWindow();
 	_InitSurface();
+
 	_InitSwapchain();
 	_InitSwapchainImages();
+	_InitDepthStencilImage();
 }
 
 SenWindow::~SenWindow()
 {
+	_DeInitDepthStencilImage();
 	_DeInitSwapchainImages();
 	_DeInitSwapchain();
 	_DeInitSurface();
@@ -30,22 +33,22 @@ void SenWindow::_InitSwapchainImages()
 	ErrorCheck(vkGetSwapchainImagesKHR(_renderer->getDevice(), _swapchain, &_swapchainImagesCount, _swapChainImagesVector.data()));
 
 	for (uint32_t i = 0; i < _swapchainImagesCount; ++i) {
-		VkImageViewCreateInfo image_view_create_info{};
-		image_view_create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		image_view_create_info.image = _swapChainImagesVector[i];
-		image_view_create_info.viewType = VK_IMAGE_VIEW_TYPE_2D; // handling 2D image
-		image_view_create_info.format = _surface_format.format;
-		image_view_create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		image_view_create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		image_view_create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		image_view_create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		image_view_create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // color/depth/stencil/metadata
-		image_view_create_info.subresourceRange.baseMipLevel = 0;
-		image_view_create_info.subresourceRange.levelCount = 1; // amount of mipmaps
-		image_view_create_info.subresourceRange.baseArrayLayer = 0; // ?
-		image_view_create_info.subresourceRange.layerCount = 1; // if larger than 1, .viewType needs to be array
+		VkImageViewCreateInfo depthStencilImageViewCreateInfo{};
+		depthStencilImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		depthStencilImageViewCreateInfo.image = _swapChainImagesVector[i];
+		depthStencilImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // handling 2D image
+		depthStencilImageViewCreateInfo.format = _surface_format.format;
+		depthStencilImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		depthStencilImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		depthStencilImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		depthStencilImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		depthStencilImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // color/depth/stencil/metadata
+		depthStencilImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+		depthStencilImageViewCreateInfo.subresourceRange.levelCount = 1; // amount of mipmaps
+		depthStencilImageViewCreateInfo.subresourceRange.baseArrayLayer = 0; // ?
+		depthStencilImageViewCreateInfo.subresourceRange.layerCount = 1; // if larger than 1, .viewType needs to be array
 
-		ErrorCheck(vkCreateImageView(_renderer->getDevice(), &image_view_create_info, nullptr, &_swapChainImageViewsVector[i]));
+		ErrorCheck(vkCreateImageView(_renderer->getDevice(), &depthStencilImageViewCreateInfo, nullptr, &_swapChainImageViewsVector[i]));
 	}
 }
 
@@ -56,6 +59,104 @@ void SenWindow::_DeInitSwapchainImages()
 	for (auto view : _swapChainImageViewsVector) {
 		vkDestroyImageView(_renderer->getDevice(), view, nullptr);
 	}
+}
+
+void SenWindow::_InitDepthStencilImage()
+{
+	/******************************************************************************************************************************************************/
+	/******************************  Create depthStencil Image ********************************************************************************************/
+	{ // Check Image Format
+		std::vector<VkFormat> tryFormatsVector{
+			VK_FORMAT_D32_SFLOAT_S8_UINT,
+			VK_FORMAT_D24_UNORM_S8_UINT,
+			VK_FORMAT_D16_UNORM_S8_UINT,
+			VK_FORMAT_D32_SFLOAT,
+			VK_FORMAT_D16_UNORM
+		};
+		for (auto f : tryFormatsVector) {
+			VkFormatProperties formatProperties{};
+			vkGetPhysicalDeviceFormatProperties(_renderer->getPhysicalDevice(), f, &formatProperties);
+			if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+				_depthStencilFormat = f;
+				break;
+			}
+		}
+		if (_depthStencilFormat == VK_FORMAT_UNDEFINED) {
+			assert(0 && "Depth stencil format not selected.");
+			std::exit(-1);
+		}
+		if ((_depthStencilFormat == VK_FORMAT_D32_SFLOAT_S8_UINT) ||
+			(_depthStencilFormat == VK_FORMAT_D24_UNORM_S8_UINT) ||
+			(_depthStencilFormat == VK_FORMAT_D16_UNORM_S8_UINT) ||
+			(_depthStencilFormat == VK_FORMAT_S8_UINT)) {
+			_stencilAvailable = true;
+		}
+	}
+
+	VkImageCreateInfo depthStencilImageCreateInfo{};
+	depthStencilImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	depthStencilImageCreateInfo.flags = 0;
+	depthStencilImageCreateInfo.imageType = VK_IMAGE_TYPE_2D; // 2D image
+	depthStencilImageCreateInfo.format = _depthStencilFormat;
+	depthStencilImageCreateInfo.extent.width = _surfaceSize_X;
+	depthStencilImageCreateInfo.extent.height = _surfaceSize_Y;
+	depthStencilImageCreateInfo.extent.depth = 1; // 2D image, has to be 1
+	depthStencilImageCreateInfo.mipLevels = 1;
+	depthStencilImageCreateInfo.arrayLayers = 1;
+	depthStencilImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT; // multi-sampling
+	depthStencilImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	depthStencilImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;// for depth stencil image
+	depthStencilImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // no share with anther QueueFamily
+	depthStencilImageCreateInfo.queueFamilyIndexCount = VK_QUEUE_FAMILY_IGNORED;
+	depthStencilImageCreateInfo.pQueueFamilyIndices = nullptr;
+	depthStencilImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // will overwrite this with a command later
+
+	vkCreateImage(_renderer->getDevice(), &depthStencilImageCreateInfo, nullptr, &_depthStencilImage);
+
+	/******************************************************************************************************************************************************/
+	/***************************  Allocate & Bind memory for depthStencil Image using the created handle *********************************************************/
+	VkMemoryRequirements imageMemoryRequirements{};
+	vkGetImageMemoryRequirements(_renderer->getDevice(), _depthStencilImage, &imageMemoryRequirements);
+
+	uint32_t memoryTypeIndex = FindMemoryTypeIndex(
+		&_renderer->getPhysicalDeviceMemoryProperties(),
+		&imageMemoryRequirements,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT  // Set the resource to reside on GPU itself
+	);
+
+	VkMemoryAllocateInfo memoryAllocateInfo{};
+	memoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	memoryAllocateInfo.allocationSize = imageMemoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+	vkAllocateMemory(_renderer->getDevice(), &memoryAllocateInfo, nullptr, &_depthStencilImageMemory);
+	vkBindImageMemory(_renderer->getDevice(), _depthStencilImage, _depthStencilImageMemory, 0);
+
+	/******************************************************************************************************************************************************/
+	/******************************  Create depthStencil Image View ***************************************************************************************/
+	VkImageViewCreateInfo depthStencilImageViewCreateInfo{};
+	depthStencilImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	depthStencilImageViewCreateInfo.image = _depthStencilImage;
+	depthStencilImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	depthStencilImageViewCreateInfo.format = _depthStencilFormat;
+	depthStencilImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | (_stencilAvailable ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+	depthStencilImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	depthStencilImageViewCreateInfo.subresourceRange.levelCount = 1;
+	depthStencilImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	depthStencilImageViewCreateInfo.subresourceRange.layerCount = 1;
+
+	vkCreateImageView(_renderer->getDevice(), &depthStencilImageViewCreateInfo, nullptr, &_depthStencilImageView);
+}
+
+void SenWindow::_DeInitDepthStencilImage()
+{
+	vkFreeMemory(_renderer->getDevice(), _depthStencilImageMemory, nullptr);
+	vkDestroyImageView(_renderer->getDevice(), _depthStencilImageView, nullptr);
+	vkDestroyImage(_renderer->getDevice(), _depthStencilImage, nullptr);
 }
 
 void SenWindow::closeSenWindow()
@@ -115,6 +216,10 @@ void SenWindow::_DeInitSurface()
 
 void SenWindow::_InitSwapchain()
 {
+	/***************************************************************************************/
+	/********** Vulkan Image Source will be used to implement Vulkan SwapChain *************/
+	/***************************************************************************************/
+
 	// This code is old and the fixed one is below
 	// if( _swapchainImagesCount > _surface_capabilities.maxImageCount ) _swapchainImagesCount = _surface_capabilities.maxImageCount;
 	// if( _swapchainImagesCount < _surface_capabilities.minImageCount + 1 ) _swapchainImagesCount = _surface_capabilities.minImageCount + 1;
@@ -129,6 +234,8 @@ void SenWindow::_InitSwapchain()
 		if (_swapchainImagesCount > _surface_capabilities.maxImageCount) _swapchainImagesCount = _surface_capabilities.maxImageCount;
 	}
 
+	/***************************************************************************************/
+	/*********************** Getting surface presentation modes ****************************/
 	VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR; // VK_PRESENT_MODE_FIFO_KHR is always available.
 	{
 		uint32_t present_mode_count = 0;
@@ -161,7 +268,7 @@ void SenWindow::_InitSwapchain()
 	swapchain_create_info.oldSwapchain = VK_NULL_HANDLE; // resize window
 
 	ErrorCheck(vkCreateSwapchainKHR(_renderer->getDevice(), &swapchain_create_info, nullptr, &_swapchain));
-	// Get actual amount of swapchain images
+	// Get actual amount/count of swapchain images
 	ErrorCheck(vkGetSwapchainImagesKHR(_renderer->getDevice(), _swapchain, &_swapchainImagesCount, nullptr));
 }
 

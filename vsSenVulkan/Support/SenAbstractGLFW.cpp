@@ -101,8 +101,8 @@ void SenAbstractGLFW::showWidget()
 
 void SenAbstractGLFW::createSwapChain() {
 	/****************************************************************************************************************************/
-	/********** Initial Surface Info first to support SwapChain. ****************************************************************/
-	/*********** Could not get surface info right after surface creation, because GPU had not been seleted at that time *********/
+	/********** Getting Surface Capabilities first to support SwapChain. ****************************************************************/
+	/*********** Could not do this right after surface creation, because GPU had not been seleted at that time *********/
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
 	// Do the check & assignment below because what we surface size we got may not equal to what we set
 	// Make sure the size of swapchain match the size of surface

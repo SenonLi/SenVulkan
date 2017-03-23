@@ -31,17 +31,19 @@ public:
 	VkDevice			_device		= VK_NULL_HANDLE;
 	VkQueue				_queue		= VK_NULL_HANDLE;
 
-	VkPhysicalDeviceProperties	_gpuProperties = {};
-	uint32_t					_graphicsFamilyIndex = 0;
+	VkPhysicalDeviceProperties			_gpuProperties = {};
+	VkPhysicalDeviceMemoryProperties	_gpuMemoryProperties = {};
+	uint32_t							_graphicsFamilyIndex = 0;
 
 	SenWindow					*_window = nullptr;
 
-	const VkInstance					getInstance()	const					{	return _instance; }
-	const VkPhysicalDevice				getPhysicalDevice() const				{	return _gpu; }
-	const VkDevice						getDevice() const						{	return _device; }
-	const VkQueue						getQueue() const						{	return _queue; }
-	const uint32_t						getGraphicsQueueFamilyIndex() const		{	return _graphicsFamilyIndex; }
-	const VkPhysicalDeviceProperties&	getPhysicalDeviceProperties() const		{	return _gpuProperties; }
+	const VkInstance						getInstance()	const						{	return _instance; }
+	const VkPhysicalDevice					getPhysicalDevice() const					{	return _gpu; }
+	const VkDevice							getDevice() const							{	return _device; }
+	const VkQueue							getQueue() const							{	return _queue; }
+	const uint32_t							getGraphicsQueueFamilyIndex() const			{	return _graphicsFamilyIndex; }
+	const VkPhysicalDeviceProperties&		getPhysicalDeviceProperties() const			{	return _gpuProperties; }
+	const VkPhysicalDeviceMemoryProperties&	getPhysicalDeviceMemoryProperties() const	{	return _gpuMemoryProperties; }
 
 private:
 	void _InitInstance();

@@ -77,6 +77,19 @@ void ErrorCheck(VkResult result) {
 	}
 }
 
+uint32_t FindMemoryTypeIndex(const VkPhysicalDeviceMemoryProperties * gpu_memory_properties, const VkMemoryRequirements * memory_requirements, const VkMemoryPropertyFlags required_properties)
+{
+	for (uint32_t i = 0; i < gpu_memory_properties->memoryTypeCount; ++i) {
+		if (memory_requirements->memoryTypeBits & (1 << i)) {
+			if ((gpu_memory_properties->memoryTypes[i].propertyFlags & required_properties) == required_properties) {
+				return i;
+			}
+		}
+	}
+	assert(0 && "Couldn't find proper memory type.");
+	return UINT32_MAX;
+}
+
 #else
 
 void ErrorCheck(VkResult result) {};

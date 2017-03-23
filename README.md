@@ -40,6 +40,10 @@ VulkanApplication* VulkanApplication::GetInstance(){
 Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan Loader, Vulkan Layers and Installable Client Drivers)
 * ICDs: Installable Client Drivers (talked in conjunction with Vulkan Loader and Vulkan Layers)
 * WSI: Window System Integration, which provides a platform-independent way to implement windowing or surface management.
+* Tiling: Arrangement of data elements in memory, telling how an image is saved in GPU memory
+* Optical tiling: an image is saved in GPU memory with an arrangement based on group of pixels that can offer fastest GPU access speed.
+	it's arrangement pattern is uncertain that we won't know.
+*
 
 ## Tips
 ### Vulkan
