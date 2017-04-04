@@ -43,7 +43,7 @@ Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan
 * Tiling: Arrangement of data elements in memory, telling how an image is saved in GPU memory
 * Optical tiling: an image is saved in GPU memory with an arrangement based on group of pixels that can offer fastest GPU access speed.
 	it's arrangement pattern is uncertain that we won't know.
-*
+*  IHVs: Independent Hardware Vendors
 
 ## Tips
 ### Vulkan
@@ -52,6 +52,11 @@ in other words, each of the layers means to support some extensions, which means
 * 2. Physical device will be implicitly destroyed when the VkInstance is destroyed, so we don't need to, and there is no command to destroy a phisicalDevice.
 * 3. Queues are automatically created when a logical device object is created; 
 * 4. Vulkan lets you VkDeviceQueueCreateInfo.pQueuePriorities to queues to influence the scheduling of command buffer execution using floating point numbers between 0.0 and 1.0. This is required even if there is only a single queue.
+* 5. For an image object, a subresource means a combined view from a single texture with a desired mipmap lever;
+						  its format basically means how many channels to represent color (RGBA)
+						  its tiling refers to the GPU alignment of textels for and Image Object, where the optimal tiling gives optimal memory access;
+						  its layout state is per-(image subrecource), and seperate subresources of the same image can be in different layouts at the same time except that depth and stencil aspects of a given image subrecource must always be in the same layout.
+* 
 
 ### V++ / Debug
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>

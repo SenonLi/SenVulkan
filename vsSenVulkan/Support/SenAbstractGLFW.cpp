@@ -101,75 +101,105 @@ void SenAbstractGLFW::showWidget()
 
 void SenAbstractGLFW::createSwapChain() {
 	/****************************************************************************************************************************/
-	/********** Getting Surface Capabilities first to support SwapChain. ****************************************************************/
-	/*********** Could not do this right after surface creation, because GPU had not been seleted at that time *********/
+	/********** Getting Surface Capabilities first to support SwapChain. ********************************************************/
+	/*********** Could not do this right after surface creation, because GPU had not been seleted at that time ******************/
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
+
 	// Do the check & assignment below because what we surface size we got may not equal to what we set
 	// Make sure the size of swapchain match the size of surface
 	if (surfaceCapabilities.currentExtent.width < UINT32_MAX) {
 		widgetWidth = surfaceCapabilities.currentExtent.width;
 		widgetHeight = surfaceCapabilities.currentExtent.height;
-	} 
-	
+	}
+
+	/****************************************************************************************************************************/
+	/**************************** Reserve swapchain minImageCount ***************************************************************/
+	/****************************************************************************************************************************/
+	// For best performance, possibly at the price of some latency, the minImageCount should be set to at least 3 if supported;
+	// maxImageCount can actually be zero in which case the amount of swapchain images do not have an upper limit other than available memory. 
+	// It's also possible that the swapchain image amount is locked to a certain value on certain systems. The code below takes into consideration both of these possibilities.
+	if (swapchainImagesCount < surfaceCapabilities.minImageCount + 1) swapchainImagesCount = surfaceCapabilities.minImageCount + 1;
+	if (surfaceCapabilities.maxImageCount > 0) {
+		if (swapchainImagesCount > surfaceCapabilities.maxImageCount) swapchainImagesCount = surfaceCapabilities.maxImageCount;
+	}
+
+	/****************************************************************************************************************************/
+	/********** Reserve swapchain imageFormat and imageColorSpace ***************************************************************/
 	uint32_t formatCount = 0;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
 	if (formatCount == 0) {
 		throw std::runtime_error("No SurfaceFormat found, not a suitable GPU!");
 	}
-
 	surfaceFormatVector.clear();
 	surfaceFormatVector.resize(formatCount);
 	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, surfaceFormatVector.data());
 	if (surfaceFormatVector[0].format == VK_FORMAT_UNDEFINED) { // the prasentation layer (WSI) doesnot care about the format
 		surfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
 		surfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-	}else {
+	}
+	else {
 		surfaceFormat = surfaceFormatVector[0];
 	}
 
+	/****************************************************************************************************************************/
+	/**********                Reserve presentMode                ***************************************************************/
+	/****************************************************************************************************************************/
+	VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR; // VK_PRESENT_MODE_FIFO_KHR is always available.
+	uint32_t presentModeCount = 0;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
+	std::vector<VkPresentModeKHR> presentModeVector(presentModeCount);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModeVector.data());
+	for (auto m : presentModeVector) {
+		// VK_PRESENT_MODE_MAILBOX_KHR is good for gaming
+		if (m == VK_PRESENT_MODE_MAILBOX_KHR) {
+			presentMode = m;
+			break;
+		}
+	}
+
+	/****************************************************************************************************************************/
+	/**********         Populate swapchainCreateInfo              ***************************************************************/
+	/****************************************************************************************************************************/
+	VkSwapchainCreateInfoKHR swapchainCreateInfo{};
+	swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainCreateInfo.surface = surface;
+	swapchainCreateInfo.minImageCount = swapchainImagesCount;
+	swapchainCreateInfo.imageFormat = surfaceFormat.format;
+	swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
+	swapchainCreateInfo.imageExtent.width = widgetWidth;
+	swapchainCreateInfo.imageExtent.height = widgetHeight;
+	swapchainCreateInfo.imageArrayLayers = 1;
+	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 
-	//SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+	// Attention, figure out what happens below
+	uint32_t queueFamilyIndicesArray[] = { static_cast<uint32_t>(graphicsQueueFamilyIndex), static_cast<uint32_t>(presentQueueFamilyIndex) };
+	if (graphicsQueueFamilyIndex != presentQueueFamilyIndex) {
+		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		swapchainCreateInfo.queueFamilyIndexCount = 2;
+		swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndicesArray;
+	}else {
+		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;	// share between QueueFamilies or not
+		swapchainCreateInfo.queueFamilyIndexCount = 0;						// no QueueFamily share
+		swapchainCreateInfo.pQueueFamilyIndices = nullptr;
+	}
 
-	//VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
-	//VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
-	//VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+	//swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;// share between QueueFamilies or not
+	//swapchainCreateInfo.queueFamilyIndexCount = 0;// no QueueFamily share
+	//swapchainCreateInfo.pQueueFamilyIndices = nullptr;
 
-//	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-//	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
-//		imageCount = swapChainSupport.capabilities.maxImageCount;
-//	}
-//
-//	VkSwapchainCreateInfoKHR createInfo = {};
-//	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-//	createInfo.surface = surface;
-//
-//	createInfo.minImageCount = imageCount;
-//	createInfo.imageFormat = surfaceFormat.format;
-//	createInfo.imageColorSpace = surfaceFormat.colorSpace;
-//	createInfo.imageExtent = extent;
-//	createInfo.imageArrayLayers = 1;
-//	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-//
-//	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
-//	uint32_t queueFamilyIndices[] = { static_cast<uint32_t>(indices.graphicsFamily), static_cast<uint32_t>(indices.presentFamily) };
-//
-//	if (indices.graphicsFamily != indices.presentFamily) {
-//		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-//		createInfo.queueFamilyIndexCount = 2;
-//		createInfo.pQueueFamilyIndices = queueFamilyIndices;
-//	}
-//	else {
-//		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-//	}
-//
-//	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
-//	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-//	createInfo.presentMode = presentMode;
-//	createInfo.clipped = VK_TRUE;
-//
-//	createInfo.oldSwapchain = VK_NULL_HANDLE;
-//
+	swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform; // VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;  // ??
+	swapchainCreateInfo.presentMode = presentMode;
+	swapchainCreateInfo.clipped = VK_TRUE;
+	swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE; // resize window
+
+	vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapChain);
+	// Get actual amount/count of swapchain images
+	vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, nullptr);
+
+
+
 //	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, swapChain.replace()) != VK_SUCCESS) {
 //		throw std::runtime_error("failed to create swap chain!");
 //	}
@@ -707,17 +737,6 @@ bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToChec
 	}
 
 	return graphicsQueueIndex >= 0 && presentQueueIndex >= 0;
-
-	//QueueFamilyIndices indices = findQueueFamilies(gpuToCheck);
-	//bool extensionsSupported = checkDeviceExtensionSupport(gpuToCheck);// Not necessary
-
-	//bool swapChainAdequate = false;
-	//if (extensionsSupported) {
-	//	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(gpuToCheck);
-	//	swapChainAdequate = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
-	//}
-
-	//return indices.isComplete() && extensionsSupported && swapChainAdequate;
 }
 
 int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex)

@@ -45,7 +45,7 @@ void SenVulkanAPI_Widget::initCommandBuffers()
 	commandBufferAllocateInfo.commandPool = commandPool;
 	commandBufferAllocateInfo.commandBufferCount = 2;
 	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffer);
+	ErrorCheck(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffer));
 
 	{
 		VkCommandBufferBeginInfo commandBufferBeginInfo{};

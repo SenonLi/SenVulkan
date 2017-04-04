@@ -26,7 +26,7 @@
 #include <map>		// for ratePhysicalDevice to pick the best
 #include <set>		// for unique queue family <==> unique queue
 
-#define GLFW_INCLUDE_VULKAN // Let GLFW know Vulkan is utilized
+#define GLFW_INCLUDE_VULKAN // Let GLFW know Vulkan is utilized, must be in front of vulkan.h
 #include <GLFW/glfw3.h>
 
 #include <vulkan/vulkan.h>
@@ -55,30 +55,30 @@ protected:
 	/*******************************************************************************************************************************/
 	/********* VkSurfaceKHR object that represents an abstract type of surface to present rendered images to. **********************/
 	/********* The surface in our program will be backed by the window that we've already opened with GLFW.   **********************/
-	VkSurfaceKHR					surface = VK_NULL_HANDLE; // VK_KHR_surface Instance Extension
+	VkSurfaceKHR					surface						= VK_NULL_HANDLE; // VK_KHR_surface Instance Extension
 	std::vector<VkSurfaceFormatKHR> surfaceFormatVector;
-	VkSurfaceFormatKHR				surfaceFormat = {};
-	VkSurfaceCapabilitiesKHR		surfaceCapabilities = {};
+	VkSurfaceFormatKHR				surfaceFormat				= {};
+	VkSurfaceCapabilitiesKHR		surfaceCapabilities			= {};
 	
-	VkPhysicalDevice				physicalDevice	= VK_NULL_HANDLE;
+	VkPhysicalDevice				physicalDevice				= VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties		physicalDeviceProperties	= {};	// GPU name, type (discrete)
 	int32_t							graphicsQueueFamilyIndex	= -1;  // Index of Graphics QueueFamily of GPU that we will choose to 
 	int32_t							presentQueueFamilyIndex		= -1;  // The Graphics (Drawing) QueueFamily may not support presentation (WSI)
 
-	VkDevice						device					= VK_NULL_HANDLE;
-	VkQueue							graphicsQueue			= VK_NULL_HANDLE; // Handle to the graphics queue
-	VkQueue							presentQueue			= VK_NULL_HANDLE; // Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
+	VkDevice						device						= VK_NULL_HANDLE;
+	VkQueue							graphicsQueue				= VK_NULL_HANDLE; // Handle to the graphics queue
+	VkQueue							presentQueue				= VK_NULL_HANDLE; // Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
 
-	VkSwapchainKHR					swapChain				= VK_NULL_HANDLE;
-	//std::vector<VkImage>			swapChainImages;
+	VkSwapchainKHR					swapChain					= VK_NULL_HANDLE;
+	uint32_t						swapchainImagesCount		= 2;
+	std::vector<VkImage>			swapChainImagesVector;
+	std::vector<VkImageView>		swapChainImageViewsVector;
+
+	//std::vector<VkPresentModeKHR>	presentModes;
+	//std::vector<VkFramebuffer>		swapChainFramebuffers;
 	//VkFormat						swapChainImageFormat;
 	//VkExtent2D						swapChainExtent;
 
-	//std::vector<VkPresentModeKHR>	presentModes;
-
-
-	//std::vector<VkImageView>		swapChainImageViews;
-	//std::vector<VkFramebuffer>		swapChainFramebuffers;
 
 	//VkRenderPass renderPass;
 	//VkPipelineLayout pipelineLayout;
