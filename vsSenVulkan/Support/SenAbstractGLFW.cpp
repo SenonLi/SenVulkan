@@ -150,7 +150,8 @@ void SenAbstractGLFW::createSwapChain() {
 	std::vector<VkPresentModeKHR> presentModeVector(presentModeCount);
 	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModeVector.data());
 	for (auto m : presentModeVector) {
-		// VK_PRESENT_MODE_MAILBOX_KHR is good for gaming
+		// VK_PRESENT_MODE_MAILBOX_KHR is good for gaming, but can only get full advantage of MailBox PresentMode with more than 2 buffers,
+		// which means triple-buffering
 		if (m == VK_PRESENT_MODE_MAILBOX_KHR) {
 			presentMode = m;
 			break;
@@ -163,7 +164,7 @@ void SenAbstractGLFW::createSwapChain() {
 	VkSwapchainCreateInfoKHR swapchainCreateInfo{};
 	swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	swapchainCreateInfo.surface = surface;
-	swapchainCreateInfo.minImageCount = swapchainImagesCount;
+	swapchainCreateInfo.minImageCount = swapchainImagesCount; // This is only to set the min value, instead of the actual imageCount after swapchain creation
 	swapchainCreateInfo.imageFormat = surfaceFormat.format;
 	swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
 	swapchainCreateInfo.imageExtent.width = widgetWidth;
@@ -171,11 +172,10 @@ void SenAbstractGLFW::createSwapChain() {
 	swapchainCreateInfo.imageArrayLayers = 1;
 	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-
-	// Attention, figure out what happens below
+	// Attention, figure out if the swapchain image will be shared by multiple Queues of different QueueFamilies !
 	uint32_t queueFamilyIndicesArray[] = { static_cast<uint32_t>(graphicsQueueFamilyIndex), static_cast<uint32_t>(presentQueueFamilyIndex) };
 	if (graphicsQueueFamilyIndex != presentQueueFamilyIndex) {
-		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT; // shared by different QueueFamily with different QueueFamilyIndex 
 		swapchainCreateInfo.queueFamilyIndexCount = 2;
 		swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndicesArray;
 	}else {
@@ -184,26 +184,21 @@ void SenAbstractGLFW::createSwapChain() {
 		swapchainCreateInfo.pQueueFamilyIndices = nullptr;
 	}
 
-	//swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;// share between QueueFamilies or not
-	//swapchainCreateInfo.queueFamilyIndexCount = 0;// no QueueFamily share
-	//swapchainCreateInfo.pQueueFamilyIndices = nullptr;
-
-	swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform; // VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
-	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;  // ??
+	swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform; // Rotate of Mirror before presentation (VkSurfaceTransformFlagBitsKHR)
+	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;  // 
 	swapchainCreateInfo.presentMode = presentMode;
-	swapchainCreateInfo.clipped = VK_TRUE;
+	swapchainCreateInfo.clipped = VK_TRUE; // Typically always set this true, such that Vulkan never render the invisible (out of visible range) image 
 	swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE; // resize window
 
-	vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapChain);
+	errorCheck(
+		vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapChain),
+		std::string("Fail to Create SwapChain !")
+	);
+
 	// Get actual amount/count of swapchain images
 	vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, nullptr);
 
 
-
-//	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, swapChain.replace()) != VK_SUCCESS) {
-//		throw std::runtime_error("failed to create swap chain!");
-//	}
-//
 //	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
 //	swapChainImages.resize(imageCount);
 //	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
@@ -715,16 +710,16 @@ bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToChec
 	//  Check Graphics Queue Family support of GPU and get QueueFamilyIndex of Graphics 
 	uint32_t gpuQueueFamiliesCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, nullptr);
-	std::vector<VkQueueFamilyProperties> gpuQueueFamilyVector(gpuQueueFamiliesCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamilyVector.data());
+	std::vector<VkQueueFamilyProperties> gpuQueueFamiliesPropertiesVector(gpuQueueFamiliesCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamiliesPropertiesVector.data());
 
 	for (uint32_t i = 0; i < gpuQueueFamiliesCount; i++) {
-		if (graphicsQueueIndex < 0 && gpuQueueFamilyVector[i].queueCount > 0
-			&& gpuQueueFamilyVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+		if (graphicsQueueIndex < 0 && gpuQueueFamiliesPropertiesVector[i].queueCount > 0
+			&& gpuQueueFamiliesPropertiesVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			graphicsQueueIndex = i;
 		}
 
-		if (presentQueueIndex < 0 && gpuQueueFamilyVector[i].queueCount > 0) {
+		if (presentQueueIndex < 0 && gpuQueueFamiliesPropertiesVector[i].queueCount > 0) {
 			VkBool32 presentSupport = VK_FALSE;// WSI_supported, or surface support
 			vkGetPhysicalDeviceSurfaceSupportKHR(gpuToCheck, i, surface, &presentSupport);
 			if (presentSupport) {
@@ -749,8 +744,8 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int
 	/************************************************************************************************************/
 	uint32_t gpuQueueFamiliesCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, nullptr);
-	std::vector<VkQueueFamilyProperties> gpuQueueFamilyVector(gpuQueueFamiliesCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamilyVector.data());
+	std::vector<VkQueueFamilyProperties> gpuQueueFamiliesPropertiesVector(gpuQueueFamiliesCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamiliesPropertiesVector.data());
 
 	//	1. Get the number of Queues supported by the Physical device
 	//	2. Get the properties each Queue type or Queue Family
@@ -762,12 +757,12 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int
 	//	3. Get the index ID for the required Queue family, this ID will act like a handle index to queue.
 
 	for (uint32_t i = 0; i < gpuQueueFamiliesCount; i++) {
-		if (graphicsQueueIndex < 0 && gpuQueueFamilyVector[i].queueCount > 0
-			&& gpuQueueFamilyVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+		if (graphicsQueueIndex < 0 && gpuQueueFamiliesPropertiesVector[i].queueCount > 0
+			&& gpuQueueFamiliesPropertiesVector[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			graphicsQueueIndex = i;
 		}
 
-		if (presentQueueIndex < 0 && gpuQueueFamilyVector[i].queueCount > 0) {
+		if (presentQueueIndex < 0 && gpuQueueFamiliesPropertiesVector[i].queueCount > 0) {
 			VkBool32 presentSupport = VK_FALSE;// WSI_supported, or surface support
 			vkGetPhysicalDeviceSurfaceSupportKHR(gpuToCheck, i, surface, &presentSupport);
 			if (presentSupport) {
@@ -804,9 +799,9 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int
 void SenAbstractGLFW::createLogicalDevice()
 {
 	std::vector<VkDeviceQueueCreateInfo> deviceQueuesCreateInfosVector;
-	/*************************************************************************************************************/
-	/*** Attension! Two Queues for one logical device have to use two different QueueFamilyIndex *****************/
-	/*************************************************************************************************************/
+	/*******************************************************************************************************************************/
+	/*** Attension! Multiple Queues with same QueueFamilyIndex can only be created using one deviceQueueCreateInfo *****************/
+	/*************  Different QueueFamilyIndex's Queues need to be created using a vector of DeviceQueueCreateInfos ****************/
 	std::set<int> uniqueQueueFamilyIndicesSet = { graphicsQueueFamilyIndex, presentQueueFamilyIndex };
 
 	float queuePriority = 1.0f;
@@ -814,7 +809,7 @@ void SenAbstractGLFW::createLogicalDevice()
 		VkDeviceQueueCreateInfo queueCreateInfo = {};
 		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queueCreateInfo.queueFamilyIndex = uniqueQueueFamilyIndex;
-		queueCreateInfo.queueCount = 1;
+		queueCreateInfo.queueCount = 1; // This queues count number is under one uniqueQueueFamily, with uniqueQueueFamilyIndex
 		queueCreateInfo.pQueuePriorities = &queuePriority;
 
 		deviceQueuesCreateInfosVector.push_back(queueCreateInfo);
@@ -843,7 +838,17 @@ void SenAbstractGLFW::createLogicalDevice()
 }
 
 void SenAbstractGLFW::finalize() {
-	// Destroy logical device
+	/************************************************************************************************************/
+	/*****  SwapChain is a child of Logical Device, must be destroyed before Logical Device  ********************/
+	/****************   A surface must outlive any swapchains targeting it    ***********************************/
+	if (VK_NULL_HANDLE != swapChain) {
+		vkDestroySwapchainKHR(device, swapChain, nullptr);
+		swapChain = VK_NULL_HANDLE;
+	}
+
+	/************************************************************************************************************/
+	/*********************           Destroy logical device                **************************************/
+	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != device) {
 		vkDestroyDevice(device, VK_NULL_HANDLE);
 
@@ -854,13 +859,9 @@ void SenAbstractGLFW::finalize() {
 		device = VK_NULL_HANDLE;
 	}
 
-	// Destroy window surface, Note that this is a native Vulkan API function
-	if (VK_NULL_HANDLE != surface) {
-		vkDestroySurfaceKHR(instance, surface, nullptr);	//  surface was created with GLFW function
-		surface = VK_NULL_HANDLE;
-	}
-
-	//Must destroy debugReportCallback before destroy instance
+	/************************************************************************************************************/
+	/*********************  Must destroy debugReportCallback before destroy instance   **************************/
+	/************************************************************************************************************/
 	if (layersEnabled) {
 		if (VK_NULL_HANDLE != debugReportCallback) {
 			fetch_vkDestroyDebugReportCallbackEXT(instance, debugReportCallback, VK_NULL_HANDLE);
@@ -868,7 +869,18 @@ void SenAbstractGLFW::finalize() {
 		}
 	}
 
-	// Destroy Instance
+	/************************************************************************************************************/
+	/*************  Destroy window surface, Note that this is a native Vulkan API function  *********************/
+	/*****  Surface survives longer than device than swapchain, and depends only on Instance, or platform  ******/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != surface) {
+		vkDestroySurfaceKHR(instance, surface, nullptr);	//  surface was created with GLFW function
+		surface = VK_NULL_HANDLE;
+	}
+
+	/************************************************************************************************************/
+	/*********************           Destroy Instance                ********************************************/
+	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != instance) {
 		vkDestroyInstance(instance, VK_NULL_HANDLE); 	instance = VK_NULL_HANDLE;
 	}

@@ -1,4 +1,4 @@
-# SenVulkan
+﻿# SenVulkan
 Begin with Vulkan 1.042, step by step
 
 * Fixed Release build issue. (cannot ignore MVCT lib)
@@ -56,6 +56,23 @@ in other words, each of the layers means to support some extensions, which means
 						  its format basically means how many channels to represent color (RGBA)
 						  its tiling refers to the GPU alignment of textels for and Image Object, where the optimal tiling gives optimal memory access;
 						  its layout state is per-(image subrecource), and seperate subresources of the same image can be in different layouts at the same time except that depth and stencil aspects of a given image subrecource must always be in the same layout.
+* 6. Presentation capability is a per-queueFamily feature ( One Physical Device has several QueueFamilies );
+	presentation capability is a feature of physicalDevice;
+	surface survives even longer, and depends only on instance and platform;
+* 7. VkSwapchainKHR is a child of the device and is affected by the lost state (Hardware Problem); it must be destroyed before destroying the VkDevice.
+	 However, VkSurfaceKHR is not a child of any VkDevice and is not otherwise affected by the lost device.
+	 After successfully recreating a VkDevice, the same VkSurfaceKHR can be used to create a new VkSwapchainKHR, provided the previous one was destroyed；
+* 8. Multiple Queues with same QueueFamilyIndex can only be created using one deviceQueueCreateInfo;
+	 Different QueueFamilyIndex's Queues need to be created using a vector of DeviceQueueCreateInfos;
+* 9. Display Planes (Overlay Planes) are with respect to the displays that are attached to physicalDevices;
+* 10. It is the physicalDevice, instead of physical display, that performs composition operations to merge information from the planes into a single image;
+* 11. Before an image can be presented, it must be in the correct layout;
+* 12. ☆☆☆☆☆  An application can acquire use of a presentable image with vkAcquireNextImageKHR. 
+		After acquiring a presentable image and before modifying it, the application must use a synchronization primitive to ensure that the presentation engine has finished reading from the image. 
+		The application can then transition the image layout, queue rendering commands to it, etc.
+		Finally, the application presents the image with vkQueuePresentKHR, which releases the acquisition of the image;
+		It allows the application to generate command buffers referencing all of the images in the swapchain at initializationtime, rather than in its main loop;
+* 13. The native window referred to by surface must not already be associated with a swapchain other than oldSwapchain, or with a non-Vulkan graphics API surface.
 * 
 
 ### V++ / Debug

@@ -648,6 +648,8 @@ private:
 	}
 
 	void drawFrame() {
+		// Use of a presentable image must occur only after the image is returned by vkAcquireNextImageKHR, and before it is presented by vkQueuePresentKHR.
+		// This includes transitioning the image layout and rendering commands.
 		uint32_t imageIndex;
 		vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
