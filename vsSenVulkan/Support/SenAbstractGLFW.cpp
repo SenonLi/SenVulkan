@@ -63,6 +63,8 @@ void SenAbstractGLFW::initGlfwVulkan()
 	createLogicalDevice();
 
 	createSwapChain();
+	createSwapChainImageViews();
+	createDepthStencilAttachment();
 
 	// Clear the colorbuffer
 	//glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -178,9 +180,10 @@ void SenAbstractGLFW::createSwapChain() {
 		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT; // shared by different QueueFamily with different QueueFamilyIndex 
 		swapchainCreateInfo.queueFamilyIndexCount = 2;
 		swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndicesArray;
-	}else {
-		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;	// share between QueueFamilies or not
-		swapchainCreateInfo.queueFamilyIndexCount = 0;						// no QueueFamily share
+	}
+	else {
+		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;		// share between QueueFamilies or not
+		swapchainCreateInfo.queueFamilyIndexCount = 0;// no QueueFamily share
 		swapchainCreateInfo.pQueueFamilyIndices = nullptr;
 	}
 
@@ -198,38 +201,132 @@ void SenAbstractGLFW::createSwapChain() {
 	// Get actual amount/count of swapchain images
 	vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, nullptr);
 
+	swapchainImagesVector.resize(swapchainImagesCount);
+	swapchainImageViewsVector.resize(swapchainImagesCount);
+	// Get swapChainImages, instead of asking for real count.
+	errorCheck(
+		vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, swapchainImagesVector.data()),
+		std::string("Failed to get SwapChain Images")
+	);
+}
 
-//	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, nullptr);
-//	swapChainImages.resize(imageCount);
-//	vkGetSwapchainImagesKHR(device, swapChain, &imageCount, swapChainImages.data());
-//
-//	swapChainImageFormat = surfaceFormat.format;
-//	swapChainExtent = extent;
-//}
-//
-//void SenAbstractGLFW::createImageViews() {
-//	swapChainImageViews.resize(swapChainImages.size(), VDeleter<VkImageView>{device, vkDestroyImageView});
-//
-//	for (uint32_t i = 0; i < swapChainImages.size(); i++) {
-//		VkImageViewCreateInfo createInfo = {};
-//		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-//		createInfo.image = swapChainImages[i];
-//		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-//		createInfo.format = swapChainImageFormat;
-//		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-//		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-//		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-//		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-//		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-//		createInfo.subresourceRange.baseMipLevel = 0;
-//		createInfo.subresourceRange.levelCount = 1;
-//		createInfo.subresourceRange.baseArrayLayer = 0;
-//		createInfo.subresourceRange.layerCount = 1;
-//
-//		if (vkCreateImageView(device, &createInfo, nullptr, swapChainImageViews[i].replace()) != VK_SUCCESS) {
-//			throw std::runtime_error("failed to create image views!");
-//		}
-//	}
+void SenAbstractGLFW::createSwapChainImageViews() {
+
+	for (uint32_t i = 0; i < swapchainImagesCount; ++i) {
+		VkImageViewCreateInfo swapchainImageViewCreateInfo{};
+		swapchainImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		swapchainImageViewCreateInfo.image = swapchainImagesVector[i];
+		swapchainImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // handling 2D image
+		swapchainImageViewCreateInfo.format = surfaceFormat.format;
+		swapchainImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // color/depth/stencil/metadata
+		swapchainImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+		swapchainImageViewCreateInfo.subresourceRange.levelCount = 1; // amount of mipmaps
+		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1; // if larger than 1, .viewType needs to be array
+
+		errorCheck(
+			vkCreateImageView(device, &swapchainImageViewCreateInfo, nullptr, &swapchainImageViewsVector[i]),
+			std::string("Failed to create SwapChan ImageViews !!")
+		);
+	}
+}
+
+void SenAbstractGLFW::createDepthStencilAttachment()
+{
+	/********************************************************************************************************************/
+	/******************************  Check Image Format *****************************************************************/
+	std::vector<VkFormat> tryFormatsVector{
+		VK_FORMAT_D32_SFLOAT_S8_UINT,
+		VK_FORMAT_D24_UNORM_S8_UINT,
+		VK_FORMAT_D16_UNORM_S8_UINT,
+		VK_FORMAT_D32_SFLOAT,
+		VK_FORMAT_D16_UNORM
+	};
+	for (auto f : tryFormatsVector) {
+		VkFormatProperties formatProperties{};
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
+		if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+			depthStencilFormat = f;
+			break;
+		}
+	}
+	if (depthStencilFormat == VK_FORMAT_UNDEFINED) {
+		throw std::runtime_error("Depth stencil format not selected.");
+		std::exit(-1);
+	}
+	if ((depthStencilFormat == VK_FORMAT_D32_SFLOAT_S8_UINT) ||
+		(depthStencilFormat == VK_FORMAT_D24_UNORM_S8_UINT) ||
+		(depthStencilFormat == VK_FORMAT_D16_UNORM_S8_UINT) ||
+		(depthStencilFormat == VK_FORMAT_S8_UINT)) {
+		stencilAvailable = true;
+	}
+	else std::cout << "The seleted depthStencilFormat is not in the stencil list !!!!! \n \t Take a check !!!!\n";
+
+	/******************************************************************************************************************************************************/
+	/******************************  Create depthStencil Image ********************************************************************************************/
+	VkImageCreateInfo depthStencilImageCreateInfo{};
+	depthStencilImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	depthStencilImageCreateInfo.flags = 0;
+	depthStencilImageCreateInfo.imageType = VK_IMAGE_TYPE_2D; // 2D image
+	depthStencilImageCreateInfo.format = depthStencilFormat;
+	depthStencilImageCreateInfo.extent.width = widgetWidth;
+	depthStencilImageCreateInfo.extent.height = widgetHeight;
+	depthStencilImageCreateInfo.extent.depth = 1; // 2D image, has to be 1
+	depthStencilImageCreateInfo.mipLevels = 1;
+	depthStencilImageCreateInfo.arrayLayers = 1;
+	depthStencilImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT; // multi-sampling
+	depthStencilImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	depthStencilImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;// for depth stencil image
+	depthStencilImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // no share with anther QueueFamily
+	depthStencilImageCreateInfo.queueFamilyIndexCount = 0;
+	depthStencilImageCreateInfo.pQueueFamilyIndices = nullptr;
+	depthStencilImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // will overwrite this with a command later
+
+	vkCreateImage(device, &depthStencilImageCreateInfo, nullptr, &depthStencilImage);
+
+	/******************************************************************************************************************************************************/
+	/***************************  Allocate & Bind memory for depthStencil Image using the created handle *********************************************************/
+	VkMemoryRequirements imageMemoryRequirements{};
+	vkGetImageMemoryRequirements(device, depthStencilImage, &imageMemoryRequirements);
+
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &physicalDeviceMemoryProperties);
+
+	uint32_t memoryTypeIndex = findPhysicalDeviceMemoryPropertyIndex(
+		physicalDeviceMemoryProperties,
+		imageMemoryRequirements,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT  // Set the resource to reside on GPU itself
+	);
+
+	VkMemoryAllocateInfo depthStencilImageMemoryAllocateInfo{};
+	depthStencilImageMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	depthStencilImageMemoryAllocateInfo.allocationSize = imageMemoryRequirements.size;
+	depthStencilImageMemoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+
+	vkAllocateMemory(device, &depthStencilImageMemoryAllocateInfo, nullptr, &depthStencilImageDeviceMemory);
+	vkBindImageMemory(device, depthStencilImage, depthStencilImageDeviceMemory, 0);
+
+	/******************************************************************************************************************************************************/
+	/******************************  Create depthStencil Image View ***************************************************************************************/
+	VkImageViewCreateInfo depthStencilImageViewCreateInfo{};
+	depthStencilImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	depthStencilImageViewCreateInfo.image = depthStencilImage;
+	depthStencilImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	depthStencilImageViewCreateInfo.format = depthStencilFormat;
+	depthStencilImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | (stencilAvailable ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+	depthStencilImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	depthStencilImageViewCreateInfo.subresourceRange.levelCount = 1;
+	depthStencilImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	depthStencilImageViewCreateInfo.subresourceRange.layerCount = 1;
+
+	vkCreateImageView(device, &depthStencilImageViewCreateInfo, nullptr, &depthStencilImageView);
 }
 
 //void SenAbstractGLFW::createRenderPass() {
@@ -839,11 +936,34 @@ void SenAbstractGLFW::createLogicalDevice()
 
 void SenAbstractGLFW::finalize() {
 	/************************************************************************************************************/
+	/*********************           Destroy depthStencil                **************************************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != depthStencilImage) {
+		vkFreeMemory(device, depthStencilImageDeviceMemory, nullptr);
+		vkDestroyImageView(device, depthStencilImageView, nullptr);
+		vkDestroyImage(device, depthStencilImage, nullptr);
+
+		depthStencilImage = VK_NULL_HANDLE;
+		depthStencilImageDeviceMemory = VK_NULL_HANDLE;
+		depthStencilImageView = VK_NULL_HANDLE;
+	}
+	/************************************************************************************************************/
 	/*****  SwapChain is a child of Logical Device, must be destroyed before Logical Device  ********************/
 	/****************   A surface must outlive any swapchains targeting it    ***********************************/
 	if (VK_NULL_HANDLE != swapChain) {
+		// swapChainImages will be handled by the destroy of swapchain
+		// But swapchainImageViews need to be dstroyed first, before the destroy of swapchain.
+		for (auto swapchainImageView : swapchainImageViewsVector) {
+			vkDestroyImageView(device, swapchainImageView, nullptr);
+		}
+		swapchainImageViewsVector.clear();
+
 		vkDestroySwapchainKHR(device, swapChain, nullptr);
 		swapChain = VK_NULL_HANDLE;
+		swapchainImagesVector.clear();
+
+		// The memory of swapChain images is not managed by programmer (No allocation, nor free)
+		// It may not be freed until the window is destroyed, or another swapchain is created for the window.
 	}
 
 	/************************************************************************************************************/
@@ -886,7 +1006,21 @@ void SenAbstractGLFW::finalize() {
 	}
 }
 
-
+uint32_t SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
+	const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
+	const VkMemoryRequirements& memoryRequirements,
+	const VkMemoryPropertyFlags& requiredMemoryPropertyFlags)
+{
+	for (uint32_t index = 0; index < gpuMemoryProperties.memoryTypeCount; ++index) {
+		if (memoryRequirements.memoryTypeBits & (1 << index)) {
+			if ((gpuMemoryProperties.memoryTypes[index].propertyFlags & requiredMemoryPropertyFlags) == requiredMemoryPropertyFlags) {
+				return index;
+			}
+		}
+	}
+	throw std::runtime_error("Couldn't find proper GPU memory Property Index.");
+	return UINT32_MAX;
+}
 
 bool SenAbstractGLFW::checkInstanceLayersSupport(std::vector<const char*> layersVector) {
 	uint32_t layersCount;

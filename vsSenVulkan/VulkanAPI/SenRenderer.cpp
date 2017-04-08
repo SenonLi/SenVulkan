@@ -151,7 +151,7 @@ void SenRenderer::_InitDevice()
 	//deviceCreateInfo.enabledLayerCount = _deviceLayersList.size();   				// depricated
 	//deviceCreateInfo.ppEnabledLayerNames = _deviceLayersList.data();				// depricated
 
-	deviceCreateInfo.enabledExtensionCount = _deviceExtensionsList.size();
+	deviceCreateInfo.enabledExtensionCount = (uint32_t)_deviceExtensionsList.size();
 	deviceCreateInfo.ppEnabledExtensionNames = _deviceExtensionsList.data();
 
 	ErrorCheck(vkCreateDevice(_gpu, &deviceCreateInfo, nullptr, &_device));

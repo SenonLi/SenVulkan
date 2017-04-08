@@ -33,22 +33,22 @@ void SenWindow::_InitSwapchainImages()
 	ErrorCheck(vkGetSwapchainImagesKHR(_renderer->getDevice(), _swapchain, &_swapchainImagesCount, _swapChainImagesVector.data()));
 
 	for (uint32_t i = 0; i < _swapchainImagesCount; ++i) {
-		VkImageViewCreateInfo depthStencilImageViewCreateInfo{};
-		depthStencilImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		depthStencilImageViewCreateInfo.image = _swapChainImagesVector[i];
-		depthStencilImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // handling 2D image
-		depthStencilImageViewCreateInfo.format = _surface_format.format;
-		depthStencilImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		depthStencilImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		depthStencilImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		depthStencilImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		depthStencilImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // color/depth/stencil/metadata
-		depthStencilImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-		depthStencilImageViewCreateInfo.subresourceRange.levelCount = 1; // amount of mipmaps
-		depthStencilImageViewCreateInfo.subresourceRange.baseArrayLayer = 0; // ?
-		depthStencilImageViewCreateInfo.subresourceRange.layerCount = 1; // if larger than 1, .viewType needs to be array
+		VkImageViewCreateInfo swapchainImageViewCreateInfo{};
+		swapchainImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		swapchainImageViewCreateInfo.image = _swapChainImagesVector[i];
+		swapchainImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // handling 2D image
+		swapchainImageViewCreateInfo.format = _surface_format.format;
+		swapchainImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // color/depth/stencil/metadata
+		swapchainImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+		swapchainImageViewCreateInfo.subresourceRange.levelCount = 1; // amount of mipmaps
+		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer = 0; // ?
+		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1; // if larger than 1, .viewType needs to be array
 
-		ErrorCheck(vkCreateImageView(_renderer->getDevice(), &depthStencilImageViewCreateInfo, nullptr, &_swapChainImageViewsVector[i]));
+		ErrorCheck(vkCreateImageView(_renderer->getDevice(), &swapchainImageViewCreateInfo, nullptr, &_swapChainImageViewsVector[i]));
 	}
 }
 

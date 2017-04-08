@@ -77,7 +77,10 @@ void ErrorCheck(VkResult result) {
 	}
 }
 
-uint32_t FindMemoryTypeIndex(const VkPhysicalDeviceMemoryProperties * gpu_memory_properties, const VkMemoryRequirements * memory_requirements, const VkMemoryPropertyFlags required_properties)
+uint32_t FindMemoryTypeIndex(
+	const VkPhysicalDeviceMemoryProperties * gpu_memory_properties,
+	const VkMemoryRequirements * memory_requirements,
+	const VkMemoryPropertyFlags required_properties)
 {
 	for (uint32_t i = 0; i < gpu_memory_properties->memoryTypeCount; ++i) {
 		if (memory_requirements->memoryTypeBits & (1 << i)) {

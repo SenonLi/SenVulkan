@@ -60,6 +60,7 @@ in other words, each of the layers means to support some extensions, which means
 	presentation capability is a feature of physicalDevice;
 	surface survives even longer, and depends only on instance and platform;
 * 7. VkSwapchainKHR is a child of the device and is affected by the lost state (Hardware Problem); it must be destroyed before destroying the VkDevice.
+	 Based on the API function vkCreateSharedSwapchainsKHR(), one logical device could own multiple SwapChains;
 	 However, VkSurfaceKHR is not a child of any VkDevice and is not otherwise affected by the lost device.
 	 After successfully recreating a VkDevice, the same VkSurfaceKHR can be used to create a new VkSwapchainKHR, provided the previous one was destroyed；
 * 8. Multiple Queues with same QueueFamilyIndex can only be created using one deviceQueueCreateInfo;

@@ -71,14 +71,15 @@ protected:
 
 	VkSwapchainKHR					swapChain					= VK_NULL_HANDLE;
 	uint32_t						swapchainImagesCount		= 2;
-	std::vector<VkImage>			swapChainImagesVector;
-	std::vector<VkImageView>		swapChainImageViewsVector;
+	std::vector<VkImage>			swapchainImagesVector;
+	std::vector<VkImageView>		swapchainImageViewsVector;
 
-	//std::vector<VkPresentModeKHR>	presentModes;
-	//std::vector<VkFramebuffer>		swapChainFramebuffers;
-	//VkFormat						swapChainImageFormat;
-	//VkExtent2D						swapChainExtent;
-
+	VkImage								depthStencilImage				= VK_NULL_HANDLE;
+	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties	= {};
+	VkDeviceMemory						depthStencilImageDeviceMemory	= VK_NULL_HANDLE;
+	VkImageView							depthStencilImageView			= VK_NULL_HANDLE;
+	VkFormat							depthStencilFormat				= VK_FORMAT_UNDEFINED;
+	bool								stencilAvailable				= false;
 
 	//VkRenderPass renderPass;
 	//VkPipelineLayout pipelineLayout;
@@ -90,8 +91,6 @@ protected:
 	//VkSemaphore imageAvailableSemaphore;
 	//VkSemaphore renderFinishedSemaphore;
 
-
-
 //	float xRot, yRot;
 //	float aspect;
 
@@ -100,15 +99,6 @@ protected:
 	virtual void finalize();
 
 //	virtual void keyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode);
-
-//	// shader info variables
-//	GLuint programA, programB;
-//	GLuint defaultTextureID;
-//	int textureLocation;
-
-//	GLuint verArrObjArray[2];
-//	GLuint verBufferObjArray[2];
-//	GLuint verIndicesObjArray[2];
 
 //	int modelMatrixLocation;
 //	int projectionMatrixLocation;
@@ -149,13 +139,17 @@ private:
 	bool isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
 	int  ratePhysicalDevice(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
 	void pickPhysicalDevice();
-
 	void createLogicalDevice();
 	
-	// Images are a prerequisite of swap buffer creation.
 	void createSwapChain();
+	void createSwapChainImageViews();
 
-	//void createImageViews();
+	uint32_t findPhysicalDeviceMemoryPropertyIndex(
+		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
+		const VkMemoryRequirements& memoryRequirements, 
+		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
+	);
+	void createDepthStencilAttachment();
 	//void createRenderPass();
 	//void createGraphicsPipeline();
 	//void createFramebuffers();
