@@ -1,5 +1,5 @@
 ﻿# SenVulkan
-Begin with Vulkan 1.042, step by step
+SenBegin with Vulkan 1.042, step by step
 
 * Fixed Release build issue. (cannot ignore MVCT lib)
 * Add Validation Layer (as Instance Layer) check function
@@ -86,4 +86,13 @@ OutputDebugString(strExtension.c_str());
 * 2. Use reinterpret_cast to do cast between two unrelated types
 * 3. Even though nullptr can handle the overloaded function problem of NULL, it cannot handle the 64bit to 32bit Vulkan handle transfer problem.
 VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullptr.
-* 4. 
+* 4. std::array  :
+	What are the advantages of using std::array over usual ones?
+	It has friendly value semantics, so that it can be passed to or returned from functions by value. Its interface makes it more convenient to find the size, and use with STL-style iterator-based algorithms.
+
+	Is it more performant ?
+	It should be exactly the same. By definition, it's a simple aggregate containing an array as its only member.
+
+	Just easier to handle for copy/access ?
+	Yes.
+* 

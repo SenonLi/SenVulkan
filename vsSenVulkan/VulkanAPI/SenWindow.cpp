@@ -14,10 +14,17 @@ SenWindow::SenWindow(SenRenderer * renderer, uint32_t size_x, uint32_t size_y, s
 	_InitSwapchain();
 	_InitSwapchainImages();
 	_InitDepthStencilImage();
+	_InitRenderPass();
+	_InitFramebuffers();
+	_InitSynchronizations();
 }
 
 SenWindow::~SenWindow()
 {
+	vkQueueWaitIdle(_renderer->getQueue());
+	_DeInitSynchronizations();
+	_DeInitFramebuffers();
+	_DeInitRenderPass();
 	_DeInitDepthStencilImage();
 	_DeInitSwapchainImages();
 	_DeInitSwapchain();
@@ -159,6 +166,99 @@ void SenWindow::_DeInitDepthStencilImage()
 	vkDestroyImage(_renderer->getDevice(), _depthStencilImage, nullptr);
 }
 
+void SenWindow::_InitRenderPass()
+{
+	std::array<VkAttachmentDescription, 2> attachments{};
+	attachments[0].flags = 0;
+	attachments[0].format = _depthStencilFormat;
+	attachments[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachments[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[0].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachments[0].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	attachments[1].flags = 0;
+	attachments[1].format = _surface_format.format;
+	attachments[1].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachments[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachments[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+
+	VkAttachmentReference subPass_0_depthStencilAttachment{};
+	subPass_0_depthStencilAttachment.attachment = 0;
+	subPass_0_depthStencilAttachment.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	std::array<VkAttachmentReference, 1> sub_pass_0_color_attachments{};
+	sub_pass_0_color_attachments[0].attachment = 1;
+	sub_pass_0_color_attachments[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	std::array<VkSubpassDescription, 1> sub_passes{};
+	sub_passes[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	sub_passes[0].colorAttachmentCount = sub_pass_0_color_attachments.size();
+	sub_passes[0].pColorAttachments = sub_pass_0_color_attachments.data();		// layout(location=0) out vec4 FinalColor;
+	sub_passes[0].pDepthStencilAttachment = &subPass_0_depthStencilAttachment;
+
+
+	VkRenderPassCreateInfo render_pass_create_info{};
+	render_pass_create_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	render_pass_create_info.attachmentCount = attachments.size();
+	render_pass_create_info.pAttachments = attachments.data();
+	render_pass_create_info.subpassCount = sub_passes.size();
+	render_pass_create_info.pSubpasses = sub_passes.data();
+
+	ErrorCheck(vkCreateRenderPass(_renderer->getDevice(), &render_pass_create_info, nullptr, &_renderPass));
+
+}
+
+void SenWindow::_DeInitRenderPass()
+{
+	vkDestroyRenderPass(_renderer->getDevice(), _renderPass, nullptr);
+}
+
+void SenWindow::_InitFramebuffers()
+{
+	_framebuffers.resize(_swapchainImagesCount);
+	for (uint32_t i = 0; i < _swapchainImagesCount; ++i) {
+		std::array<VkImageView, 2> attachments{};
+		attachments[0] = _depthStencilImageView;
+		attachments[1] = _swapChainImageViewsVector[i];
+
+		VkFramebufferCreateInfo framebufferCreateInfo{};
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.renderPass = _renderPass;
+		framebufferCreateInfo.attachmentCount = attachments.size();
+		framebufferCreateInfo.pAttachments = attachments.data();
+		framebufferCreateInfo.width = _surfaceSize_X;
+		framebufferCreateInfo.height = _surfaceSize_Y;
+		framebufferCreateInfo.layers = 1;
+
+		ErrorCheck(vkCreateFramebuffer(_renderer->getDevice(), &framebufferCreateInfo, nullptr, &_framebuffers[i]));
+	}
+}
+
+void SenWindow::_DeInitFramebuffers()
+{
+	for (auto f : _framebuffers) {
+		vkDestroyFramebuffer(_renderer->getDevice(), f, nullptr);
+	}
+}
+
+void SenWindow::_InitSynchronizations()
+{
+	VkFenceCreateInfo fence_create_info{};
+	fence_create_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	vkCreateFence(_renderer->getDevice(), &fence_create_info, nullptr, &_swapchainImageAvailableFence);
+}
+
+void SenWindow::_DeInitSynchronizations()
+{
+	vkDestroyFence(_renderer->getDevice(), _swapchainImageAvailableFence, nullptr);
+}
+
 void SenWindow::closeSenWindow()
 {
 	_windowShouldRun		= false;
@@ -168,6 +268,37 @@ bool SenWindow::updateSenWindow()
 {
 	_UpdateOSWindow();
 	return _windowShouldRun;
+}
+
+void SenWindow::BeginRender()
+{
+	ErrorCheck(vkAcquireNextImageKHR(
+		_renderer->getDevice(),
+		_swapchain,
+		UINT64_MAX,
+		VK_NULL_HANDLE,
+		_swapchainImageAvailableFence,
+		&_activeSwapchainImage_ID));
+	ErrorCheck(vkWaitForFences(_renderer->getDevice(), 1, &_swapchainImageAvailableFence, VK_TRUE, UINT64_MAX));
+	ErrorCheck(vkResetFences(_renderer->getDevice(), 1, &_swapchainImageAvailableFence));
+	ErrorCheck(vkQueueWaitIdle(_renderer->getQueue()));
+}
+
+void SenWindow::EndRender(std::vector<VkSemaphore> wait_semaphores)
+{
+	VkResult present_result = VkResult::VK_RESULT_MAX_ENUM;
+
+	VkPresentInfoKHR present_info{};
+	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	present_info.waitSemaphoreCount = wait_semaphores.size();
+	present_info.pWaitSemaphores = wait_semaphores.data();
+	present_info.swapchainCount = 1;
+	present_info.pSwapchains = &_swapchain;
+	present_info.pImageIndices = &_activeSwapchainImage_ID;
+	present_info.pResults = &present_result;
+
+	ErrorCheck(vkQueuePresentKHR(_renderer->getQueue(), &present_info));
+	ErrorCheck(present_result);
 }
 
 void SenWindow::_InitSurface()

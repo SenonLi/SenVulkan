@@ -1,9 +1,12 @@
 #pragma once
 
-#include "Shared.h"
-
 #include <string>
 #include <vector>
+
+#include "Shared.h"
+#include <array>
+
+#include <vulkan/vulkan.h>
 
 class SenRenderer;
 
@@ -16,6 +19,13 @@ public:
 	//void finalize();
 	void closeSenWindow();
 	bool updateSenWindow();
+
+	void								BeginRender();
+	void								EndRender(std::vector<VkSemaphore> wait_semaphores);
+
+	VkRenderPass						GetVulkanRenderPass() {	return _renderPass;	}
+	VkFramebuffer						GetVulkanActiveFramebuffer() { return _framebuffers[_activeSwapchainImage_ID]; }
+	VkExtent2D							GetVulkanSurfaceSize()	{ return{ _surfaceSize_X, _surfaceSize_Y }; }
 
 private:
 	void								_InitOSWindow();
@@ -33,6 +43,14 @@ private:
 
 	void								_InitDepthStencilImage();
 	void								_DeInitDepthStencilImage();
+
+	void								_InitRenderPass();
+	void								_DeInitRenderPass();
+	void								_InitFramebuffers();
+	void								_DeInitFramebuffers();
+
+	void								_InitSynchronizations();
+	void								_DeInitSynchronizations();
 
 	SenRenderer							*_renderer = nullptr;
 
@@ -56,6 +74,11 @@ private:
 
 	VkFormat							_depthStencilFormat = VK_FORMAT_UNDEFINED;
 	bool								_stencilAvailable = false;
+
+	VkRenderPass						_renderPass = VK_NULL_HANDLE;
+	std::vector<VkFramebuffer>			_framebuffers;
+	uint32_t							_activeSwapchainImage_ID = UINT32_MAX;
+	VkFence								_swapchainImageAvailableFence = VK_NULL_HANDLE;
 
 
 #if defined( _WIN32 )  // on Windows OS
