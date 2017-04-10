@@ -75,6 +75,7 @@ in other words, each of the layers means to support some extensions, which means
 		It allows the application to generate command buffers referencing all of the images in the swapchain at initializationtime, rather than in its main loop;
 * 13. The native window referred to by surface must not already be associated with a swapchain other than oldSwapchain, or with a non-Vulkan graphics API surface.
 * 14. The graphics pipeline in Vulkan is almost completely immutable, so you must recreate the pipeline from scratch if you want to change shaders, bind different framebuffers or change the blend function. 
+* 15. The VkShaderModule object is just a dumb wrapper around the bytecode buffer, they are only required during the pipeline creation process;
 * 
 
 ### V++ / Debug

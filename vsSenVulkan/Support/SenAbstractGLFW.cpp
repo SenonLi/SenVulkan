@@ -401,8 +401,8 @@ void SenAbstractGLFW::createGraphicsPipeline() {
 	//createShaderModule(device, vertShaderSPIRV_Vector, vertShaderModule);
 	//createShaderModule(device, fragShaderSPIRV_Vector, fragShaderModule);
 
-	createShaderModule(device, readFileBinaryStream("SenVulkanTutorial/Shaders/Triangle.vert"), vertShaderModule);
-	createShaderModule(device, readFileBinaryStream("SenVulkanTutorial/Shaders/Triangle.frag"), fragShaderModule);
+	createShaderModule(device, readFileBinaryStream("SenVulkanTutorial/Shaders/triangleVert.spv"), vertShaderModule);
+	createShaderModule(device, readFileBinaryStream("SenVulkanTutorial/Shaders/triangleFrag.spv"), fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType		= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
