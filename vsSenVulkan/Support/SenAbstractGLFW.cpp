@@ -346,11 +346,11 @@ void SenAbstractGLFW::createRenderPass() {
 	colorAttachmentDescription.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
 	colorAttachmentDescription.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; //auto transition when the render pass finishes
 
-	VkAttachmentReference colorAttachmentReference{};
+	VkAttachmentReference colorAttachmentReference{}; //subsequent rendering, post-processing  
 	colorAttachmentReference.attachment			= 0;
 	colorAttachmentReference.layout				= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkSubpassDescription subpassDescription{};
+	VkSubpassDescription subpassDescription{}; // Every subpass references one or more of the attachments
 	subpassDescription.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpassDescription.colorAttachmentCount		= 1;
 	subpassDescription.pColorAttachments		= &colorAttachmentReference;
