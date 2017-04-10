@@ -338,13 +338,13 @@ void SenAbstractGLFW::createDepthStencilAttachment()
 void SenAbstractGLFW::createRenderPass() {
 	VkAttachmentDescription colorAttachmentDescription{};
 	colorAttachmentDescription.format			= surfaceFormat.format;// swapChainImageFormat;
-	colorAttachmentDescription.samples			= VK_SAMPLE_COUNT_1_BIT;
+	colorAttachmentDescription.samples			= VK_SAMPLE_COUNT_1_BIT; // Not using multi-sampling
 	colorAttachmentDescription.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachmentDescription.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
 	colorAttachmentDescription.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	colorAttachmentDescription.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
 	colorAttachmentDescription.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentDescription.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	colorAttachmentDescription.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; //auto transition when the render pass finishes
 
 	VkAttachmentReference colorAttachmentReference{};
 	colorAttachmentReference.attachment			= 0;

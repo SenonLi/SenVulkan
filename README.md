@@ -76,6 +76,11 @@ in other words, each of the layers means to support some extensions, which means
 * 13. The native window referred to by surface must not already be associated with a swapchain other than oldSwapchain, or with a non-Vulkan graphics API surface.
 * 14. The graphics pipeline in Vulkan is almost completely immutable, so you must recreate the pipeline from scratch if you want to change shaders, bind different framebuffers or change the blend function. 
 * 15. The VkShaderModule object is just a dumb wrapper around the bytecode buffer, they are only required during the pipeline creation process;
+* 16. A limited amount of the state that we've specified in the previous structs can actually be changed without recreating the pipeline:
+		viewport, line width, blend constants ...
+		This will cause the configuration of these values to be ignored and you will be required to specify the data at drawing time.;
+* 17. The uniform values need to be specified during pipeline creation by creating a VkPipelineLayout object:
+		transformation matrix, texture samplers ...
 * 
 
 ### V++ / Debug
