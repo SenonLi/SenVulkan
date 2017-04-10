@@ -18,18 +18,19 @@
 #include <stdexcept> // for propagating errors 
 #include <stdlib.h> // for const error catch
 #include <stdio.h>  
-
-#include <vector>
-#include <string>
 #include <iostream> // for cout, cin
+#include <fstream>	// for readFileBinaryStream function
 #include <sstream>  // for quick chunch cout
 #include <map>		// for ratePhysicalDevice to pick the best
 #include <set>		// for unique queue family <==> unique queue
+#include <vector>
+#include <string>
 
 #define GLFW_INCLUDE_VULKAN // Let GLFW know Vulkan is utilized, must be in front of vulkan.h
 #include <GLFW/glfw3.h>
 
 #include <vulkan/vulkan.h>
+#include <algorithm> // std::max, std::min
 
 //#include "LoadShaders.h"
 
@@ -40,6 +41,9 @@ public:
 	virtual ~SenAbstractGLFW();
 
 	void showWidget();
+
+	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags, VkDebugReportObjectTypeEXT, uint64_t, size_t, int32_t, const char*, const char*, void *);
+	static std::vector<char> readFileBinaryStream(const std::string& filename);
 
 //	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 
 //		keyDetection(widget, key, scancode, action, mode);
@@ -81,9 +85,12 @@ protected:
 	VkFormat							depthStencilFormat				= VK_FORMAT_UNDEFINED;
 	bool								stencilAvailable				= false;
 
-	//VkRenderPass renderPass;
-	//VkPipelineLayout pipelineLayout;
-	//VkPipeline graphicsPipeline;
+
+
+	VkRenderPass						renderPass						= VK_NULL_HANDLE;
+	VkPipelineLayout					graphicsPipelineLayout			= VK_NULL_HANDLE;
+	VkPipeline							graphicsPipeline				= VK_NULL_HANDLE;
+
 
 	//VkCommandPool commandPool;
 	//std::vector<VkCommandBuffer> commandBuffers;
@@ -123,8 +130,6 @@ private:
 	PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = VK_NULL_HANDLE;
 	PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = VK_NULL_HANDLE;
 
-	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags,VkDebugReportObjectTypeEXT,uint64_t,size_t,int32_t,const char*,const char*,void *);
-
 	void initDebugLayers();
 	void initExtensions();
 	void createInstance();
@@ -150,8 +155,11 @@ private:
 		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
 	);
 	void createDepthStencilAttachment();
-	//void createRenderPass();
-	//void createGraphicsPipeline();
+	
+	void createRenderPass();
+	void createShaderModule(const VkDevice& device, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
+	void createGraphicsPipeline();
+
 	//void createFramebuffers();
 	//void createCommandPool();
 	//void createCommandBuffers();

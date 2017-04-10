@@ -451,8 +451,8 @@ private:
 
 		VDeleter<VkShaderModule> vertShaderModule{ device, vkDestroyShaderModule };
 		VDeleter<VkShaderModule> fragShaderModule{ device, vkDestroyShaderModule };
-		createShaderModule(vertShaderCode, vertShaderModule);
-		createShaderModule(fragShaderCode, fragShaderModule);
+		createShaderModule(device, vertShaderCode, vertShaderModule);
+		createShaderModule(device, fragShaderCode, fragShaderModule);
 
 		VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
 		vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -699,6 +699,15 @@ private:
 		}
 	}
 
+	void createShaderModule(const VkDevice& device, const std::vector<char>& SPIRV_Vector, VDeleter<VkShaderModule>& targetShaderModule)
+	{
+		VkShaderModuleCreateInfo shaderModuleCreateInfo{};
+		shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+		shaderModuleCreateInfo.codeSize = SPIRV_Vector.size();
+		shaderModuleCreateInfo.pCode = (uint32_t*)SPIRV_Vector.data();
+
+		vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, targetShaderModule.replace());
+	}
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) {
 		if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED) {
 			return{ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
@@ -726,8 +735,7 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
 		if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
 			return capabilities.currentExtent;
-		}
-		else {
+		}else {
 			VkExtent2D actualExtent = { WIDTH, HEIGHT };
 
 			actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
