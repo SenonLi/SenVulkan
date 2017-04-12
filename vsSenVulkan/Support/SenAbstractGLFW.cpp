@@ -7,10 +7,10 @@ SenAbstractGLFW::SenAbstractGLFW()
 	//showAllSupportedInstanceLayers(); // Not Useful Functions
 	//showAllSupportedExtensionsEachUnderInstanceLayer(); // Not Useful Functions
 
-	strWindowName = "Sen GLFW Vulkan Application";
-
 	widgetWidth = DEFAULT_widgetWidth;
 	widgetHeight = DEFAULT_widgetHeight;
+
+	strWindowName = "Sen GLFW Vulkan Application";
 }
 
 SenAbstractGLFW::~SenAbstractGLFW()
@@ -68,6 +68,13 @@ void SenAbstractGLFW::initGlfwVulkan()
 
 	createRenderPass();
 	createGraphicsPipeline();
+	createFramebuffers();
+
+	//createDepthStencilRenderPass();
+	//createDepthStencilGraphicsPipeline();
+	//createDepthStencilFramebuffers();
+
+	createCommandPool();
 
 	// Clear the colorbuffer
 	//glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -301,7 +308,7 @@ void SenAbstractGLFW::createDepthStencilAttachment()
 
 	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &physicalDeviceMemoryProperties);
 
-	uint32_t memoryTypeIndex = findPhysicalDeviceMemoryPropertyIndex(
+	uint32_t gpuMemoryTypeIndex = findPhysicalDeviceMemoryPropertyIndex(
 		physicalDeviceMemoryProperties,
 		imageMemoryRequirements,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT  // Set the resource to reside on GPU itself
@@ -310,7 +317,7 @@ void SenAbstractGLFW::createDepthStencilAttachment()
 	VkMemoryAllocateInfo depthStencilImageMemoryAllocateInfo{};
 	depthStencilImageMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	depthStencilImageMemoryAllocateInfo.allocationSize = imageMemoryRequirements.size;
-	depthStencilImageMemoryAllocateInfo.memoryTypeIndex = memoryTypeIndex;
+	depthStencilImageMemoryAllocateInfo.memoryTypeIndex = gpuMemoryTypeIndex;
 
 	vkAllocateMemory(device, &depthStencilImageMemoryAllocateInfo, nullptr, &depthStencilImageDeviceMemory);
 	vkBindImageMemory(device, depthStencilImage, depthStencilImageDeviceMemory, 0);
@@ -377,6 +384,59 @@ void SenAbstractGLFW::createRenderPass() {
 		vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass),
 		std::string("Failed to create render pass !!")
 	);
+}
+
+void SenAbstractGLFW::createDepthStencilRenderPass()
+{
+	std::array<VkAttachmentDescription, 2> attachmentDescriptionsArray{}; // for both of color and depthStencil
+	attachmentDescriptionsArray[0].flags = 0;
+	attachmentDescriptionsArray[0].format = depthStencilFormat;
+	attachmentDescriptionsArray[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDescriptionsArray[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDescriptionsArray[0].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDescriptionsArray[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDescriptionsArray[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDescriptionsArray[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDescriptionsArray[0].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	attachmentDescriptionsArray[1].flags = 0;
+	attachmentDescriptionsArray[1].format = surfaceFormat.format;
+	attachmentDescriptionsArray[1].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDescriptionsArray[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDescriptionsArray[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDescriptionsArray[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDescriptionsArray[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference depthStencilAttachmentReference{};
+	depthStencilAttachmentReference.attachment = 0;
+	depthStencilAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	std::array<VkAttachmentReference, 1> colorAttachmentReferenceArray{};
+	colorAttachmentReferenceArray[0].attachment = 1;
+	colorAttachmentReferenceArray[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	std::array<VkSubpassDescription, 1> subpassDescriptionArray{};
+	subpassDescriptionArray[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDescriptionArray[0].colorAttachmentCount = colorAttachmentReferenceArray.size();
+	subpassDescriptionArray[0].pColorAttachments = colorAttachmentReferenceArray.data();		// layout(location=0) out vec4 FinalColor;
+	subpassDescriptionArray[0].pDepthStencilAttachment = &depthStencilAttachmentReference;
+
+
+	VkRenderPassCreateInfo renderPassCreateInfo{};
+	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.attachmentCount = attachmentDescriptionsArray.size();
+	renderPassCreateInfo.pAttachments = attachmentDescriptionsArray.data();
+	renderPassCreateInfo.subpassCount = subpassDescriptionArray.size();
+	renderPassCreateInfo.pSubpasses = subpassDescriptionArray.data();
+
+	errorCheck(
+		vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass),
+		std::string("Failed to create colorDepthStencil render pass !!")
+	);
+}
+
+void SenAbstractGLFW::createDepthStencilGraphicsPipeline()
+{
 }
 
 void SenAbstractGLFW::createShaderModule(const VkDevice& device, const std::vector<char>& SPIRV_Vector, VkShaderModule & targetShaderModule)
@@ -515,43 +575,51 @@ void SenAbstractGLFW::createGraphicsPipeline() {
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-//void SenAbstractGLFW::createFramebuffers() {
-//	swapChainFramebuffers.resize(swapChainImageViews.size(), VDeleter<VkFramebuffer>{device, vkDestroyFramebuffer});
-//
-//	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-//		VkImageView attachments[] = {
-//			swapChainImageViews[i]
-//		};
-//
-//		VkFramebufferCreateInfo framebufferInfo = {};
-//		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-//		framebufferInfo.renderPass = renderPass;
-//		framebufferInfo.attachmentCount = 1;
-//		framebufferInfo.pAttachments = attachments;
-//		framebufferInfo.width = swapChainExtent.width;
-//		framebufferInfo.height = swapChainExtent.height;
-//		framebufferInfo.layers = 1;
-//
-//		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, swapChainFramebuffers[i].replace()) != VK_SUCCESS) {
-//			throw std::runtime_error("failed to create framebuffer!");
-//		}
-//	}
-//}
-//
-//void SenAbstractGLFW::createCommandPool() {
-//	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
-//
-//	VkCommandPoolCreateInfo poolInfo = {};
-//	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-//	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
-//
-//	if (vkCreateCommandPool(device, &poolInfo, nullptr, commandPool.replace()) != VK_SUCCESS) {
-//		throw std::runtime_error("failed to create command pool!");
-//	}
-//}
-//
+void SenAbstractGLFW::createFramebuffers() {
+	swapchainFramebufferVector.resize(swapchainImagesCount);
+
+	for (size_t i = 0; i < swapchainImagesCount; i++) {
+
+		std::array<VkImageView, 1> imageViewAttachmentArray{};
+		imageViewAttachmentArray[0] = swapchainImageViewsVector[i];
+
+		VkFramebufferCreateInfo framebufferCreateInfo{};
+		framebufferCreateInfo.sType				= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.renderPass		= renderPass;
+		framebufferCreateInfo.attachmentCount	= imageViewAttachmentArray.size();
+		framebufferCreateInfo.pAttachments		= imageViewAttachmentArray.data();
+		framebufferCreateInfo.width				= widgetWidth;
+		framebufferCreateInfo.height			= widgetHeight;
+		framebufferCreateInfo.layers			= 1;
+
+		errorCheck(
+			vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &swapchainFramebufferVector[i]),
+			std::string("Failed to create framebuffer !!!")
+		);
+	}
+}
+
+void SenAbstractGLFW::createCommandPool() {
+
+	//VkCommandPoolCreateInfo poolInfo = {};
+	//poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	//poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+
+
+	VkCommandPoolCreateInfo commandPoolCreateInfo{};
+	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	commandPoolCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
+
+	errorCheck(
+		vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool),
+		std::string("Failed to create commandPool !!!")
+	);
+
+}
+
 //void SenAbstractGLFW::createCommandBuffers() {
-//	commandBuffers.resize(swapChainFramebuffers.size());
+//	commandBuffers.resize(swapchainFramebufferVector.size());
 //
 //	VkCommandBufferAllocateInfo allocInfo = {};
 //	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -573,7 +641,7 @@ void SenAbstractGLFW::createGraphicsPipeline() {
 //		VkRenderPassBeginInfo renderPassCreateInfo = {};
 //		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 //		renderPassCreateInfo.renderPass = renderPass;
-//		renderPassCreateInfo.framebuffer = swapChainFramebuffers[i];
+//		renderPassCreateInfo.framebuffer = swapchainFramebufferVector[i];
 //		renderPassCreateInfo.renderArea.offset = { 0, 0 };
 //		renderPassCreateInfo.renderArea.extent = swapChainExtent;
 //
@@ -969,6 +1037,14 @@ void SenAbstractGLFW::createLogicalDevice()
 
 void SenAbstractGLFW::finalize() {
 	/************************************************************************************************************/
+	/*********************           Destroy commandPool         ************************************************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != commandPool) {
+		vkDestroyCommandPool(device, commandPool, nullptr);
+		commandPool = VK_NULL_HANDLE;
+	}
+
+	/************************************************************************************************************/
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != graphicsPipeline) {
@@ -982,7 +1058,7 @@ void SenAbstractGLFW::finalize() {
 	}
 	
 	/************************************************************************************************************/
-	/*********************           Destroy depthStencil                ****************************************/
+	/******************     Destroy depthStencil Memory, ImageView, Image     ***********************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != depthStencilImage) {
 		vkFreeMemory(device, depthStencilImageDeviceMemory, nullptr);
@@ -1010,6 +1086,14 @@ void SenAbstractGLFW::finalize() {
 
 		// The memory of swapChain images is not managed by programmer (No allocation, nor free)
 		// It may not be freed until the window is destroyed, or another swapchain is created for the window.
+
+		/************************************************************************************************************/
+		/*********************           Destroy swapchainFramebuffer         ***************************************/
+		/************************************************************************************************************/
+		for (auto swapchainFramebuffer : swapchainFramebufferVector) {
+			vkDestroyFramebuffer(device, swapchainFramebuffer, nullptr);
+		}
+		swapchainFramebufferVector.clear();
 	}
 
 	/************************************************************************************************************/
@@ -1057,10 +1141,10 @@ uint32_t SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
 	const VkMemoryRequirements& memoryRequirements,
 	const VkMemoryPropertyFlags& requiredMemoryPropertyFlags)
 {
-	for (uint32_t index = 0; index < gpuMemoryProperties.memoryTypeCount; ++index) {
-		if (memoryRequirements.memoryTypeBits & (1 << index)) {
-			if ((gpuMemoryProperties.memoryTypes[index].propertyFlags & requiredMemoryPropertyFlags) == requiredMemoryPropertyFlags) {
-				return index;
+	for (uint32_t gpuMemoryTypeIndex = 0; gpuMemoryTypeIndex < gpuMemoryProperties.memoryTypeCount; ++gpuMemoryTypeIndex) {
+		if (memoryRequirements.memoryTypeBits & (1 << gpuMemoryTypeIndex)) {
+			if ((gpuMemoryProperties.memoryTypes[gpuMemoryTypeIndex].propertyFlags & requiredMemoryPropertyFlags) == requiredMemoryPropertyFlags) {
+				return gpuMemoryTypeIndex;
 			}
 		}
 	}

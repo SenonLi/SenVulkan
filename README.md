@@ -81,6 +81,7 @@ in other words, each of the layers means to support some extensions, which means
 		This will cause the configuration of these values to be ignored and you will be required to specify the data at drawing time.;
 * 17. The uniform values need to be specified during pipeline creation by creating a VkPipelineLayout object:
 		transformation matrix, texture samplers ...
+* 18. You can only use a framebuffer with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments;
 * 
 
 ### V++ / Debug

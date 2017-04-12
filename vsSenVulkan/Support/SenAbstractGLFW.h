@@ -24,7 +24,9 @@
 #include <map>		// for ratePhysicalDevice to pick the best
 #include <set>		// for unique queue family <==> unique queue
 #include <vector>
+#include <array>
 #include <string>
+
 
 #define GLFW_INCLUDE_VULKAN // Let GLFW know Vulkan is utilized, must be in front of vulkan.h
 #include <GLFW/glfw3.h>
@@ -77,6 +79,7 @@ protected:
 	uint32_t						swapchainImagesCount		= 2;
 	std::vector<VkImage>			swapchainImagesVector;
 	std::vector<VkImageView>		swapchainImageViewsVector;
+	std::vector<VkFramebuffer>		swapchainFramebufferVector;
 
 	VkImage								depthStencilImage				= VK_NULL_HANDLE;
 	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties	= {};
@@ -86,20 +89,16 @@ protected:
 	bool								stencilAvailable				= false;
 
 
-
 	VkRenderPass						renderPass						= VK_NULL_HANDLE;
 	VkPipelineLayout					graphicsPipelineLayout			= VK_NULL_HANDLE;
 	VkPipeline							graphicsPipeline				= VK_NULL_HANDLE;
 
-
-	//VkCommandPool commandPool;
+	VkCommandPool						commandPool;
 	//std::vector<VkCommandBuffer> commandBuffers;
 
 	//VkSemaphore imageAvailableSemaphore;
 	//VkSemaphore renderFinishedSemaphore;
 
-//	float xRot, yRot;
-//	float aspect;
 
 	virtual void initGlfwVulkan();
 	virtual void paintVulkan();
@@ -107,8 +106,6 @@ protected:
 
 //	virtual void keyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode);
 
-//	int modelMatrixLocation;
-//	int projectionMatrixLocation;
 
 	const int DEFAULT_widgetWidth = 800;	// 640;
 	const int DEFAULT_widgetHeight = 600; // 640;
@@ -159,9 +156,13 @@ private:
 	void createRenderPass();
 	void createShaderModule(const VkDevice& device, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
 	void createGraphicsPipeline();
+	void createFramebuffers();
 
-	//void createFramebuffers();
-	//void createCommandPool();
+	void createDepthStencilRenderPass();
+	void createDepthStencilGraphicsPipeline();
+	//void createDepthStencilFramebuffers();
+
+	void createCommandPool();
 	//void createCommandBuffers();
 	//void createSemaphores();
 
