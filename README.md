@@ -82,6 +82,7 @@ in other words, each of the layers means to support some extensions, which means
 * 17. The uniform values need to be specified during pipeline creation by creating a VkPipelineLayout object:
 		transformation matrix, texture samplers ...
 * 18. You can only use a framebuffer with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments;
+* 19. A render pass  groups dependent operations and contains a number of subpasses, which describe access to attachments (subpasses are subsequent rendering operations);
 * 
 
 ### V++ / Debug

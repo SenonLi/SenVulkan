@@ -66,8 +66,8 @@ void SenAbstractGLFW::initGlfwVulkan()
 	createSwapChainImageViews();
 	createDepthStencilAttachment();
 
-	createRenderPass();
-	createGraphicsPipeline();
+	createTriangleRenderPass();
+	createTrianglePipeline();
 	createFramebuffers();
 
 	//createDepthStencilRenderPass();
@@ -340,48 +340,80 @@ void SenAbstractGLFW::createDepthStencilAttachment()
 	depthStencilImageViewCreateInfo.subresourceRange.layerCount = 1;
 
 	vkCreateImageView(device, &depthStencilImageViewCreateInfo, nullptr, &depthStencilImageView);
+
+
+	//// Use command buffer to create the depth image. This includes -
+	//// Command buffer allocation, recording with begin/end scope and submission.
+	//CommandBufferMgr::allocCommandBuffer(&deviceObj->device, cmdPool, &cmdDepthImageCommandBuffer);
+	//CommandBufferMgr::beginCommandBuffer(cmdDepthImageCommandBuffer);
+	//{
+	//	// Set the image layout to depth stencil optimal
+	//	setImageLayout(FormatImageMemoryViewDepthStruct.image,
+	//		depthImageViewCreateInfo.subresourceRange.aspectMask,
+	//		VK_IMAGE_LAYOUT_UNDEFINED,
+	//		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, (VkAccessFlagBits)0, cmdDepthImageCommandBuffer);
+	//}
+	//CommandBufferMgr::endCommandBuffer(cmdDepthImageCommandBuffer);
+	//CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdDepthImageCommandBuffer);
+
+	//// Create the image view and allow the application to use the images.
+	//depthImageViewCreateInfo.image = FormatImageMemoryViewDepthStruct.image;
+	//result = vkCreateImageView(deviceObj->device, &depthImageViewCreateInfo, NULL, &FormatImageMemoryViewDepthStruct.view);
+	//assert(result == VK_SUCCESS);
 }
 
-void SenAbstractGLFW::createRenderPass() {
-	VkAttachmentDescription colorAttachmentDescription{};
-	colorAttachmentDescription.format			= surfaceFormat.format;// swapChainImageFormat;
-	colorAttachmentDescription.samples			= VK_SAMPLE_COUNT_1_BIT; // Not using multi-sampling
-	colorAttachmentDescription.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	colorAttachmentDescription.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	colorAttachmentDescription.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	colorAttachmentDescription.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	colorAttachmentDescription.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	colorAttachmentDescription.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; //auto transition when the render pass finishes
+void SenAbstractGLFW::createTriangleRenderPass() {
+	/********************************************************************************************************************/
+	/************    Setting AttachmentDescription:  Only colorAttachment is needed for Triangle      *******************/
+	/********************************************************************************************************************/
+	std::array<VkAttachmentDescription, 1> attachmentDescriptionArray{};
+	attachmentDescriptionArray[0].format			= surfaceFormat.format;// swapChainImageFormat;
+	attachmentDescriptionArray[0].samples			= VK_SAMPLE_COUNT_1_BIT; // Not using multi-sampling
+	attachmentDescriptionArray[0].loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDescriptionArray[0].storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDescriptionArray[0].stencilLoadOp		= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDescriptionArray[0].stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDescriptionArray[0].initialLayout		= VK_IMAGE_LAYOUT_UNDEFINED;       // layout before renderPass
+	attachmentDescriptionArray[0].finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // auto transition after renderPass
 
-	VkAttachmentReference colorAttachmentReference{}; //subsequent rendering, post-processing  
-	colorAttachmentReference.attachment			= 0;
-	colorAttachmentReference.layout				= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	/********************************************************************************************************************/
+	/********    Setting Subpasses with Dependencies: One subpass is enough to describe colorAttachment      ************/
+	/********************************************************************************************************************/
+	std::array<VkAttachmentReference, 1> colorAttachmentReferenceArray{};
+	colorAttachmentReferenceArray[0].attachment		= 0; // The colorAttachment index is 0
+	colorAttachmentReferenceArray[0].layout			= VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // auto transition during renderPass
 
-	VkSubpassDescription subpassDescription{}; // Every subpass references one or more of the attachments
-	subpassDescription.pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpassDescription.colorAttachmentCount		= 1;
-	subpassDescription.pColorAttachments		= &colorAttachmentReference;
+	std::array<VkSubpassDescription, 1> subpassDescriptionArray{};
+	subpassDescriptionArray[0].pipelineBindPoint	= VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDescriptionArray[0].colorAttachmentCount = colorAttachmentReferenceArray.size();	// Every subpass references one or more attachments
+	subpassDescriptionArray[0].pColorAttachments	= colorAttachmentReferenceArray.data();
 
-	VkSubpassDependency SubpassDependency{};
-	SubpassDependency.srcSubpass				= VK_SUBPASS_EXTERNAL;
-	SubpassDependency.dstSubpass				= 0;
-	SubpassDependency.srcStageMask				= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	SubpassDependency.srcAccessMask				= 0;
-	SubpassDependency.dstStageMask				= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	SubpassDependency.dstAccessMask				= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT 
-												| VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	std::vector<VkSubpassDependency> subpassDependencyArray;
+	//VkSubpassDependency subpassDependency{};
+	//subpassDependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
+	//subpassDependency.dstSubpass		= 0;
+	//subpassDependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	//subpassDependency.srcAccessMask		= 0;
+	//subpassDependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	//subpassDependency.dstAccessMask		= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+	//											| VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	//
+	//subpassDependencyArray.push_back(subpassDependency);
 
-	VkRenderPassCreateInfo renderPassCreateInfo{};
-	renderPassCreateInfo.sType					= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassCreateInfo.attachmentCount		= 1;
-	renderPassCreateInfo.pAttachments			= &colorAttachmentDescription;
-	renderPassCreateInfo.subpassCount			= 1;
-	renderPassCreateInfo.pSubpasses				= &subpassDescription;
-	renderPassCreateInfo.dependencyCount		= 1;
-	renderPassCreateInfo.pDependencies			= &SubpassDependency;
+	/********************************************************************************************************************/
+	/*********************    Create RenderPass for rendering triangle      *********************************************/
+	/********************************************************************************************************************/
+	VkRenderPassCreateInfo triangleRenderPassCreateInfo{};
+	triangleRenderPassCreateInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	triangleRenderPassCreateInfo.attachmentCount	= attachmentDescriptionArray.size();
+	triangleRenderPassCreateInfo.pAttachments		= attachmentDescriptionArray.data();
+	triangleRenderPassCreateInfo.subpassCount		= subpassDescriptionArray.size();
+	triangleRenderPassCreateInfo.pSubpasses			= subpassDescriptionArray.data();
+	triangleRenderPassCreateInfo.dependencyCount	= subpassDependencyArray.size();
+	triangleRenderPassCreateInfo.pDependencies		= subpassDependencyArray.data();
 
 	errorCheck(
-		vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass),
+		vkCreateRenderPass(device, &triangleRenderPassCreateInfo, nullptr, &triangleRenderPass),
 		std::string("Failed to create render pass !!")
 	);
 }
@@ -430,7 +462,7 @@ void SenAbstractGLFW::createDepthStencilRenderPass()
 	renderPassCreateInfo.pSubpasses = subpassDescriptionArray.data();
 
 	errorCheck(
-		vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass),
+		vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &depthTestRenderPass),
 		std::string("Failed to create colorDepthStencil render pass !!")
 	);
 }
@@ -452,15 +484,11 @@ void SenAbstractGLFW::createShaderModule(const VkDevice& device, const std::vect
 	);
 }
 
-void SenAbstractGLFW::createGraphicsPipeline() {
-	VkShaderModule vertShaderModule;
-	VkShaderModule fragShaderModule;
-
-	//std::vector<char> vertShaderSPIRV_Vector = readFileBinaryStream("SenVulkanTutorial/Shaders/Triangle.vert");
-	//std::vector<char> fragShaderSPIRV_Vector = readFileBinaryStream("SenVulkanTutorial/Shaders/Triangle.frag");
-	//createShaderModule(device, vertShaderSPIRV_Vector, vertShaderModule);
-	//createShaderModule(device, fragShaderSPIRV_Vector, fragShaderModule);
-
+void SenAbstractGLFW::createTrianglePipeline() {
+	/****************************************************************************************************************************/
+	/**********                Reserve pipeline ShaderStage CreateInfos Array           *****************************************/
+	/****************************************************************************************************************************/
+	VkShaderModule vertShaderModule, fragShaderModule;
 	createShaderModule(device, readFileBinaryStream("SenVulkanTutorial/Shaders/triangleVert.spv"), vertShaderModule);
 	createShaderModule(device, readFileBinaryStream("SenVulkanTutorial/Shaders/triangleFrag.spv"), fragShaderModule);
 
@@ -468,36 +496,39 @@ void SenAbstractGLFW::createGraphicsPipeline() {
 	vertPipelineShaderStageCreateInfo.sType		= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	vertPipelineShaderStageCreateInfo.stage		= VK_SHADER_STAGE_VERTEX_BIT;
 	vertPipelineShaderStageCreateInfo.module	= vertShaderModule;
-	vertPipelineShaderStageCreateInfo.pName		= "main";
+	vertPipelineShaderStageCreateInfo.pName		= "main"; // shader's entry point name
 
 	VkPipelineShaderStageCreateInfo fragPipelineShaderStageCreateInfo{};
 	fragPipelineShaderStageCreateInfo.sType		= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragPipelineShaderStageCreateInfo.stage		= VK_SHADER_STAGE_FRAGMENT_BIT;
 	fragPipelineShaderStageCreateInfo.module	= fragShaderModule;
-	fragPipelineShaderStageCreateInfo.pName		= "main";
+	fragPipelineShaderStageCreateInfo.pName		= "main"; // shader's entry point name
 
-	VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfosArray[] = { vertPipelineShaderStageCreateInfo, fragPipelineShaderStageCreateInfo };
+	std::vector<VkPipelineShaderStageCreateInfo> pipelineShaderStagesCreateInfoVector;
+	pipelineShaderStagesCreateInfoVector.push_back(vertPipelineShaderStageCreateInfo);
+	pipelineShaderStagesCreateInfoVector.push_back(fragPipelineShaderStageCreateInfo);
 
+	/****************************************************************************************************************************/
+	/**********                Reserve pipeline Fixed-Function Stages CreateInfos           *************************************/
+	/****************************************************************************************************************************/
 	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
 	pipelineVertexInputStateCreateInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	pipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount	= 0;
+	pipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount	= 0; // spacing between data && whether the data is per-vertex or per-instance (geometry instancing)
 	pipelineVertexInputStateCreateInfo.vertexAttributeDescriptionCount	= 0;
 
 	VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo = {};
 	pipelineInputAssemblyStateCreateInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	pipelineInputAssemblyStateCreateInfo.topology						= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	pipelineInputAssemblyStateCreateInfo.primitiveRestartEnable			= VK_FALSE;
-
+	
+	/*********************************************************************************************/
+	/*********************************************************************************************/
 	VkViewport viewport{};
-	viewport.x			= 0.0f;
-	viewport.y			= 0.0f;
-	viewport.width		= static_cast<float>(widgetWidth);
-	viewport.height		= static_cast<float>(widgetHeight);
-	viewport.minDepth	= 0.0f;
-	viewport.maxDepth	= 1.0f;
-
+	viewport.x			= 0.0f;									viewport.y			= 0.0f;
+	viewport.width		= static_cast<float>(widgetWidth);		viewport.height		= static_cast<float>(widgetHeight);
+	viewport.minDepth	= 0.0f;									viewport.maxDepth	= 1.0f;
 	VkRect2D scissorRect2D{};
-	scissorRect2D.offset			= { 0, 0 };
+	scissorRect2D.offset		= { 0, 0 };
 	scissorRect2D.extent.width	= static_cast<uint32_t>(widgetWidth);
 	scissorRect2D.extent.height	= static_cast<uint32_t>(widgetHeight);
 
@@ -508,66 +539,88 @@ void SenAbstractGLFW::createGraphicsPipeline() {
 	pipelineViewportStateCreateInfo.scissorCount		= 1;
 	pipelineViewportStateCreateInfo.pScissors			= &scissorRect2D;
 
+	/*********************************************************************************************/
+	/*********************************************************************************************/
 	VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo{};
 	pipelineRasterizationStateCreateInfo.sType						= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	pipelineRasterizationStateCreateInfo.depthClampEnable			= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable	= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.polygonMode				= VK_POLYGON_MODE_FILL;
-	pipelineRasterizationStateCreateInfo.lineWidth					= 1.0f;
 	pipelineRasterizationStateCreateInfo.cullMode					= VK_CULL_MODE_BACK_BIT;
 	pipelineRasterizationStateCreateInfo.frontFace					= VK_FRONT_FACE_CLOCKWISE;
 	pipelineRasterizationStateCreateInfo.depthBiasEnable			= VK_FALSE;
+	pipelineRasterizationStateCreateInfo.lineWidth					= 1.0f;
 
-	VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo{};
+
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo{}; // for anti-aliasing
 	pipelineMultisampleStateCreateInfo.sType						= VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	pipelineMultisampleStateCreateInfo.sampleShadingEnable			= VK_FALSE;
 	pipelineMultisampleStateCreateInfo.rasterizationSamples			= VK_SAMPLE_COUNT_1_BIT;
+	
 
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	std::vector<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStateVector; // for multi-framebuffer rendering
 	VkPipelineColorBlendAttachmentState pipelineColorBlendAttachmentState{};
-	pipelineColorBlendAttachmentState.colorWriteMask				= VK_COLOR_COMPONENT_R_BIT 
-																		| VK_COLOR_COMPONENT_G_BIT 
-																		| VK_COLOR_COMPONENT_B_BIT 
-																		| VK_COLOR_COMPONENT_A_BIT;
+	pipelineColorBlendAttachmentState.colorWriteMask				= VK_COLOR_COMPONENT_R_BIT 	| VK_COLOR_COMPONENT_G_BIT 
+																		| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	pipelineColorBlendAttachmentState.blendEnable					= VK_FALSE;
+	pipelineColorBlendAttachmentStateVector.push_back(pipelineColorBlendAttachmentState);
 
 	VkPipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo{};
 	pipelineColorBlendStateCreateInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	pipelineColorBlendStateCreateInfo.logicOpEnable					= VK_FALSE;
-	pipelineColorBlendStateCreateInfo.logicOp						= VK_LOGIC_OP_COPY;
-	pipelineColorBlendStateCreateInfo.attachmentCount				= 1;
-	pipelineColorBlendStateCreateInfo.pAttachments					= &pipelineColorBlendAttachmentState;
+	//pipelineColorBlendStateCreateInfo.logicOp						= VK_LOGIC_OP_COPY;
+	pipelineColorBlendStateCreateInfo.attachmentCount				= pipelineColorBlendAttachmentStateVector.size();
+	pipelineColorBlendStateCreateInfo.pAttachments					= pipelineColorBlendAttachmentStateVector.data();
 	pipelineColorBlendStateCreateInfo.blendConstants[0]				= 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[1]				= 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[2]				= 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[3]				= 0.0f;
 
+	/****************************************************************************************************************************/
+	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
+	/****************************************************************************************************************************/
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType									= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount							= 0;
+	pipelineLayoutCreateInfo.setLayoutCount							= 0; // No descriptor set needed for built-in vertices Triangle
 	pipelineLayoutCreateInfo.pushConstantRangeCount					= 0;
 
 	errorCheck(
-		vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &graphicsPipelineLayout),
+		vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &trianglePipelineLayout),
 		std::string("Failed to to create pipeline layout !!!")
 	);
 
-	VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo{};
-	graphicsPipelineCreateInfo.sType				= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	graphicsPipelineCreateInfo.stageCount			= 2;
-	graphicsPipelineCreateInfo.pStages				= pipelineShaderStageCreateInfosArray;
-	graphicsPipelineCreateInfo.pVertexInputState	= &pipelineVertexInputStateCreateInfo;
-	graphicsPipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
-	graphicsPipelineCreateInfo.pViewportState		= &pipelineViewportStateCreateInfo;
-	graphicsPipelineCreateInfo.pRasterizationState	= &pipelineRasterizationStateCreateInfo;
-	graphicsPipelineCreateInfo.pMultisampleState	= &pipelineMultisampleStateCreateInfo;
-	graphicsPipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
-	graphicsPipelineCreateInfo.layout				= graphicsPipelineLayout;
-	graphicsPipelineCreateInfo.renderPass			= renderPass;
-	graphicsPipelineCreateInfo.subpass				= 0;
-	graphicsPipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
+	/****************************************************************************************************************************/
+	/**********                Create   Pipeline            *********************************************************************/
+	/****************************************************************************************************************************/
+	std::vector<VkGraphicsPipelineCreateInfo> graphicsPipelineCreateInfoVector;
+	VkGraphicsPipelineCreateInfo trianglePipelineCreateInfo{};
+	trianglePipelineCreateInfo.sType				= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	trianglePipelineCreateInfo.stageCount			= pipelineShaderStagesCreateInfoVector.size();
+	trianglePipelineCreateInfo.pStages				= pipelineShaderStagesCreateInfoVector.data();
+	trianglePipelineCreateInfo.pVertexInputState	= &pipelineVertexInputStateCreateInfo;
+	trianglePipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
+	trianglePipelineCreateInfo.pViewportState		= &pipelineViewportStateCreateInfo;
+	trianglePipelineCreateInfo.pRasterizationState	= &pipelineRasterizationStateCreateInfo;
+	trianglePipelineCreateInfo.pMultisampleState	= &pipelineMultisampleStateCreateInfo;
+	trianglePipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
+	trianglePipelineCreateInfo.layout				= trianglePipelineLayout;
+	trianglePipelineCreateInfo.renderPass			= triangleRenderPass;
+	trianglePipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the triangleRenderPass
+	//trianglePipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
+
+	graphicsPipelineCreateInfoVector.push_back(trianglePipelineCreateInfo);
 
 	errorCheck(
-		vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &graphicsPipelineCreateInfo, nullptr, &graphicsPipeline),
+		vkCreateGraphicsPipelines(
+			device, VK_NULL_HANDLE,
+			graphicsPipelineCreateInfoVector.size(),
+			graphicsPipelineCreateInfoVector.data(),
+			nullptr, 
+			&trianglePipeline), // could be a pipelineArray
 		std::string("Failed to create graphics pipeline !!!")
 	);
 
@@ -585,7 +638,7 @@ void SenAbstractGLFW::createFramebuffers() {
 
 		VkFramebufferCreateInfo framebufferCreateInfo{};
 		framebufferCreateInfo.sType				= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferCreateInfo.renderPass		= renderPass;
+		framebufferCreateInfo.renderPass		= triangleRenderPass;
 		framebufferCreateInfo.attachmentCount	= imageViewAttachmentArray.size();
 		framebufferCreateInfo.pAttachments		= imageViewAttachmentArray.data();
 		framebufferCreateInfo.width				= widgetWidth;
@@ -640,7 +693,7 @@ void SenAbstractGLFW::createCommandPool() {
 //
 //		VkRenderPassBeginInfo renderPassCreateInfo = {};
 //		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-//		renderPassCreateInfo.renderPass = renderPass;
+//		renderPassCreateInfo.renderPass = triangleRenderPass;
 //		renderPassCreateInfo.framebuffer = swapchainFramebufferVector[i];
 //		renderPassCreateInfo.renderArea.offset = { 0, 0 };
 //		renderPassCreateInfo.renderArea.extent = swapChainExtent;
@@ -651,7 +704,7 @@ void SenAbstractGLFW::createCommandPool() {
 //
 //		vkCmdBeginRenderPass(commandBuffers[i], &renderPassCreateInfo, VK_SUBPASS_CONTENTS_INLINE);
 //
-//		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+//		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
 //
 //		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
 //
@@ -1032,7 +1085,7 @@ void SenAbstractGLFW::createLogicalDevice()
 
 	// Retrieve queue handles for each queue family
 	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
-	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue); // Not sure if the third parameter 0 is correct
+	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue); // We only need 1 queue, so the third parameter (index) we give is 0.
 }
 
 void SenAbstractGLFW::finalize() {
@@ -1047,14 +1100,14 @@ void SenAbstractGLFW::finalize() {
 	/************************************************************************************************************/
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != graphicsPipeline) {
-		vkDestroyPipeline(device, graphicsPipeline, nullptr);
-		vkDestroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
-		vkDestroyRenderPass(device, renderPass, nullptr);
+	if (VK_NULL_HANDLE != trianglePipeline) {
+		vkDestroyPipeline(device, trianglePipeline, nullptr);
+		vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
+		vkDestroyRenderPass(device, triangleRenderPass, nullptr);
 
-		graphicsPipeline		= VK_NULL_HANDLE;
-		graphicsPipelineLayout	= VK_NULL_HANDLE;
-		renderPass				= VK_NULL_HANDLE;
+		trianglePipeline = VK_NULL_HANDLE;
+		trianglePipelineLayout	= VK_NULL_HANDLE;
+		triangleRenderPass		= VK_NULL_HANDLE;
 	}
 	
 	/************************************************************************************************************/
@@ -1193,6 +1246,68 @@ std::vector<char> SenAbstractGLFW::readFileBinaryStream(const std::string& filen
 	file.close();
 
 	return buffer;
+}
+
+/************************************************************************************************************************************************************************************************************/
+/***********     This is a helper function that records memory barrirers using the vkCmdPipelineBarrier() command      **************************************************************************************/
+/************************************************************************************************************************************************************************************************************/
+void SenAbstractGLFW::setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
+	, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
+	, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer)
+{
+	// Dependency on imageLayoutTransitionCommandBuffer
+	if (VK_NULL_HANDLE == imageLayoutTransitionCommandBuffer) {
+		throw std::runtime_error("failed to open file!");
+	}
+
+	VkImageMemoryBarrier imgMemoryBarrier{};
+	imgMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	imgMemoryBarrier.pNext = NULL;
+	imgMemoryBarrier.srcAccessMask = srcAccessFlagBits;
+	imgMemoryBarrier.dstAccessMask = 0;
+	imgMemoryBarrier.oldLayout = oldImageLayout;
+	imgMemoryBarrier.newLayout = newImageLayout;
+	imgMemoryBarrier.image = image;
+	imgMemoryBarrier.subresourceRange.aspectMask = imageAspectFlags;
+	imgMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	imgMemoryBarrier.subresourceRange.levelCount = 1;
+	imgMemoryBarrier.subresourceRange.layerCount = 1;
+
+	if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+		imgMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	}
+
+	switch (newImageLayout)
+	{
+		// Ensure that anything that was copying from this image has completed
+		// An image in this layout can only be used as the destination operand of the commands
+		case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+		case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+			imgMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			break;
+
+		// Ensure any Copy or CPU writes to image are flushed
+		// An image in this layout can only be used as a read-only shader resource
+		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+			imgMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+			imgMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+			break;
+
+		// An image in this layout can only be used as a framebuffer color attachment
+		case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+			imgMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+			break;
+
+		// An image in this layout can only be used as a framebuffer depth/stencil attachment
+		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+			imgMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+			break;
+	}
+
+	VkPipelineStageFlags srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	VkPipelineStageFlags destStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+	vkCmdPipelineBarrier(imageLayoutTransitionCommandBuffer, srcStages, destStages, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
 }
 
 void SenAbstractGLFW::errorCheck(VkResult result, std::string msg)

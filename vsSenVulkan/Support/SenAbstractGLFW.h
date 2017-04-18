@@ -81,20 +81,24 @@ protected:
 	std::vector<VkImageView>		swapchainImageViewsVector;
 	std::vector<VkFramebuffer>		swapchainFramebufferVector;
 
-	VkImage								depthStencilImage				= VK_NULL_HANDLE;
-	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties	= {};
-	VkDeviceMemory						depthStencilImageDeviceMemory	= VK_NULL_HANDLE;
-	VkImageView							depthStencilImageView			= VK_NULL_HANDLE;
-	VkFormat							depthStencilFormat				= VK_FORMAT_UNDEFINED;
-	bool								stencilAvailable				= false;
-
-
-	VkRenderPass						renderPass						= VK_NULL_HANDLE;
-	VkPipelineLayout					graphicsPipelineLayout			= VK_NULL_HANDLE;
-	VkPipeline							graphicsPipeline				= VK_NULL_HANDLE;
+	VkRenderPass						triangleRenderPass				= VK_NULL_HANDLE;
+	VkPipelineLayout					trianglePipelineLayout			= VK_NULL_HANDLE;
+	VkPipeline							trianglePipeline				= VK_NULL_HANDLE;
 
 	VkCommandPool						commandPool;
 	//std::vector<VkCommandBuffer> commandBuffers;
+
+	VkRenderPass						depthTestRenderPass = VK_NULL_HANDLE;
+	VkPipelineLayout					depthTestPipelineLayout = VK_NULL_HANDLE;
+	VkPipeline							depthTestPipeline = VK_NULL_HANDLE;
+
+	VkImage								depthStencilImage = VK_NULL_HANDLE;
+	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties = {};
+	VkDeviceMemory						depthStencilImageDeviceMemory = VK_NULL_HANDLE;
+	VkImageView							depthStencilImageView = VK_NULL_HANDLE;
+	VkFormat							depthStencilFormat = VK_FORMAT_UNDEFINED;
+	bool								stencilAvailable = false;
+
 
 	//VkSemaphore imageAvailableSemaphore;
 	//VkSemaphore renderFinishedSemaphore;
@@ -143,31 +147,35 @@ private:
 	void pickPhysicalDevice();
 	void createLogicalDevice();
 	
+	void createShaderModule(const VkDevice& device, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
+	uint32_t findPhysicalDeviceMemoryPropertyIndex(
+		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
+		const VkMemoryRequirements& memoryRequirements,
+		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
+	);
+
 	void createSwapChain();
 	void createSwapChainImageViews();
 
-	uint32_t findPhysicalDeviceMemoryPropertyIndex(
-		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
-		const VkMemoryRequirements& memoryRequirements, 
-		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
-	);
-	void createDepthStencilAttachment();
-	
-	void createRenderPass();
-	void createShaderModule(const VkDevice& device, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
-	void createGraphicsPipeline();
+	void createTriangleRenderPass();
+	void createTrianglePipeline();
 	void createFramebuffers();
 
+	
+	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
+		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
+		, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer);
+	void createDepthStencilAttachment();
 	void createDepthStencilRenderPass();
 	void createDepthStencilGraphicsPipeline();
 	//void createDepthStencilFramebuffers();
+
 
 	void createCommandPool();
 	//void createCommandBuffers();
 	//void createSemaphores();
 
 //	void keyboardRegister();
-
 
 
 	void errorCheck(VkResult result, std::string msg);
