@@ -23,8 +23,60 @@ void SenAbstractGLFW::paintVulkan(void)
 {
 	// make sure we indeed get the surface size we want.
 	glfwGetFramebufferSize(widgetGLFW, &widgetWidth, &widgetHeight);
-	// Define the viewport dimensions
-	//glViewport(0, 0, widgetWidth, widgetHeight);
+
+
+
+	// Use of a presentable image must occur only after the image is returned by vkAcquireNextImageKHR, and before it is presented by vkQueuePresentKHR.
+	// This includes transitioning the image layout and rendering commands.
+	uint32_t imageIndex;
+	vkAcquireNextImageKHR(device, swapChain, (std::numeric_limits<uint64_t>::max)(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitDstStageMask = waitStages;
+
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &triangleCommandBufferVector[imageIndex];
+
+	VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = signalSemaphores;
+
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		throw std::runtime_error("failed to submit draw command buffer!");
+	}
+
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = signalSemaphores;
+
+	VkSwapchainKHR swapChains[] = { swapChain };
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+
+	presentInfo.pImageIndices = &imageIndex;
+
+	vkQueuePresentKHR(presentQueue, &presentInfo);
+
+
+}
+
+void SenAbstractGLFW::createSemaphores() {
+	VkSemaphoreCreateInfo semaphoreInfo{};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS) {
+
+		throw std::runtime_error("failed to create semaphores!");
+	}
 }
 
 void SenAbstractGLFW::initGlfwVulkan()
@@ -41,7 +93,6 @@ void SenAbstractGLFW::initGlfwVulkan()
 	glfwMakeContextCurrent(widgetGLFW);
 
 	/*****************************************************************************************************************************/
-
 	// Set the required callback functions
 	//keyboardRegister();
 
@@ -64,22 +115,14 @@ void SenAbstractGLFW::initGlfwVulkan()
 
 	createSwapChain();
 	createSwapChainImageViews();
-	createDepthStencilAttachment();
 
 	createTriangleRenderPass();
 	createTrianglePipeline();
-	createFramebuffers();
-
-	//createDepthStencilRenderPass();
-	//createDepthStencilGraphicsPipeline();
-	//createDepthStencilFramebuffers();
-
+	createSwapchainFramebuffers();
 	createCommandPool();
+	createTriangleCommandBuffers();
 
-	// Clear the colorbuffer
-	//glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-	//glViewport(0, 0, widgetWidth, widgetHeight);
-	//glEnable(GL_DEPTH_TEST);
+	createSemaphores();
 
 	std::cout << "\n Finish  initGlfwVulkan()\n";
 }
@@ -94,14 +137,10 @@ void SenAbstractGLFW::showWidget()
 		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
 
-		// Render
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		//paintVulkan();
-
-		// Swap the screen buffers
-		//glfwSwapBuffers(widgetGLFW);
+		paintVulkan();
 	}
 
+	vkDeviceWaitIdle(device);
 
 	finalize();// all the clean up works
 
@@ -628,7 +667,7 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void SenAbstractGLFW::createFramebuffers() {
+void SenAbstractGLFW::createSwapchainFramebuffers() {
 	swapchainFramebufferVector.resize(swapchainImagesCount);
 
 	for (size_t i = 0; i < swapchainImagesCount; i++) {
@@ -654,68 +693,82 @@ void SenAbstractGLFW::createFramebuffers() {
 
 void SenAbstractGLFW::createCommandPool() {
 
-	//VkCommandPoolCreateInfo poolInfo = {};
-	//poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	//poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
-
-
 	VkCommandPoolCreateInfo commandPoolCreateInfo{};
-	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	commandPoolCreateInfo.queueFamilyIndex = graphicsQueueFamilyIndex;
+	commandPoolCreateInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	commandPoolCreateInfo.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+	commandPoolCreateInfo.queueFamilyIndex	= graphicsQueueFamilyIndex;
 
 	errorCheck(
-		vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool),
-		std::string("Failed to create commandPool !!!")
+		vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &defaultThreadCommandPool),
+		std::string("Failed to create defaultThreadCommandPool !!!")
 	);
 
 }
 
-//void SenAbstractGLFW::createCommandBuffers() {
-//	commandBuffers.resize(swapchainFramebufferVector.size());
-//
-//	VkCommandBufferAllocateInfo allocInfo = {};
-//	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-//	allocInfo.commandPool = commandPool;
-//	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-//	allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
-//
-//	if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
-//		throw std::runtime_error("failed to allocate command buffers!");
-//	}
-//
-//	for (size_t i = 0; i < commandBuffers.size(); i++) {
-//		VkCommandBufferBeginInfo beginInfo = {};
-//		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-//		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-//
-//		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
-//
-//		VkRenderPassBeginInfo renderPassCreateInfo = {};
-//		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-//		renderPassCreateInfo.renderPass = triangleRenderPass;
-//		renderPassCreateInfo.framebuffer = swapchainFramebufferVector[i];
-//		renderPassCreateInfo.renderArea.offset = { 0, 0 };
-//		renderPassCreateInfo.renderArea.extent = swapChainExtent;
-//
-//		VkClearValue clearColor = { 0.0f, 0.0f, 0.0f, 1.0f };
-//		renderPassCreateInfo.clearValueCount = 1;
-//		renderPassCreateInfo.pClearValues = &clearColor;
-//
-//		vkCmdBeginRenderPass(commandBuffers[i], &renderPassCreateInfo, VK_SUBPASS_CONTENTS_INLINE);
-//
-//		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
-//
-//		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
-//
-//		vkCmdEndRenderPass(commandBuffers[i]);
-//
-//		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
-//			throw std::runtime_error("failed to record command buffer!");
-//		}
-//	}
-//}
-//
+void SenAbstractGLFW::createTriangleCommandBuffers() {
+	/****************************************************************************************************************************/
+	/**********           Allocate Swapchain CommandBuffers         *************************************************************/
+	/****************************************************************************************************************************/
+	triangleCommandBufferVector.resize(swapchainImagesCount);
+
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
+	commandBufferAllocateInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.commandPool			= defaultThreadCommandPool;
+	commandBufferAllocateInfo.level					= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufferAllocateInfo.commandBufferCount	= static_cast<uint32_t>(triangleCommandBufferVector.size());
+
+	errorCheck(
+		vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, triangleCommandBufferVector.data()),
+		std::string("Failed to allocate Swapchain commandBuffers !!!")
+	);
+
+	/****************************************************************************************************************************/
+	/**********           Record Triangle Swapchain CommandBuffers        *******************************************************/
+	/****************************************************************************************************************************/
+	for (size_t i = 0; i < triangleCommandBufferVector.size(); i++) {
+		//======================================================================================
+		//======================================================================================
+		VkCommandBufferBeginInfo commandBufferBeginInfo{};
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // In case we may already be scheduling the drawing commands for the next frame while the last frame hass not finished yet.
+		vkBeginCommandBuffer(triangleCommandBufferVector[i], &commandBufferBeginInfo);
+
+		//======================================================================================
+		//======================================================================================
+		VkRenderPassBeginInfo renderPassBeginInfo{};
+		renderPassBeginInfo.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass					= triangleRenderPass;
+		renderPassBeginInfo.framebuffer					= swapchainFramebufferVector[i];
+		renderPassBeginInfo.renderArea.offset			= { 0, 0 };
+		renderPassBeginInfo.renderArea.extent.width		= widgetWidth;
+		renderPassBeginInfo.renderArea.extent.height	= widgetHeight;
+
+		std::vector<VkClearValue> clearValueVector;
+		clearValueVector.push_back(VkClearValue{ 0.2f, 0.3f, 0.3f, 1.0f });
+		renderPassBeginInfo.clearValueCount = clearValueVector.size();
+		renderPassBeginInfo.pClearValues = clearValueVector.data();
+
+		vkCmdBeginRenderPass(triangleCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		//======================================================================================
+		//======================================================================================
+		vkCmdBindPipeline(triangleCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+		vkCmdDraw(
+			triangleCommandBufferVector[i],
+			3, // vertexCount
+			1, // instanceCount
+			0, // firstVertex
+			0  // firstInstance
+		);
+		vkCmdEndRenderPass(triangleCommandBufferVector[i]);
+
+		errorCheck(
+			vkEndCommandBuffer(triangleCommandBufferVector[i]),
+			std::string("Failed to end record of Triangle Swapchain commandBuffers !!!")
+		);
+	}
+}
+
 //void SenAbstractGLFW::createSemaphores() {
 //	VkSemaphoreCreateInfo semaphoreInfo = {};
 //	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -1090,11 +1143,11 @@ void SenAbstractGLFW::createLogicalDevice()
 
 void SenAbstractGLFW::finalize() {
 	/************************************************************************************************************/
-	/*********************           Destroy commandPool         ************************************************/
+	/*********************           Destroy defaultThreadCommandPool         ***********************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != commandPool) {
-		vkDestroyCommandPool(device, commandPool, nullptr);
-		commandPool = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != defaultThreadCommandPool) {
+		vkDestroyCommandPool(device, defaultThreadCommandPool, nullptr);
+		defaultThreadCommandPool = VK_NULL_HANDLE;
 	}
 
 	/************************************************************************************************************/
@@ -1148,7 +1201,17 @@ void SenAbstractGLFW::finalize() {
 		}
 		swapchainFramebufferVector.clear();
 	}
-
+	/************************************************************************************************************/
+	/*********************           Destroy Synchronization Items             **********************************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != imageAvailableSemaphore) {
+		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
+		imageAvailableSemaphore = VK_NULL_HANDLE;
+	}
+	if (VK_NULL_HANDLE != renderFinishedSemaphore) {
+		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
+		renderFinishedSemaphore = VK_NULL_HANDLE;
+	}
 	/************************************************************************************************************/
 	/*********************           Destroy logical device                **************************************/
 	/************************************************************************************************************/

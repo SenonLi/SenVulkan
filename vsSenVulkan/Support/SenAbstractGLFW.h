@@ -81,13 +81,17 @@ protected:
 	std::vector<VkImageView>		swapchainImageViewsVector;
 	std::vector<VkFramebuffer>		swapchainFramebufferVector;
 
+	VkCommandPool						defaultThreadCommandPool;
+
+	std::vector<VkCommandBuffer>		triangleCommandBufferVector;
 	VkRenderPass						triangleRenderPass				= VK_NULL_HANDLE;
 	VkPipelineLayout					trianglePipelineLayout			= VK_NULL_HANDLE;
 	VkPipeline							trianglePipeline				= VK_NULL_HANDLE;
+	
+	
+	VkSemaphore imageAvailableSemaphore, renderFinishedSemaphore;
 
-	VkCommandPool						commandPool;
-	//std::vector<VkCommandBuffer> commandBuffers;
-
+	
 	VkRenderPass						depthTestRenderPass = VK_NULL_HANDLE;
 	VkPipelineLayout					depthTestPipelineLayout = VK_NULL_HANDLE;
 	VkPipeline							depthTestPipeline = VK_NULL_HANDLE;
@@ -159,9 +163,12 @@ private:
 
 	void createTriangleRenderPass();
 	void createTrianglePipeline();
-	void createFramebuffers();
+	void createSwapchainFramebuffers();
+	void createCommandPool();
+	void createTriangleCommandBuffers();
 
-	
+	void createSemaphores();
+
 	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
 		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
 		, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer);
@@ -170,10 +177,6 @@ private:
 	void createDepthStencilGraphicsPipeline();
 	//void createDepthStencilFramebuffers();
 
-
-	void createCommandPool();
-	//void createCommandBuffers();
-	//void createSemaphores();
 
 //	void keyboardRegister();
 

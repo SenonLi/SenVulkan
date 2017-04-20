@@ -83,6 +83,10 @@ in other words, each of the layers means to support some extensions, which means
 		transformation matrix, texture samplers ...
 * 18. You can only use a framebuffer with the render passes that it is compatible with, which roughly means that they use the same number and type of attachments;
 * 19. A render pass  groups dependent operations and contains a number of subpasses, which describe access to attachments (subpasses are subsequent rendering operations);
+* 20. CommandPools are externally synchronized, meaning that a commandPool must not be used concurrently in multiple threads;
+* 21. If the command buffer was already recorded once, then a call to vkBeginCommandBuffer will implicitly reset it;
+* 22. Fences are mainly designed to synchronize your application itself with rendering operation,
+	  semaphores are used to synchronize operations within or across command queues;
 * 
 
 ### V++ / Debug
