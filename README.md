@@ -87,6 +87,8 @@ in other words, each of the layers means to support some extensions, which means
 * 21. If the command buffer was already recorded once, then a call to vkBeginCommandBuffer will implicitly reset it;
 * 22. Fences are mainly designed to synchronize your application itself with rendering operation,
 	  semaphores are used to synchronize operations within or across command queues;
+* 23. Framebuffers and graphics pipelines are created based on a specific render pass object. They must only be used with that render pass object, or one compatible with it.
+* 24. A render pass and a framebuffer define the complete render target state for one or more subpasses as well as the algorithmic dependencies between the subpasses.
 * 
 
 ### V++ / Debug

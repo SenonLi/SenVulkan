@@ -88,9 +88,8 @@ protected:
 	VkPipelineLayout					trianglePipelineLayout			= VK_NULL_HANDLE;
 	VkPipeline							trianglePipeline				= VK_NULL_HANDLE;
 	
-	
-	VkSemaphore imageAvailableSemaphore, renderFinishedSemaphore;
-
+	VkSemaphore swapchainImageAcquiredSemaphore; // wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	VkSemaphore paintReadyToPresentSemaphore;
 	
 	VkRenderPass						depthTestRenderPass = VK_NULL_HANDLE;
 	VkPipelineLayout					depthTestPipelineLayout = VK_NULL_HANDLE;
@@ -102,11 +101,6 @@ protected:
 	VkImageView							depthStencilImageView = VK_NULL_HANDLE;
 	VkFormat							depthStencilFormat = VK_FORMAT_UNDEFINED;
 	bool								stencilAvailable = false;
-
-
-	//VkSemaphore imageAvailableSemaphore;
-	//VkSemaphore renderFinishedSemaphore;
-
 
 	virtual void initGlfwVulkan();
 	virtual void paintVulkan();

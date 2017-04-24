@@ -25,58 +25,76 @@ void SenAbstractGLFW::paintVulkan(void)
 	glfwGetFramebufferSize(widgetGLFW, &widgetWidth, &widgetHeight);
 
 
-
+	/*******************************************************************************************************************************/
+	/*********         Acquire an image from the swap chain                              *******************************************/
+	/*******************************************************************************************************************************/
 	// Use of a presentable image must occur only after the image is returned by vkAcquireNextImageKHR, and before it is presented by vkQueuePresentKHR.
 	// This includes transitioning the image layout and rendering commands.
-	uint32_t imageIndex;
-	vkAcquireNextImageKHR(device, swapChain, (std::numeric_limits<uint64_t>::max)(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	uint32_t swapchainImageIndex;
+	vkAcquireNextImageKHR(device, swapChain,
+		UINT64_MAX,								// timeout for this Image Acquire command, i.e., (std::numeric_limits<uint64_t>::max)(),
+		swapchainImageAcquiredSemaphore,		// semaphore to signal
+		VK_NULL_HANDLE,							// fence to signal
+		&swapchainImageIndex
+	);
 
+	/*******************************************************************************************************************************/
+	/*********       Execute the command buffer with that image as attachment in the framebuffer           *************************/
+	/*******************************************************************************************************************************/
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
-	submitInfo.pWaitDstStageMask = waitStages;
+	std::vector<VkSemaphore> submitInfoWaitSemaphoresVecotr;  
+	submitInfoWaitSemaphoresVecotr.push_back(swapchainImageAcquiredSemaphore);
+	// Commands before this submitInfoWaitDstStageMaskArray stage could be executed before semaphore signaled
+	VkPipelineStageFlags submitInfoWaitDstStageMaskArray[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.waitSemaphoreCount = submitInfoWaitSemaphoresVecotr.size();
+	submitInfo.pWaitSemaphores = submitInfoWaitSemaphoresVecotr.data();
+	submitInfo.pWaitDstStageMask = submitInfoWaitDstStageMaskArray;
 
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &triangleCommandBufferVector[imageIndex];
+	submitInfo.commandBufferCount = 1;	// wait for submitInfoCommandBuffersVecotr to be created
+	submitInfo.pCommandBuffers = &triangleCommandBufferVector[swapchainImageIndex];
 
-	VkSemaphore signalSemaphores[] = { renderFinishedSemaphore };
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
+	std::vector<VkSemaphore> submitInfoSignalSemaphoresVector;  
+	submitInfoSignalSemaphoresVector.push_back(paintReadyToPresentSemaphore);
+	submitInfo.signalSemaphoreCount = submitInfoSignalSemaphoresVector.size();
+	submitInfo.pSignalSemaphores = submitInfoSignalSemaphoresVector.data();
 
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
-		throw std::runtime_error("failed to submit draw command buffer!");
-	}
+	errorCheck(
+		vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
+		std::string("Failed to submit draw command buffer !!!")
+	);
 
-	VkPresentInfoKHR presentInfo = {};
+	/*******************************************************************************************************************************/
+	/*********             Return the image to the swap chain for presentation                **************************************/
+	/*******************************************************************************************************************************/
+	std::vector<VkSemaphore> presentInfoWaitSemaphoresVector;
+	presentInfoWaitSemaphoresVector.push_back(paintReadyToPresentSemaphore);
+	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = presentInfoWaitSemaphoresVector.size();
+	presentInfo.pWaitSemaphores = presentInfoWaitSemaphoresVector.data();
 
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = signalSemaphores;
-
-	VkSwapchainKHR swapChains[] = { swapChain };
+	VkSwapchainKHR swapChainsArray[] = { swapChain };
 	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChains;
-
-	presentInfo.pImageIndices = &imageIndex;
+	presentInfo.pSwapchains = swapChainsArray;
+	presentInfo.pImageIndices = &swapchainImageIndex;
 
 	vkQueuePresentKHR(presentQueue, &presentInfo);
-
-
 }
 
 void SenAbstractGLFW::createSemaphores() {
-	VkSemaphoreCreateInfo semaphoreInfo{};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	VkSemaphoreCreateInfo semaphoreCreateInfo{};
+	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
-		vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS) {
-
-		throw std::runtime_error("failed to create semaphores!");
-	}
+	errorCheck(
+		vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &swapchainImageAcquiredSemaphore),
+		std::string("Failed to create swapchainImageAcquiredSemaphore !!!")
+	);
+	errorCheck(
+		vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &paintReadyToPresentSemaphore),
+		std::string("Failed to create paintReadyToPresentSemaphore !!!")
+	);
 }
 
 void SenAbstractGLFW::initGlfwVulkan()
@@ -769,16 +787,6 @@ void SenAbstractGLFW::createTriangleCommandBuffers() {
 	}
 }
 
-//void SenAbstractGLFW::createSemaphores() {
-//	VkSemaphoreCreateInfo semaphoreInfo = {};
-//	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-//
-//	if (vkCreateSemaphore(device, &semaphoreInfo, nullptr, imageAvailableSemaphore.replace()) != VK_SUCCESS ||
-//		vkCreateSemaphore(device, &semaphoreInfo, nullptr, renderFinishedSemaphore.replace()) != VK_SUCCESS) {
-//
-//		throw std::runtime_error("failed to create semaphores!");
-//	}
-//}
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
@@ -1204,13 +1212,13 @@ void SenAbstractGLFW::finalize() {
 	/************************************************************************************************************/
 	/*********************           Destroy Synchronization Items             **********************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != imageAvailableSemaphore) {
-		vkDestroySemaphore(device, imageAvailableSemaphore, nullptr);
-		imageAvailableSemaphore = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != swapchainImageAcquiredSemaphore) {
+		vkDestroySemaphore(device, swapchainImageAcquiredSemaphore, nullptr);
+		swapchainImageAcquiredSemaphore = VK_NULL_HANDLE;
 	}
-	if (VK_NULL_HANDLE != renderFinishedSemaphore) {
-		vkDestroySemaphore(device, renderFinishedSemaphore, nullptr);
-		renderFinishedSemaphore = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != paintReadyToPresentSemaphore) {
+		vkDestroySemaphore(device, paintReadyToPresentSemaphore, nullptr);
+		paintReadyToPresentSemaphore = VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/*********************           Destroy logical device                **************************************/
