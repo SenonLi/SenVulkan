@@ -53,7 +53,7 @@ void SenAbstractGLFW::paintVulkan(void)
 	submitInfo.pWaitDstStageMask = submitInfoWaitDstStageMaskArray;
 
 	submitInfo.commandBufferCount = 1;	// wait for submitInfoCommandBuffersVecotr to be created
-	submitInfo.pCommandBuffers = &triangleCommandBufferVector[swapchainImageIndex];
+	submitInfo.pCommandBuffers = &swapchainCommandBufferVector[swapchainImageIndex];
 
 	std::vector<VkSemaphore> submitInfoSignalSemaphoresVector;  
 	submitInfoSignalSemaphoresVector.push_back(paintReadyToPresentSemaphore);
@@ -445,17 +445,25 @@ void SenAbstractGLFW::createTriangleRenderPass() {
 	subpassDescriptionArray[0].colorAttachmentCount = colorAttachmentReferenceArray.size();	// Every subpass references one or more attachments
 	subpassDescriptionArray[0].pColorAttachments	= colorAttachmentReferenceArray.data();
 
-	std::vector<VkSubpassDependency> subpassDependencyArray;
-	//VkSubpassDependency subpassDependency{};
-	//subpassDependency.srcSubpass		= VK_SUBPASS_EXTERNAL;
-	//subpassDependency.dstSubpass		= 0;
-	//subpassDependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	//subpassDependency.srcAccessMask		= 0;
-	//subpassDependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	//subpassDependency.dstAccessMask		= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-	//											| VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	//
-	//subpassDependencyArray.push_back(subpassDependency);
+
+	/******* There are two built-in dependencies that take care of the transition at the start of the render pass and at the end of the render pass,
+	/////       but the former does not occur at the right time. 
+	/////       It assumes that the transition occurs at the start of the pipeline, but we haven't acquired the image yet at that point! ****/
+	/******* There are two ways to deal with this problem.
+	/////       We could change the waitStages for the imageAvailableSemaphore to VK_PIPELINE_STAGE_TOP_OF_PIPELINE_BIT
+	/////        to ensure that the render passes don't begin until the image is available, 
+	/////       or we can make the render pass wait for the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage. ****************************/
+	std::vector<VkSubpassDependency> subpassDependencyVector;
+	VkSubpassDependency headSubpassDependency{};
+	headSubpassDependency.srcSubpass		= VK_SUBPASS_EXTERNAL;		// subpassIndex, from external
+	headSubpassDependency.dstSubpass		= 0;						// subpassIndex, to the first subpass, which is also the only one
+	headSubpassDependency.srcStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // specify the operations to wait on and the stages in which these operations occur.
+	headSubpassDependency.dstStageMask		= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	headSubpassDependency.srcAccessMask		= 0;											 // specify the operations to wait on and the stages in which these operations occur.
+	headSubpassDependency.dstAccessMask		= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+												| VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	
+	subpassDependencyVector.push_back(headSubpassDependency);
 
 	/********************************************************************************************************************/
 	/*********************    Create RenderPass for rendering triangle      *********************************************/
@@ -466,8 +474,8 @@ void SenAbstractGLFW::createTriangleRenderPass() {
 	triangleRenderPassCreateInfo.pAttachments		= attachmentDescriptionArray.data();
 	triangleRenderPassCreateInfo.subpassCount		= subpassDescriptionArray.size();
 	triangleRenderPassCreateInfo.pSubpasses			= subpassDescriptionArray.data();
-	triangleRenderPassCreateInfo.dependencyCount	= subpassDependencyArray.size();
-	triangleRenderPassCreateInfo.pDependencies		= subpassDependencyArray.data();
+	triangleRenderPassCreateInfo.dependencyCount	= subpassDependencyVector.size();
+	triangleRenderPassCreateInfo.pDependencies		= subpassDependencyVector.data();
 
 	errorCheck(
 		vkCreateRenderPass(device, &triangleRenderPassCreateInfo, nullptr, &triangleRenderPass),
@@ -727,29 +735,29 @@ void SenAbstractGLFW::createTriangleCommandBuffers() {
 	/****************************************************************************************************************************/
 	/**********           Allocate Swapchain CommandBuffers         *************************************************************/
 	/****************************************************************************************************************************/
-	triangleCommandBufferVector.resize(swapchainImagesCount);
+	swapchainCommandBufferVector.resize(swapchainImagesCount);
 
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
 	commandBufferAllocateInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	commandBufferAllocateInfo.commandPool			= defaultThreadCommandPool;
 	commandBufferAllocateInfo.level					= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	commandBufferAllocateInfo.commandBufferCount	= static_cast<uint32_t>(triangleCommandBufferVector.size());
+	commandBufferAllocateInfo.commandBufferCount	= static_cast<uint32_t>(swapchainCommandBufferVector.size());
 
 	errorCheck(
-		vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, triangleCommandBufferVector.data()),
+		vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, swapchainCommandBufferVector.data()),
 		std::string("Failed to allocate Swapchain commandBuffers !!!")
 	);
 
 	/****************************************************************************************************************************/
 	/**********           Record Triangle Swapchain CommandBuffers        *******************************************************/
 	/****************************************************************************************************************************/
-	for (size_t i = 0; i < triangleCommandBufferVector.size(); i++) {
+	for (size_t i = 0; i < swapchainCommandBufferVector.size(); i++) {
 		//======================================================================================
 		//======================================================================================
 		VkCommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // In case we may already be scheduling the drawing commands for the next frame while the last frame hass not finished yet.
-		vkBeginCommandBuffer(triangleCommandBufferVector[i], &commandBufferBeginInfo);
+		vkBeginCommandBuffer(swapchainCommandBufferVector[i], &commandBufferBeginInfo);
 
 		//======================================================================================
 		//======================================================================================
@@ -766,22 +774,22 @@ void SenAbstractGLFW::createTriangleCommandBuffers() {
 		renderPassBeginInfo.clearValueCount = clearValueVector.size();
 		renderPassBeginInfo.pClearValues = clearValueVector.data();
 
-		vkCmdBeginRenderPass(triangleCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(swapchainCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		//======================================================================================
 		//======================================================================================
-		vkCmdBindPipeline(triangleCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
 		vkCmdDraw(
-			triangleCommandBufferVector[i],
+			swapchainCommandBufferVector[i],
 			3, // vertexCount
 			1, // instanceCount
 			0, // firstVertex
 			0  // firstInstance
 		);
-		vkCmdEndRenderPass(triangleCommandBufferVector[i]);
+		vkCmdEndRenderPass(swapchainCommandBufferVector[i]);
 
 		errorCheck(
-			vkEndCommandBuffer(triangleCommandBufferVector[i]),
+			vkEndCommandBuffer(swapchainCommandBufferVector[i]),
 			std::string("Failed to end record of Triangle Swapchain commandBuffers !!!")
 		);
 	}
@@ -903,11 +911,6 @@ void SenAbstractGLFW::createInstance()
 		vkCreateInstance(&instanceCreateInfo, nullptr, &instance),
 		std::string("Failed to create instance! \t Error:\t")
 	);
-
-	//if (vkCreateInstance(&instanceCreateInfo, nullptr, &instance) != VK_SUCCESS) {
-	//	std::string errString = std::string("Failed to create instance!");
-	//	throw std::runtime_error(errString);
-	//}
 }
 
 void SenAbstractGLFW::initDebugReportCallback()

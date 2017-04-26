@@ -80,16 +80,16 @@ protected:
 	std::vector<VkImage>			swapchainImagesVector;
 	std::vector<VkImageView>		swapchainImageViewsVector;
 	std::vector<VkFramebuffer>		swapchainFramebufferVector;
+	std::vector<VkCommandBuffer>	swapchainCommandBufferVector;
 
 	VkCommandPool						defaultThreadCommandPool;
 
-	std::vector<VkCommandBuffer>		triangleCommandBufferVector;
 	VkRenderPass						triangleRenderPass				= VK_NULL_HANDLE;
 	VkPipelineLayout					trianglePipelineLayout			= VK_NULL_HANDLE;
 	VkPipeline							trianglePipeline				= VK_NULL_HANDLE;
 	
-	VkSemaphore swapchainImageAcquiredSemaphore; // wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	VkSemaphore paintReadyToPresentSemaphore;
+	VkSemaphore swapchainImageAcquiredSemaphore;// wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	VkSemaphore paintReadyToPresentSemaphore;	// wait for GPU, from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	
 	VkRenderPass						depthTestRenderPass = VK_NULL_HANDLE;
 	VkPipelineLayout					depthTestPipelineLayout = VK_NULL_HANDLE;

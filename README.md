@@ -89,6 +89,10 @@ in other words, each of the layers means to support some extensions, which means
 	  semaphores are used to synchronize operations within or across command queues;
 * 23. Framebuffers and graphics pipelines are created based on a specific render pass object. They must only be used with that render pass object, or one compatible with it.
 * 24. A render pass and a framebuffer define the complete render target state for one or more subpasses as well as the algorithmic dependencies between the subpasses.
+* 25. Image subresources used as attachments must not be used via any non-attachment usage for the duration of a render pass instance;
+		This restriction means that the render pass has full knowledge of all uses of all of the attachments,
+		so that the implementation is able to make correct decisions about 
+		when and how to perform layout transitions,	when to overlap execution of subpasses, etc;
 * 
 
 ### V++ / Debug
