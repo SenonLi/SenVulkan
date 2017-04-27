@@ -3,20 +3,20 @@
 #ifndef __SenAbstractGLFW__
 #define __SenAbstractGLFW__
 
-#if defined( _WIN32 )  // on Windows OS
+#if defined( _WIN32 )		// on Windows OS
 
-#include <Windows.h> // for OutputDebugString() function
+#include <Windows.h>		// for OutputDebugString() function
 //#define VK_USE_PLATFORM_WIN32_KHR 1 // For Vulkan Surface if not using GLFW
 
-#elif defined( __linux ) // on Linux ( Via XCB library )
+#elif defined( __linux )	// on Linux ( Via XCB library )
 // xcb seems like a popular and well supported option on X11, until wayland and mir take over
 #define VK_USE_PLATFORM_XCB_KHR 1
 #include <xcb/xcb.h>
 #endif
 
 
-#include <stdexcept> // for propagating errors 
-#include <stdlib.h> // for const error catch
+#include <stdexcept>// for propagating errors 
+#include <stdlib.h>	// for const error catch
 #include <stdio.h>  
 #include <iostream> // for cout, cin
 #include <fstream>	// for readFileBinaryStream function
@@ -32,7 +32,9 @@
 #include <GLFW/glfw3.h>
 
 #include <vulkan/vulkan.h>
-#include <algorithm> // std::max, std::min
+#include <algorithm>		// std::max, std::min
+
+#include <glm/glm.hpp>
 
 //#include "LoadShaders.h"
 
@@ -45,6 +47,7 @@ public:
 	void showWidget();
 
 	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags, VkDebugReportObjectTypeEXT, uint64_t, size_t, int32_t, const char*, const char*, void *);
+	static void onWidgetResized(GLFWwindow* widget, int width, int height);
 	static std::vector<char> readFileBinaryStream(const std::string& filename);
 
 //	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 
@@ -56,24 +59,25 @@ protected:
 	int widgetWidth, widgetHeight;
 	char* strWindowName;
 
-	VkInstance						instance = VK_NULL_HANDLE;
+	VkInstance						instance					= VK_NULL_HANDLE;
 
 	/*******************************************************************************************************************************/
 	/********* VkSurfaceKHR object that represents an abstract type of surface to present rendered images to. **********************/
 	/********* The surface in our program will be backed by the window that we've already opened with GLFW.   **********************/
 	VkSurfaceKHR					surface						= VK_NULL_HANDLE; // VK_KHR_surface Instance Extension
 	std::vector<VkSurfaceFormatKHR> surfaceFormatVector;
-	VkSurfaceFormatKHR				surfaceFormat				= {};
-	VkSurfaceCapabilitiesKHR		surfaceCapabilities			= {};
+	VkSurfaceFormatKHR				surfaceFormat{};
+	VkSurfaceCapabilitiesKHR		surfaceCapabilities{};
 	
 	VkPhysicalDevice				physicalDevice				= VK_NULL_HANDLE;
-	VkPhysicalDeviceProperties		physicalDeviceProperties	= {};	// GPU name, type (discrete)
-	int32_t							graphicsQueueFamilyIndex	= -1;  // Index of Graphics QueueFamily of GPU that we will choose to 
-	int32_t							presentQueueFamilyIndex		= -1;  // The Graphics (Drawing) QueueFamily may not support presentation (WSI)
+	VkPhysicalDeviceProperties		physicalDeviceProperties{};			// GPU name, type (discrete)
+	int32_t							graphicsQueueFamilyIndex	= -1;	// Index of Graphics QueueFamily of GPU that we will choose to 
+	int32_t							presentQueueFamilyIndex		= -1;	// The Graphics (Drawing) QueueFamily may not support presentation (WSI)
 
 	VkDevice						device						= VK_NULL_HANDLE;
-	VkQueue							graphicsQueue				= VK_NULL_HANDLE; // Handle to the graphics queue
-	VkQueue							presentQueue				= VK_NULL_HANDLE; // Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
+	VkQueue							graphicsQueue				= VK_NULL_HANDLE;			// Handle to the graphics queue
+	VkQueue							presentQueue				= VK_NULL_HANDLE;			// Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
+	VkPresentModeKHR				presentMode					= VK_PRESENT_MODE_FIFO_KHR; // VK_PRESENT_MODE_FIFO_KHR is always available.
 
 	VkSwapchainKHR					swapChain					= VK_NULL_HANDLE;
 	uint32_t						swapchainImagesCount		= 2;
@@ -87,23 +91,27 @@ protected:
 	VkRenderPass						triangleRenderPass				= VK_NULL_HANDLE;
 	VkPipelineLayout					trianglePipelineLayout			= VK_NULL_HANDLE;
 	VkPipeline							trianglePipeline				= VK_NULL_HANDLE;
-	
+	VkBuffer							vertexAttributesBuffer			= VK_NULL_HANDLE;
+	VkDeviceMemory						vertexAttributesBufferMemory	= VK_NULL_HANDLE;
+
+
 	VkSemaphore swapchainImageAcquiredSemaphore;// wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	VkSemaphore paintReadyToPresentSemaphore;	// wait for GPU, from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	
-	VkRenderPass						depthTestRenderPass = VK_NULL_HANDLE;
-	VkPipelineLayout					depthTestPipelineLayout = VK_NULL_HANDLE;
-	VkPipeline							depthTestPipeline = VK_NULL_HANDLE;
+	VkRenderPass						depthTestRenderPass				= VK_NULL_HANDLE;
+	VkPipelineLayout					depthTestPipelineLayout			= VK_NULL_HANDLE;
+	VkPipeline							depthTestPipeline				= VK_NULL_HANDLE;
 
-	VkImage								depthStencilImage = VK_NULL_HANDLE;
-	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties = {};
-	VkDeviceMemory						depthStencilImageDeviceMemory = VK_NULL_HANDLE;
-	VkImageView							depthStencilImageView = VK_NULL_HANDLE;
-	VkFormat							depthStencilFormat = VK_FORMAT_UNDEFINED;
-	bool								stencilAvailable = false;
+	VkImage								depthStencilImage				= VK_NULL_HANDLE;
+	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties{};
+	VkDeviceMemory						depthStencilImageDeviceMemory	= VK_NULL_HANDLE;
+	VkImageView							depthStencilImageView			= VK_NULL_HANDLE;
+	VkFormat							depthStencilFormat				= VK_FORMAT_UNDEFINED;
+	bool								stencilAvailable				= false;
 
 	virtual void initGlfwVulkan();
 	virtual void paintVulkan();
+	virtual void reCreateTriangleSwapchain(); // for resize window
 	virtual void finalize();
 
 //	virtual void keyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode);
@@ -121,10 +129,10 @@ protected:
 private:
 	std::vector<const char*> debugInstanceLayersVector;
 	std::vector<const char*> debugInstanceExtensionsVector;
-	std::vector<const char*> debugDeviceLayersVector; 				// depricated, but still recommended
+	std::vector<const char*> debugDeviceLayersVector; 		// depricated, but still recommended
 	std::vector<const char*> debugDeviceExtensionsVector;
 
-	VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo = {}; // important for creations of both instance and debugReportCallback
+	VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo{}; // important for creations of both instance and debugReportCallback
 	VkDebugReportCallbackEXT	debugReportCallback = VK_NULL_HANDLE;
 	PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = VK_NULL_HANDLE;
 	PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = VK_NULL_HANDLE;
@@ -145,22 +153,23 @@ private:
 	void pickPhysicalDevice();
 	void createLogicalDevice();
 	
-	void createShaderModule(const VkDevice& device, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
+	void createShaderModule(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
 	uint32_t findPhysicalDeviceMemoryPropertyIndex(
 		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 		const VkMemoryRequirements& memoryRequirements,
 		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
 	);
 
-	void createSwapChain();
-	void createSwapChainImageViews();
+	void collectSwapchainFeatures();
+	void createSwapchain();
+	void createSwapchainImageViews();
 
 	void createTriangleRenderPass();
+	
 	void createTrianglePipeline();
 	void createSwapchainFramebuffers();
 	void createCommandPool();
 	void createTriangleCommandBuffers();
-
 	void createSemaphores();
 
 	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags

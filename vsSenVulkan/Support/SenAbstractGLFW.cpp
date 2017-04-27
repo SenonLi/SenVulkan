@@ -21,22 +21,24 @@ SenAbstractGLFW::~SenAbstractGLFW()
 
 void SenAbstractGLFW::paintVulkan(void)
 {
-	// make sure we indeed get the surface size we want.
-	glfwGetFramebufferSize(widgetGLFW, &widgetWidth, &widgetHeight);
-
-
 	/*******************************************************************************************************************************/
 	/*********         Acquire an image from the swap chain                              *******************************************/
 	/*******************************************************************************************************************************/
 	// Use of a presentable image must occur only after the image is returned by vkAcquireNextImageKHR, and before it is presented by vkQueuePresentKHR.
 	// This includes transitioning the image layout and rendering commands.
 	uint32_t swapchainImageIndex;
-	vkAcquireNextImageKHR(device, swapChain,
-		UINT64_MAX,								// timeout for this Image Acquire command, i.e., (std::numeric_limits<uint64_t>::max)(),
-		swapchainImageAcquiredSemaphore,		// semaphore to signal
-		VK_NULL_HANDLE,							// fence to signal
-		&swapchainImageIndex
-	);
+	VkResult result = vkAcquireNextImageKHR(device, swapChain,
+						UINT64_MAX,							// timeout for this Image Acquire command, i.e., (std::numeric_limits<uint64_t>::max)(),
+						swapchainImageAcquiredSemaphore,	// semaphore to signal
+						VK_NULL_HANDLE,						// fence to signal
+						&swapchainImageIndex
+					);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		reCreateTriangleSwapchain();
+		return;
+	}else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		throw std::runtime_error("Failed to acquire swap chain image !!!!");
+	}
 
 	/*******************************************************************************************************************************/
 	/*********       Execute the command buffer with that image as attachment in the framebuffer           *************************/
@@ -48,17 +50,17 @@ void SenAbstractGLFW::paintVulkan(void)
 	submitInfoWaitSemaphoresVecotr.push_back(swapchainImageAcquiredSemaphore);
 	// Commands before this submitInfoWaitDstStageMaskArray stage could be executed before semaphore signaled
 	VkPipelineStageFlags submitInfoWaitDstStageMaskArray[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount = submitInfoWaitSemaphoresVecotr.size();
-	submitInfo.pWaitSemaphores = submitInfoWaitSemaphoresVecotr.data();
-	submitInfo.pWaitDstStageMask = submitInfoWaitDstStageMaskArray;
+	submitInfo.waitSemaphoreCount	= (uint32_t)submitInfoWaitSemaphoresVecotr.size();
+	submitInfo.pWaitSemaphores		= submitInfoWaitSemaphoresVecotr.data();
+	submitInfo.pWaitDstStageMask	= submitInfoWaitDstStageMaskArray;
 
-	submitInfo.commandBufferCount = 1;	// wait for submitInfoCommandBuffersVecotr to be created
-	submitInfo.pCommandBuffers = &swapchainCommandBufferVector[swapchainImageIndex];
+	submitInfo.commandBufferCount	= 1;	// wait for submitInfoCommandBuffersVecotr to be created
+	submitInfo.pCommandBuffers		= &swapchainCommandBufferVector[swapchainImageIndex];
 
 	std::vector<VkSemaphore> submitInfoSignalSemaphoresVector;  
 	submitInfoSignalSemaphoresVector.push_back(paintReadyToPresentSemaphore);
-	submitInfo.signalSemaphoreCount = submitInfoSignalSemaphoresVector.size();
-	submitInfo.pSignalSemaphores = submitInfoSignalSemaphoresVector.data();
+	submitInfo.signalSemaphoreCount	= (uint32_t)submitInfoSignalSemaphoresVector.size();
+	submitInfo.pSignalSemaphores	= submitInfoSignalSemaphoresVector.data();
 
 	errorCheck(
 		vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
@@ -71,16 +73,21 @@ void SenAbstractGLFW::paintVulkan(void)
 	std::vector<VkSemaphore> presentInfoWaitSemaphoresVector;
 	presentInfoWaitSemaphoresVector.push_back(paintReadyToPresentSemaphore);
 	VkPresentInfoKHR presentInfo{};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.waitSemaphoreCount = presentInfoWaitSemaphoresVector.size();
-	presentInfo.pWaitSemaphores = presentInfoWaitSemaphoresVector.data();
+	presentInfo.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount	= (uint32_t)presentInfoWaitSemaphoresVector.size();
+	presentInfo.pWaitSemaphores		= presentInfoWaitSemaphoresVector.data();
 
 	VkSwapchainKHR swapChainsArray[] = { swapChain };
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChainsArray;
-	presentInfo.pImageIndices = &swapchainImageIndex;
+	presentInfo.swapchainCount	= 1;
+	presentInfo.pSwapchains		= swapChainsArray;
+	presentInfo.pImageIndices	= &swapchainImageIndex;
 
-	vkQueuePresentKHR(presentQueue, &presentInfo);
+	result = vkQueuePresentKHR(presentQueue, &presentInfo);
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		reCreateTriangleSwapchain();
+	}else if (result != VK_SUCCESS) {
+		throw std::runtime_error("Failed to present swap chain image !!!");
+	}
 }
 
 void SenAbstractGLFW::createSemaphores() {
@@ -97,6 +104,27 @@ void SenAbstractGLFW::createSemaphores() {
 	);
 }
 
+void SenAbstractGLFW::reCreateTriangleSwapchain()
+{
+	// Call vkDeviceWaitIdle() here, because we shouldn't touch resources that may still be in use. 
+	vkDeviceWaitIdle(device);
+
+	// Have to use this 3 commands to get currentExtent
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
+	if (surfaceCapabilities.currentExtent.width < UINT32_MAX) {
+		widgetWidth = surfaceCapabilities.currentExtent.width;
+		widgetHeight = surfaceCapabilities.currentExtent.height;
+	}else {
+		glfwGetWindowSize(widgetGLFW, &widgetWidth, &widgetHeight);
+	}
+
+	createSwapchain();
+	createSwapchainImageViews();
+	createTrianglePipeline();
+	createSwapchainFramebuffers();
+	createTriangleCommandBuffers();
+}
+
 void SenAbstractGLFW::initGlfwVulkan()
 {
 	// Init GLFW
@@ -109,6 +137,13 @@ void SenAbstractGLFW::initGlfwVulkan()
 	widgetGLFW = glfwCreateWindow(widgetWidth, widgetHeight, strWindowName, nullptr, nullptr);
 	glfwSetWindowPos(widgetGLFW, 400, 240);
 	glfwMakeContextCurrent(widgetGLFW);
+
+	// GLFW allows us to store an arbitrary pointer in the window object with glfwSetWindowUserPointer,
+	//   so we can specify a static class member and get the original class instance back with glfwGetWindowUserPointer;
+	// We can then proceed to call recreateSwapChain, but only if the size of the window is non - zero;
+	//   This case occurs when the window is minimized and it will cause swap chain creation to fail.
+	glfwSetWindowUserPointer(widgetGLFW, this);
+	glfwSetWindowSizeCallback(widgetGLFW, SenAbstractGLFW::onWidgetResized);
 
 	/*****************************************************************************************************************************/
 	// Set the required callback functions
@@ -131,8 +166,9 @@ void SenAbstractGLFW::initGlfwVulkan()
 	//showPhysicalDeviceSupportedLayersAndExtensions(physicalDevice);// only show physicalDevice after pickPhysicalDevice()
 	createLogicalDevice();
 
-	createSwapChain();
-	createSwapChainImageViews();
+	collectSwapchainFeatures();
+	createSwapchain();
+	createSwapchainImageViews();
 
 	createTriangleRenderPass();
 	createTrianglePipeline();
@@ -158,9 +194,11 @@ void SenAbstractGLFW::showWidget()
 		paintVulkan();
 	}
 
+	// All of the operations in drawFrame are asynchronous, which means that when we exit the loop in mainLoop,
+	//  drawing and presentation operations may still be going on, and cleaning up resources while that is happening is a bad idea;
 	vkDeviceWaitIdle(device);
-
-	finalize();// all the clean up works
+	// must finalize all objects after corresponding deviceWaitIdle
+	finalize();	
 
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwDestroyWindow(widgetGLFW);
@@ -168,7 +206,8 @@ void SenAbstractGLFW::showWidget()
 }
 
 
-void SenAbstractGLFW::createSwapChain() {
+void SenAbstractGLFW::collectSwapchainFeatures()
+{
 	/****************************************************************************************************************************/
 	/********** Getting Surface Capabilities first to support SwapChain. ********************************************************/
 	/*********** Could not do this right after surface creation, because GPU had not been seleted at that time ******************/
@@ -179,7 +218,8 @@ void SenAbstractGLFW::createSwapChain() {
 	if (surfaceCapabilities.currentExtent.width < UINT32_MAX) {
 		widgetWidth = surfaceCapabilities.currentExtent.width;
 		widgetHeight = surfaceCapabilities.currentExtent.height;
-	}else {
+	}
+	else {
 		widgetWidth = (std::max)(surfaceCapabilities.minImageExtent.width, (std::min)(surfaceCapabilities.maxImageExtent.width, static_cast<uint32_t>(widgetWidth)));
 		widgetHeight = (std::max)(surfaceCapabilities.minImageExtent.height, (std::min)(surfaceCapabilities.maxImageExtent.height, static_cast<uint32_t>(widgetHeight)));
 	}
@@ -216,7 +256,6 @@ void SenAbstractGLFW::createSwapChain() {
 	/****************************************************************************************************************************/
 	/**********                Reserve presentMode                ***************************************************************/
 	/****************************************************************************************************************************/
-	VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR; // VK_PRESENT_MODE_FIFO_KHR is always available.
 	uint32_t presentModeCount = 0;
 	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
 	std::vector<VkPresentModeKHR> presentModeVector(presentModeCount);
@@ -229,44 +268,59 @@ void SenAbstractGLFW::createSwapChain() {
 			break;
 		}
 	}
+}
 
-	/****************************************************************************************************************************/
-	/**********         Populate swapchainCreateInfo              ***************************************************************/
-	/****************************************************************************************************************************/
+void SenAbstractGLFW::createSwapchain() {
 	VkSwapchainCreateInfoKHR swapchainCreateInfo{};
-	swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapchainCreateInfo.surface = surface;
-	swapchainCreateInfo.minImageCount = swapchainImagesCount; // This is only to set the min value, instead of the actual imageCount after swapchain creation
-	swapchainCreateInfo.imageFormat = surfaceFormat.format;
-	swapchainCreateInfo.imageColorSpace = surfaceFormat.colorSpace;
-	swapchainCreateInfo.imageExtent.width = widgetWidth;
-	swapchainCreateInfo.imageExtent.height = widgetHeight;
-	swapchainCreateInfo.imageArrayLayers = 1;
-	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapchainCreateInfo.sType				= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainCreateInfo.surface				= surface;
+	swapchainCreateInfo.minImageCount		= swapchainImagesCount; // This is only to set the min value, instead of the actual imageCount after swapchain creation
+	swapchainCreateInfo.imageFormat			= surfaceFormat.format;
+	swapchainCreateInfo.imageColorSpace		= surfaceFormat.colorSpace;
+	swapchainCreateInfo.imageExtent.width	= widgetWidth;
+	swapchainCreateInfo.imageExtent.height	= widgetHeight;
+	swapchainCreateInfo.imageArrayLayers	= 1;
+	swapchainCreateInfo.imageUsage			= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
 	// Attention, figure out if the swapchain image will be shared by multiple Queues of different QueueFamilies !
 	uint32_t queueFamilyIndicesArray[] = { static_cast<uint32_t>(graphicsQueueFamilyIndex), static_cast<uint32_t>(presentQueueFamilyIndex) };
 	if (graphicsQueueFamilyIndex != presentQueueFamilyIndex) {
-		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT; // shared by different QueueFamily with different QueueFamilyIndex 
-		swapchainCreateInfo.queueFamilyIndexCount = 2;
-		swapchainCreateInfo.pQueueFamilyIndices = queueFamilyIndicesArray;
-	}
-	else {
-		swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;		// share between QueueFamilies or not
-		swapchainCreateInfo.queueFamilyIndexCount = 0;// no QueueFamily share
-		swapchainCreateInfo.pQueueFamilyIndices = nullptr;
+		swapchainCreateInfo.imageSharingMode		= VK_SHARING_MODE_CONCURRENT; // shared by different QueueFamily with different QueueFamilyIndex 
+		swapchainCreateInfo.queueFamilyIndexCount	= 2;
+		swapchainCreateInfo.pQueueFamilyIndices		= queueFamilyIndicesArray;
+	}else {
+		swapchainCreateInfo.imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE;		// share between QueueFamilies or not
+		swapchainCreateInfo.queueFamilyIndexCount	= 0;// no QueueFamily share
+		swapchainCreateInfo.pQueueFamilyIndices		= nullptr;
 	}
 
-	swapchainCreateInfo.preTransform = surfaceCapabilities.currentTransform; // Rotate of Mirror before presentation (VkSurfaceTransformFlagBitsKHR)
-	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;  // 
-	swapchainCreateInfo.presentMode = presentMode;
-	swapchainCreateInfo.clipped = VK_TRUE; // Typically always set this true, such that Vulkan never render the invisible (out of visible range) image 
-	swapchainCreateInfo.oldSwapchain = VK_NULL_HANDLE; // resize window
+	swapchainCreateInfo.preTransform	= surfaceCapabilities.currentTransform; // Rotate of Mirror before presentation (VkSurfaceTransformFlagBitsKHR)
+	swapchainCreateInfo.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;  // 
+	swapchainCreateInfo.presentMode		= presentMode;
+	swapchainCreateInfo.clipped			= VK_TRUE;	// Typically always set this true, such that Vulkan never render the invisible (out of visible range) image 
 
+	swapchainCreateInfo.oldSwapchain	= swapChain;// resize window
+	VkSwapchainKHR newSwapChain;
 	errorCheck(
-		vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &swapChain),
+		vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &newSwapChain),
 		std::string("Fail to Create SwapChain !")
 	);
+
+	/************************************************************************************************/
+	/****************   Clean the old swapChain first, if exist, then assign new   ******************/
+	/************************************************************************************************/
+	if (VK_NULL_HANDLE != swapChain) {
+		// swapChainImages will be handled by the destroy of swapchain
+		// But swapchainImageViews need to be dstroyed first, before the destroy of swapchain.
+		for (auto swapchainImageView : swapchainImageViewsVector) {
+			vkDestroyImageView(device, swapchainImageView, nullptr);
+		}
+		swapchainImageViewsVector.clear();
+
+		vkDestroySwapchainKHR(device, swapChain, nullptr);		swapChain = VK_NULL_HANDLE;
+		swapchainImagesVector.clear();
+	}
+	swapChain = newSwapChain;
 
 	// Get actual amount/count of swapchain images
 	vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, nullptr);
@@ -280,23 +334,23 @@ void SenAbstractGLFW::createSwapChain() {
 	);
 }
 
-void SenAbstractGLFW::createSwapChainImageViews() {
+void SenAbstractGLFW::createSwapchainImageViews() {
 
 	for (uint32_t i = 0; i < swapchainImagesCount; ++i) {
 		VkImageViewCreateInfo swapchainImageViewCreateInfo{};
-		swapchainImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		swapchainImageViewCreateInfo.image = swapchainImagesVector[i];
-		swapchainImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // handling 2D image
-		swapchainImageViewCreateInfo.format = surfaceFormat.format;
-		swapchainImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-		swapchainImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-		swapchainImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-		swapchainImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-		swapchainImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; // color/depth/stencil/metadata
-		swapchainImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-		swapchainImageViewCreateInfo.subresourceRange.levelCount = 1; // amount of mipmaps
-		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1; // if larger than 1, .viewType needs to be array
+		swapchainImageViewCreateInfo.sType			= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		swapchainImageViewCreateInfo.image			= swapchainImagesVector[i];
+		swapchainImageViewCreateInfo.viewType		= VK_IMAGE_VIEW_TYPE_2D; // handling 2D image
+		swapchainImageViewCreateInfo.format			= surfaceFormat.format;
+		swapchainImageViewCreateInfo.components.r	= VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.g	= VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.b	= VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.components.a	= VK_COMPONENT_SWIZZLE_IDENTITY;
+		swapchainImageViewCreateInfo.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT; // color/depth/stencil/metadata
+		swapchainImageViewCreateInfo.subresourceRange.baseMipLevel		= 0;
+		swapchainImageViewCreateInfo.subresourceRange.levelCount		= 1; // amount of mipmaps
+		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer	= 0;
+		swapchainImageViewCreateInfo.subresourceRange.layerCount		= 1; // if larger than 1, .viewType needs to be array
 
 		errorCheck(
 			vkCreateImageView(device, &swapchainImageViewCreateInfo, nullptr, &swapchainImageViewsVector[i]),
@@ -382,19 +436,19 @@ void SenAbstractGLFW::createDepthStencilAttachment()
 	/******************************************************************************************************************************************************/
 	/******************************  Create depthStencil Image View ***************************************************************************************/
 	VkImageViewCreateInfo depthStencilImageViewCreateInfo{};
-	depthStencilImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	depthStencilImageViewCreateInfo.image = depthStencilImage;
-	depthStencilImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	depthStencilImageViewCreateInfo.format = depthStencilFormat;
+	depthStencilImageViewCreateInfo.sType		= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	depthStencilImageViewCreateInfo.image		= depthStencilImage;
+	depthStencilImageViewCreateInfo.viewType	= VK_IMAGE_VIEW_TYPE_2D;
+	depthStencilImageViewCreateInfo.format		= depthStencilFormat;
 	depthStencilImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 	depthStencilImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 	depthStencilImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
 	depthStencilImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
 	depthStencilImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | (stencilAvailable ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-	depthStencilImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
-	depthStencilImageViewCreateInfo.subresourceRange.levelCount = 1;
+	depthStencilImageViewCreateInfo.subresourceRange.baseMipLevel	= 0;
+	depthStencilImageViewCreateInfo.subresourceRange.levelCount		= 1;
 	depthStencilImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-	depthStencilImageViewCreateInfo.subresourceRange.layerCount = 1;
+	depthStencilImageViewCreateInfo.subresourceRange.layerCount		= 1;
 
 	vkCreateImageView(device, &depthStencilImageViewCreateInfo, nullptr, &depthStencilImageView);
 
@@ -434,7 +488,7 @@ void SenAbstractGLFW::createTriangleRenderPass() {
 	attachmentDescriptionArray[0].finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // auto transition after renderPass
 
 	/********************************************************************************************************************/
-	/********    Setting Subpasses with Dependencies: One subpass is enough to describe colorAttachment      ************/
+	/********    Setting Subpasses with Dependencies: One subpass is enough to paint the triangle     *******************/
 	/********************************************************************************************************************/
 	std::array<VkAttachmentReference, 1> colorAttachmentReferenceArray{};
 	colorAttachmentReferenceArray[0].attachment		= 0; // The colorAttachment index is 0
@@ -442,7 +496,7 @@ void SenAbstractGLFW::createTriangleRenderPass() {
 
 	std::array<VkSubpassDescription, 1> subpassDescriptionArray{};
 	subpassDescriptionArray[0].pipelineBindPoint	= VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpassDescriptionArray[0].colorAttachmentCount = colorAttachmentReferenceArray.size();	// Every subpass references one or more attachments
+	subpassDescriptionArray[0].colorAttachmentCount = (uint32_t)colorAttachmentReferenceArray.size();	// Every subpass references one or more attachments
 	subpassDescriptionArray[0].pColorAttachments	= colorAttachmentReferenceArray.data();
 
 
@@ -470,11 +524,11 @@ void SenAbstractGLFW::createTriangleRenderPass() {
 	/********************************************************************************************************************/
 	VkRenderPassCreateInfo triangleRenderPassCreateInfo{};
 	triangleRenderPassCreateInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	triangleRenderPassCreateInfo.attachmentCount	= attachmentDescriptionArray.size();
+	triangleRenderPassCreateInfo.attachmentCount	= (uint32_t)attachmentDescriptionArray.size();
 	triangleRenderPassCreateInfo.pAttachments		= attachmentDescriptionArray.data();
-	triangleRenderPassCreateInfo.subpassCount		= subpassDescriptionArray.size();
+	triangleRenderPassCreateInfo.subpassCount		= (uint32_t)subpassDescriptionArray.size();
 	triangleRenderPassCreateInfo.pSubpasses			= subpassDescriptionArray.data();
-	triangleRenderPassCreateInfo.dependencyCount	= subpassDependencyVector.size();
+	triangleRenderPassCreateInfo.dependencyCount	= (uint32_t)subpassDependencyVector.size();
 	triangleRenderPassCreateInfo.pDependencies		= subpassDependencyVector.data();
 
 	errorCheck(
@@ -514,16 +568,16 @@ void SenAbstractGLFW::createDepthStencilRenderPass()
 
 	std::array<VkSubpassDescription, 1> subpassDescriptionArray{};
 	subpassDescriptionArray[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpassDescriptionArray[0].colorAttachmentCount = colorAttachmentReferenceArray.size();
+	subpassDescriptionArray[0].colorAttachmentCount = (uint32_t)colorAttachmentReferenceArray.size();
 	subpassDescriptionArray[0].pColorAttachments = colorAttachmentReferenceArray.data();		// layout(location=0) out vec4 FinalColor;
 	subpassDescriptionArray[0].pDepthStencilAttachment = &depthStencilAttachmentReference;
 
 
 	VkRenderPassCreateInfo renderPassCreateInfo{};
 	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassCreateInfo.attachmentCount = attachmentDescriptionsArray.size();
+	renderPassCreateInfo.attachmentCount = (uint32_t)attachmentDescriptionsArray.size();
 	renderPassCreateInfo.pAttachments = attachmentDescriptionsArray.data();
-	renderPassCreateInfo.subpassCount = subpassDescriptionArray.size();
+	renderPassCreateInfo.subpassCount = (uint32_t)subpassDescriptionArray.size();
 	renderPassCreateInfo.pSubpasses = subpassDescriptionArray.data();
 
 	errorCheck(
@@ -536,20 +590,28 @@ void SenAbstractGLFW::createDepthStencilGraphicsPipeline()
 {
 }
 
-void SenAbstractGLFW::createShaderModule(const VkDevice& device, const std::vector<char>& SPIRV_Vector, VkShaderModule & targetShaderModule)
+void SenAbstractGLFW::createShaderModule(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule & targetShaderModule)
 {
 	VkShaderModuleCreateInfo shaderModuleCreateInfo{};
-	shaderModuleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shaderModuleCreateInfo.sType	= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	shaderModuleCreateInfo.codeSize = SPIRV_Vector.size();
-	shaderModuleCreateInfo.pCode = (uint32_t*)SPIRV_Vector.data();
+	shaderModuleCreateInfo.pCode	= (uint32_t*)SPIRV_Vector.data();
 
 	errorCheck(
-		vkCreateShaderModule(device, &shaderModuleCreateInfo, nullptr, &targetShaderModule),
+		vkCreateShaderModule(logicalDevice, &shaderModuleCreateInfo, nullptr, &targetShaderModule),
 		std::string("Failed to create the shader module !!")
 	);
 }
 
 void SenAbstractGLFW::createTrianglePipeline() {
+	if (VK_NULL_HANDLE != trianglePipeline) {
+		vkDestroyPipeline(device, trianglePipeline, nullptr);
+		vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
+
+		trianglePipeline = VK_NULL_HANDLE;
+		trianglePipelineLayout = VK_NULL_HANDLE;
+	}
+
 	/****************************************************************************************************************************/
 	/**********                Reserve pipeline ShaderStage CreateInfos Array           *****************************************/
 	/****************************************************************************************************************************/
@@ -576,12 +638,38 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	/****************************************************************************************************************************/
 	/**********                Reserve pipeline Fixed-Function Stages CreateInfos           *************************************/
 	/****************************************************************************************************************************/
+	VkVertexInputBindingDescription vertexInputBindingDescription{};
+	vertexInputBindingDescription.binding = 0;
+	vertexInputBindingDescription.stride = 3 * sizeof(float);
+	vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	std::vector<VkVertexInputBindingDescription> vertexInputBindingDescriptionVector;
+	vertexInputBindingDescriptionVector.push_back(vertexInputBindingDescription);
+
+
+	VkVertexInputAttributeDescription positionVertexInputAttributeDescription;
+	positionVertexInputAttributeDescription.binding		= 0;
+	positionVertexInputAttributeDescription.location	= 0;
+	positionVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
+	positionVertexInputAttributeDescription.offset		= 0;
+	VkVertexInputAttributeDescription colorVertexInputAttributeDescription;
+	colorVertexInputAttributeDescription.binding	= 0;
+	colorVertexInputAttributeDescription.location	= 1;
+	colorVertexInputAttributeDescription.format		= VK_FORMAT_R32G32B32_SFLOAT;
+	colorVertexInputAttributeDescription.offset		= 2 * sizeof(float);
+
+	std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescriptionVector;
+	vertexInputAttributeDescriptionVector.push_back(positionVertexInputAttributeDescription);
+	vertexInputAttributeDescriptionVector.push_back(colorVertexInputAttributeDescription);
+
 	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
 	pipelineVertexInputStateCreateInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	pipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount	= 0; // spacing between data && whether the data is per-vertex or per-instance (geometry instancing)
-	pipelineVertexInputStateCreateInfo.vertexAttributeDescriptionCount	= 0;
+	pipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount	= vertexInputBindingDescriptionVector.size();// spacing between data && whether the data is per-vertex or per-instance (geometry instancing)
+	pipelineVertexInputStateCreateInfo.pVertexBindingDescriptions		= vertexInputBindingDescriptionVector.data();
+	pipelineVertexInputStateCreateInfo.vertexAttributeDescriptionCount	= vertexInputAttributeDescriptionVector.size();
+	pipelineVertexInputStateCreateInfo.pVertexAttributeDescriptions		= vertexInputAttributeDescriptionVector.data();
 
-	VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo = {};
+
+	VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo{};
 	pipelineInputAssemblyStateCreateInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	pipelineInputAssemblyStateCreateInfo.topology						= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	pipelineInputAssemblyStateCreateInfo.primitiveRestartEnable			= VK_FALSE;
@@ -616,7 +704,6 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	pipelineRasterizationStateCreateInfo.depthBiasEnable			= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.lineWidth					= 1.0f;
 
-
 	/*********************************************************************************************/
 	/*********************************************************************************************/
 	VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo{}; // for anti-aliasing
@@ -624,7 +711,6 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	pipelineMultisampleStateCreateInfo.sampleShadingEnable			= VK_FALSE;
 	pipelineMultisampleStateCreateInfo.rasterizationSamples			= VK_SAMPLE_COUNT_1_BIT;
 	
-
 	/*********************************************************************************************/
 	/*********************************************************************************************/
 	std::vector<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStateVector; // for multi-framebuffer rendering
@@ -638,7 +724,7 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	pipelineColorBlendStateCreateInfo.sType							= VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	pipelineColorBlendStateCreateInfo.logicOpEnable					= VK_FALSE;
 	//pipelineColorBlendStateCreateInfo.logicOp						= VK_LOGIC_OP_COPY;
-	pipelineColorBlendStateCreateInfo.attachmentCount				= pipelineColorBlendAttachmentStateVector.size();
+	pipelineColorBlendStateCreateInfo.attachmentCount				= (uint32_t)pipelineColorBlendAttachmentStateVector.size();
 	pipelineColorBlendStateCreateInfo.pAttachments					= pipelineColorBlendAttachmentStateVector.data();
 	pipelineColorBlendStateCreateInfo.blendConstants[0]				= 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[1]				= 0.0f;
@@ -664,7 +750,7 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	std::vector<VkGraphicsPipelineCreateInfo> graphicsPipelineCreateInfoVector;
 	VkGraphicsPipelineCreateInfo trianglePipelineCreateInfo{};
 	trianglePipelineCreateInfo.sType				= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	trianglePipelineCreateInfo.stageCount			= pipelineShaderStagesCreateInfoVector.size();
+	trianglePipelineCreateInfo.stageCount			= (uint32_t)pipelineShaderStagesCreateInfoVector.size();
 	trianglePipelineCreateInfo.pStages				= pipelineShaderStagesCreateInfoVector.data();
 	trianglePipelineCreateInfo.pVertexInputState	= &pipelineVertexInputStateCreateInfo;
 	trianglePipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
@@ -682,7 +768,7 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	errorCheck(
 		vkCreateGraphicsPipelines(
 			device, VK_NULL_HANDLE,
-			graphicsPipelineCreateInfoVector.size(),
+			(uint32_t)graphicsPipelineCreateInfoVector.size(),
 			graphicsPipelineCreateInfoVector.data(),
 			nullptr, 
 			&trianglePipeline), // could be a pipelineArray
@@ -694,6 +780,13 @@ void SenAbstractGLFW::createTrianglePipeline() {
 }
 
 void SenAbstractGLFW::createSwapchainFramebuffers() {
+	/************************************************************************************************************/
+	/*****************     Destroy old swapchainFramebuffers first, if there are      ****************************/
+	/************************************************************************************************************/
+	for (auto swapchainFramebuffer : swapchainFramebufferVector) {
+		vkDestroyFramebuffer(device, swapchainFramebuffer, nullptr);
+	}
+	swapchainFramebufferVector.clear();
 	swapchainFramebufferVector.resize(swapchainImagesCount);
 
 	for (size_t i = 0; i < swapchainImagesCount; i++) {
@@ -704,7 +797,7 @@ void SenAbstractGLFW::createSwapchainFramebuffers() {
 		VkFramebufferCreateInfo framebufferCreateInfo{};
 		framebufferCreateInfo.sType				= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferCreateInfo.renderPass		= triangleRenderPass;
-		framebufferCreateInfo.attachmentCount	= imageViewAttachmentArray.size();
+		framebufferCreateInfo.attachmentCount	= (uint32_t)imageViewAttachmentArray.size();
 		framebufferCreateInfo.pAttachments		= imageViewAttachmentArray.data();
 		framebufferCreateInfo.width				= widgetWidth;
 		framebufferCreateInfo.height			= widgetHeight;
@@ -721,7 +814,7 @@ void SenAbstractGLFW::createCommandPool() {
 
 	VkCommandPoolCreateInfo commandPoolCreateInfo{};
 	commandPoolCreateInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	commandPoolCreateInfo.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // | VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+	commandPoolCreateInfo.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow commandBuffer to be individually reset
 	commandPoolCreateInfo.queueFamilyIndex	= graphicsQueueFamilyIndex;
 
 	errorCheck(
@@ -732,6 +825,9 @@ void SenAbstractGLFW::createCommandPool() {
 }
 
 void SenAbstractGLFW::createTriangleCommandBuffers() {
+	if (swapchainCommandBufferVector.size() > 0) {
+		vkFreeCommandBuffers(device, defaultThreadCommandPool, (uint32_t)swapchainCommandBufferVector.size(), swapchainCommandBufferVector.data());
+	}
 	/****************************************************************************************************************************/
 	/**********           Allocate Swapchain CommandBuffers         *************************************************************/
 	/****************************************************************************************************************************/
@@ -771,8 +867,8 @@ void SenAbstractGLFW::createTriangleCommandBuffers() {
 
 		std::vector<VkClearValue> clearValueVector;
 		clearValueVector.push_back(VkClearValue{ 0.2f, 0.3f, 0.3f, 1.0f });
-		renderPassBeginInfo.clearValueCount = clearValueVector.size();
-		renderPassBeginInfo.pClearValues = clearValueVector.data();
+		renderPassBeginInfo.clearValueCount = (uint32_t)clearValueVector.size();
+		renderPassBeginInfo.pClearValues	= clearValueVector.data();
 
 		vkCmdBeginRenderPass(swapchainCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -1159,6 +1255,8 @@ void SenAbstractGLFW::finalize() {
 	if (VK_NULL_HANDLE != defaultThreadCommandPool) {
 		vkDestroyCommandPool(device, defaultThreadCommandPool, nullptr);
 		defaultThreadCommandPool = VK_NULL_HANDLE;
+		
+		swapchainCommandBufferVector.clear();
 	}
 
 	/************************************************************************************************************/
@@ -1302,6 +1400,13 @@ bool SenAbstractGLFW::checkInstanceLayersSupport(std::vector<const char*> layers
 	}
 
 	return true;
+}
+
+void SenAbstractGLFW::onWidgetResized(GLFWwindow* widget, int width, int height) {
+	if (width == 0 || height == 0) return;
+
+	SenAbstractGLFW* ptrAbstractWidget = reinterpret_cast<SenAbstractGLFW*>(glfwGetWindowUserPointer(widget));
+	ptrAbstractWidget->reCreateTriangleSwapchain();
 }
 
 std::vector<char> SenAbstractGLFW::readFileBinaryStream(const std::string& filename) {
