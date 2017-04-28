@@ -95,6 +95,8 @@ in other words, each of the layers means to support some extensions, which means
 		when and how to perform layout transitions,	when to overlap execution of subpasses, etc;
 * 26. All of the operations in drawFrame are asynchronous, which means that when we exit the loop in mainLoop, drawing and presentation operations may still be going on,
 		and cleaning up resources while that is happening is a bad idea;
+* 27. The stagingBuffer copy command requires a queue family that supports transfer operations, which is indicated using VK_QUEUE_TRANSFER_BIT;
+		The good news is that any queue family with VK_QUEUE_GRAPHICS_BIT or VK_QUEUE_COMPUTE_BIT capabilities already implicitly support VK_QUEUE_TRANSFER_BIT operations;
 * 
 
 ### V++ / Debug
@@ -116,4 +118,7 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 
 	Just easier to handle for copy/access ?
 	Yes.
+* 5. Vulakn system coordinate is right handed, instead of (OpenGL) left handed, due to the opposite Y-axis direction;
+	if a triangle with correct coordinates in OpenGL disappeared running in Vulkan, it might be caused by face culling.
+* 6. Check the type of indicesArray if you cannot say what you draw, make sure uint16_t (instead of float) if you vkCmdBindIndexBuffer with VK_INDEX_TYPE_UINT16;
 * 

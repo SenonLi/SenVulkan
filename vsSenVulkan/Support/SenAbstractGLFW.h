@@ -49,6 +49,17 @@ public:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags, VkDebugReportObjectTypeEXT, uint64_t, size_t, int32_t, const char*, const char*, void *);
 	static void onWidgetResized(GLFWwindow* widget, int width, int height);
 	static std::vector<char> readFileBinaryStream(const std::string& filename);
+	static uint32_t findPhysicalDeviceMemoryPropertyIndex(
+		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
+		const VkMemoryRequirements& memoryRequirements,
+		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
+	);
+	static void errorCheck(VkResult result, std::string msg);
+	static void createResourceBuffer(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
+		const VkBufferUsageFlags& bufferUsageFlags, const VkSharingMode& bufferSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
+		VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
+	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferTransferQueue,
+		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
 
 //	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 
 //		keyDetection(widget, key, scancode, action, mode);
@@ -91,10 +102,26 @@ protected:
 	VkRenderPass						triangleRenderPass				= VK_NULL_HANDLE;
 	VkPipelineLayout					trianglePipelineLayout			= VK_NULL_HANDLE;
 	VkPipeline							trianglePipeline				= VK_NULL_HANDLE;
-	VkBuffer							vertexAttributesBuffer			= VK_NULL_HANDLE;
-	VkDeviceMemory						vertexAttributesBufferMemory	= VK_NULL_HANDLE;
+	VkBuffer							triangleVertexBuffer			= VK_NULL_HANDLE;
+	VkDeviceMemory						triangleVertexBufferMemory		= VK_NULL_HANDLE;
+	VkBuffer							triangleIndexBuffer				= VK_NULL_HANDLE;
+	VkDeviceMemory						triangleIndexBufferMemory		= VK_NULL_HANDLE;
+	// It should be noted that in a real world application, you're not supposed to actually call vkAllocateMemory for every individual buffer.
+	// The maximum number of simultaneous memory allocations is limited by the maxMemoryAllocationCount physical device limit, 
+	//		which may be as low as 4096 even on high end hardware like an NVIDIA GTX 1080.
+	// The right way to allocate memory for a large number of objects at the same time is to 
+	//		create a custom allocator that splits up a single allocation among many different objects by using the offset parameters
+	//		that we've seen in many functions.
 
-
+	// As mentioned above that you should allocate multiple resources like buffers from a single memory allocation, 
+	//		in fact, you should go a step further.
+	//	Driver developers recommend that you also store multiple buffers, like the vertex and index buffer,
+	//		into a single VkBuffer and use offsets in commands like vkCmdBindVertexBuffers.
+	//	The advantage is that your data is more cache friendly in that case, because it's closer together.
+	//	It is even possible to reuse the same chunk of memory for multiple resources if they are not used during the same render operations,
+	//		provided that their data is refreshed, of course.
+	// This is known as aliasing and some Vulkan functions have explicit flags to specify that you want to do this.
+	
 	VkSemaphore swapchainImageAcquiredSemaphore;// wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	VkSemaphore paintReadyToPresentSemaphore;	// wait for GPU, from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	
@@ -154,12 +181,6 @@ private:
 	void createLogicalDevice();
 	
 	void createShaderModule(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
-	uint32_t findPhysicalDeviceMemoryPropertyIndex(
-		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
-		const VkMemoryRequirements& memoryRequirements,
-		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
-	);
-
 	void collectSwapchainFeatures();
 	void createSwapchain();
 	void createSwapchainImageViews();
@@ -169,6 +190,9 @@ private:
 	void createTrianglePipeline();
 	void createSwapchainFramebuffers();
 	void createCommandPool();
+	void createTriangleVertexBuffer();
+	void createTriangleIndexBuffer();
+
 	void createTriangleCommandBuffers();
 	void createSemaphores();
 
@@ -184,7 +208,6 @@ private:
 //	void keyboardRegister();
 
 
-	void errorCheck(VkResult result, std::string msg);
 	bool checkInstanceLayersSupport(std::vector<const char*> layersVector);
 
 // Enumerate All
