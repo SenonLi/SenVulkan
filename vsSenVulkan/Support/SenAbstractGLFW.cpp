@@ -171,12 +171,20 @@ void SenAbstractGLFW::initGlfwVulkan()
 	createSwapchainImageViews();
 
 	createTriangleRenderPass();
+
+	createDescriptorSetLayout();
+
 	createTrianglePipeline();
 	createSwapchainFramebuffers();
 	createCommandPool();
 
 	createTriangleVertexBuffer();
 	createTriangleIndexBuffer();
+	
+	createUniformBuffer();
+	createDescriptorPool();
+	createDescriptorSet();
+
 	createTriangleCommandBuffers();
 
 	createSemaphores();
@@ -194,6 +202,8 @@ void SenAbstractGLFW::showWidget()
 		// Check if any events have been activiated (key pressed, mouse moved etc.) and call corresponding response functions
 		glfwPollEvents();
 
+		updateUniformBuffer();
+
 		paintVulkan();
 	}
 
@@ -208,6 +218,107 @@ void SenAbstractGLFW::showWidget()
 	glfwTerminate();
 }
 
+void SenAbstractGLFW::createDescriptorSetLayout() {
+	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.pImmutableSamplers = nullptr;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &uboLayoutBinding;
+
+	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor set layout!");
+	}
+}
+
+void SenAbstractGLFW::createUniformBuffer() {
+	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+	//createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformStagingBuffer, uniformStagingBufferMemory);
+	//createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uniformBuffer, uniformBufferMemory);
+
+	SenAbstractGLFW::createResourceBuffer(device, bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		uniformStagingBuffer, uniformStagingBufferMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	SenAbstractGLFW::createResourceBuffer(device, bufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		uniformBuffer, uniformBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+}
+
+void SenAbstractGLFW::createDescriptorPool() {
+	VkDescriptorPoolSize poolSize = {};
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize.descriptorCount = 1;
+
+	VkDescriptorPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = 1;
+	poolInfo.pPoolSizes = &poolSize;
+	poolInfo.maxSets = 1;
+
+	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create descriptor pool!");
+	}
+}
+
+void SenAbstractGLFW::createDescriptorSet() {
+	VkDescriptorSetLayout layouts[] = { descriptorSetLayout };
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = layouts;
+
+	if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS) {
+		throw std::runtime_error("failed to allocate descriptor set!");
+	}
+
+	VkDescriptorBufferInfo bufferInfo = {};
+	bufferInfo.buffer = uniformBuffer;
+	bufferInfo.offset = 0;
+	bufferInfo.range = sizeof(UniformBufferObject);
+
+	VkWriteDescriptorSet descriptorWrite = {};
+	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstBinding = 0;
+	descriptorWrite.dstArrayElement = 0;
+	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorWrite.descriptorCount = 1;
+	descriptorWrite.pBufferInfo = &bufferInfo;
+
+	vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+}
+
+void SenAbstractGLFW::updateUniformBuffer() {
+	static auto startTime = std::chrono::high_resolution_clock::now();
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+
+	UniformBufferObject ubo = {};
+	ubo.model = glm::rotate(glm::mat4(), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.proj = glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 10.0f);
+	ubo.proj[1][1] *= -1;
+
+	void* data;
+	vkMapMemory(device, uniformStagingBufferMemory, 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(device, uniformStagingBufferMemory);
+
+	//copyBuffer(uniformStagingBuffer, uniformBuffer, sizeof(ubo));
+
+	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, uniformStagingBuffer,
+		uniformBuffer, sizeof(ubo));
+}
 
 void SenAbstractGLFW::collectSwapchainFeatures()
 {
@@ -699,8 +810,8 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	pipelineRasterizationStateCreateInfo.depthClampEnable			= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable	= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.polygonMode				= VK_POLYGON_MODE_FILL;
-	pipelineRasterizationStateCreateInfo.cullMode = VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT;
-	pipelineRasterizationStateCreateInfo.frontFace					= VK_FRONT_FACE_CLOCKWISE;
+	pipelineRasterizationStateCreateInfo.cullMode					= VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT;
+	pipelineRasterizationStateCreateInfo.frontFace					= VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	pipelineRasterizationStateCreateInfo.depthBiasEnable			= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.lineWidth					= 1.0f;
 
@@ -734,10 +845,14 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	/****************************************************************************************************************************/
 	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
 	/****************************************************************************************************************************/
+	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
+	descriptorSetLayoutVector.push_back(descriptorSetLayout);
+
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-	pipelineLayoutCreateInfo.sType									= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount							= 0; // No descriptor set needed for built-in vertices Triangle
-	pipelineLayoutCreateInfo.pushConstantRangeCount					= 0;
+	pipelineLayoutCreateInfo.sType			= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCreateInfo.setLayoutCount	= descriptorSetLayoutVector.size();
+	pipelineLayoutCreateInfo.pSetLayouts		= descriptorSetLayoutVector.data();
+
 
 	SenAbstractGLFW::errorCheck(
 		vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &trianglePipelineLayout),
@@ -906,7 +1021,7 @@ void SenAbstractGLFW::createTriangleVertexBuffer() {
 	float vertices[] = {
 		// Positions	// Colors
 		-0.5f,	-0.5f,	1.0f,	0.0f,	0.0f,  // Bottom Right
-		0.0f, -0.5f,	0.0f,	0.0f,	1.0f,  // Bottom Left
+		0.0f,	-0.5f,	0.0f,	0.0f,	1.0f,  // Bottom Left
 		0.0f,	0.5f,	1.0f,	1.0f,	1.0f,   // Top Right
 		0.5f,	0.5f,	0.0f,	1.0f,	0.0f   // Top Left
 	};
@@ -1040,6 +1155,10 @@ void SenAbstractGLFW::createTriangleCommandBuffers() {
 		//);
 
 		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], triangleIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+
+		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+
+
 		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6, 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(swapchainCommandBufferVector[i]);
@@ -1419,7 +1538,17 @@ void SenAbstractGLFW::finalize() {
 		
 		swapchainCommandBufferVector.clear();
 	}
+	/************************************************************************************************************/
+	/*************      Destroy descriptorPool,  descriptorSetLayout, descriptorSet      ************************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != descriptorPool) {
+		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
+		descriptorSetLayout = VK_NULL_HANDLE;
+		descriptorPool = VK_NULL_HANDLE;
+		descriptorSet = VK_NULL_HANDLE;
+	}
 	/************************************************************************************************************/
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
 	/************************************************************************************************************/
@@ -1428,7 +1557,7 @@ void SenAbstractGLFW::finalize() {
 		vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
 		vkDestroyRenderPass(device, triangleRenderPass, nullptr);
 
-		trianglePipeline = VK_NULL_HANDLE;
+		trianglePipeline		= VK_NULL_HANDLE;
 		trianglePipelineLayout	= VK_NULL_HANDLE;
 		triangleRenderPass		= VK_NULL_HANDLE;
 	}
@@ -1448,6 +1577,20 @@ void SenAbstractGLFW::finalize() {
 
 		triangleIndexBuffer = VK_NULL_HANDLE;
 		triangleIndexBufferMemory = VK_NULL_HANDLE;
+	}
+	if (VK_NULL_HANDLE != uniformStagingBuffer) {
+		vkDestroyBuffer(device, uniformStagingBuffer, nullptr);
+		vkFreeMemory(device, uniformStagingBufferMemory, nullptr);	// always try to destroy before free
+
+		uniformStagingBuffer = VK_NULL_HANDLE;
+		uniformStagingBufferMemory = VK_NULL_HANDLE;
+	}
+	if (VK_NULL_HANDLE != uniformBuffer) {
+		vkDestroyBuffer(device, uniformBuffer, nullptr);
+		vkFreeMemory(device, uniformBufferMemory, nullptr);	// always try to destroy before free
+
+		uniformBuffer = VK_NULL_HANDLE;
+		uniformBufferMemory = VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy depthStencil Memory, ImageView, Image     ***********************************/

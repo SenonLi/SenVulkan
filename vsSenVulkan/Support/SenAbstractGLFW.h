@@ -14,7 +14,6 @@
 #include <xcb/xcb.h>
 #endif
 
-
 #include <stdexcept>// for propagating errors 
 #include <stdlib.h>	// for const error catch
 #include <stdio.h>  
@@ -34,7 +33,11 @@
 #include <vulkan/vulkan.h>
 #include <algorithm>		// std::max, std::min
 
+//#define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
+#include <chrono>
 
 //#include "LoadShaders.h"
 
@@ -125,6 +128,21 @@ protected:
 	VkSemaphore swapchainImageAcquiredSemaphore;// wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	VkSemaphore paintReadyToPresentSemaphore;	// wait for GPU, from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	
+
+	struct UniformBufferObject {
+		glm::mat4 model;
+		glm::mat4 view;
+		glm::mat4 proj;
+	};
+	VkDescriptorSetLayout			descriptorSetLayout					= VK_NULL_HANDLE;
+	VkBuffer						uniformStagingBuffer				= VK_NULL_HANDLE;
+	VkDeviceMemory					uniformStagingBufferMemory			= VK_NULL_HANDLE;
+	VkBuffer						uniformBuffer						= VK_NULL_HANDLE;
+	VkDeviceMemory					uniformBufferMemory					= VK_NULL_HANDLE;
+	VkDescriptorPool				descriptorPool						= VK_NULL_HANDLE;
+	VkDescriptorSet					descriptorSet						= VK_NULL_HANDLE;
+
+
 	VkRenderPass						depthTestRenderPass				= VK_NULL_HANDLE;
 	VkPipelineLayout					depthTestPipelineLayout			= VK_NULL_HANDLE;
 	VkPipeline							depthTestPipeline				= VK_NULL_HANDLE;
@@ -195,6 +213,13 @@ private:
 
 	void createTriangleCommandBuffers();
 	void createSemaphores();
+
+	void createDescriptorSetLayout();
+	void createUniformBuffer();
+	void createDescriptorPool();
+	void createDescriptorSet();
+	void updateUniformBuffer();
+
 
 	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
 		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
