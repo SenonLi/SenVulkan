@@ -171,7 +171,6 @@ void SenAbstractGLFW::initGlfwVulkan()
 	createSwapchainImageViews();
 
 	createTriangleRenderPass();
-
 	createDescriptorSetLayout();
 
 	createTrianglePipeline();
@@ -219,36 +218,33 @@ void SenAbstractGLFW::showWidget()
 }
 
 void SenAbstractGLFW::createDescriptorSetLayout() {
-	VkDescriptorSetLayoutBinding uboLayoutBinding = {};
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	VkDescriptorSetLayoutBinding mvpUboDescriptorSetLayoutBinding{};
+	mvpUboDescriptorSetLayoutBinding.binding			= 0;
+	mvpUboDescriptorSetLayoutBinding.descriptorCount	= 1;
+	mvpUboDescriptorSetLayoutBinding.descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	mvpUboDescriptorSetLayoutBinding.pImmutableSamplers = nullptr;
+	mvpUboDescriptorSetLayoutBinding.stageFlags			= VK_SHADER_STAGE_VERTEX_BIT;
 
-	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = 1;
-	layoutInfo.pBindings = &uboLayoutBinding;
+	VkDescriptorSetLayoutCreateInfo mvpUboDescriptorSetLayoutCreateInfo{};
+	mvpUboDescriptorSetLayoutCreateInfo.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	mvpUboDescriptorSetLayoutCreateInfo.bindingCount	= 1;
+	mvpUboDescriptorSetLayoutCreateInfo.pBindings		= &mvpUboDescriptorSetLayoutBinding;
 
-	if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descriptorSetLayout) != VK_SUCCESS) {
+	if (vkCreateDescriptorSetLayout(device, &mvpUboDescriptorSetLayoutCreateInfo, nullptr, &mvpUboDescriptorSetLayout) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create descriptor set layout!");
 	}
 }
 
 void SenAbstractGLFW::createUniformBuffer() {
-	VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+	VkDeviceSize mvpUboUniformBufferDeviceSize = sizeof(MvpUniformBufferObject);
 
-	//createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformStagingBuffer, uniformStagingBufferMemory);
-	//createBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, uniformBuffer, uniformBufferMemory);
-
-	SenAbstractGLFW::createResourceBuffer(device, bufferSize,
+	SenAbstractGLFW::createResourceBuffer(device, mvpUboUniformBufferDeviceSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
-		uniformStagingBuffer, uniformStagingBufferMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		mvpUniformStagingBuffer, mvpUniformStagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	SenAbstractGLFW::createResourceBuffer(device, bufferSize,
+	SenAbstractGLFW::createResourceBuffer(device, mvpUboUniformBufferDeviceSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
-		uniformBuffer, uniformBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		mvpOptimalUniformBuffer, mvpOptimalUniformBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 }
 
@@ -269,25 +265,25 @@ void SenAbstractGLFW::createDescriptorPool() {
 }
 
 void SenAbstractGLFW::createDescriptorSet() {
-	VkDescriptorSetLayout layouts[] = { descriptorSetLayout };
+	VkDescriptorSetLayout layouts[] = { mvpUboDescriptorSetLayout };
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	allocInfo.descriptorPool = descriptorPool;
 	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = layouts;
 
-	if (vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet) != VK_SUCCESS) {
+	if (vkAllocateDescriptorSets(device, &allocInfo, &mvpUboDescriptorSet) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate descriptor set!");
 	}
 
 	VkDescriptorBufferInfo bufferInfo = {};
-	bufferInfo.buffer = uniformBuffer;
+	bufferInfo.buffer = mvpOptimalUniformBuffer;
 	bufferInfo.offset = 0;
-	bufferInfo.range = sizeof(UniformBufferObject);
+	bufferInfo.range = sizeof(MvpUniformBufferObject);
 
 	VkWriteDescriptorSet descriptorWrite = {};
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrite.dstSet = descriptorSet;
+	descriptorWrite.dstSet = mvpUboDescriptorSet;
 	descriptorWrite.dstBinding = 0;
 	descriptorWrite.dstArrayElement = 0;
 	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -301,23 +297,23 @@ void SenAbstractGLFW::updateUniformBuffer() {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 
 	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+	int duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
 
-	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::mat4(), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.proj = glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 10.0f);
-	ubo.proj[1][1] *= -1;
+	MvpUniformBufferObject mvpUbo = {};
+	//mvpUbo.model = glm::mat4();
+
+	mvpUbo.model = glm::rotate(glm::mat4(), -duration * glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	//mvpUbo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	//mvpUbo.projection = glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 100.0f);
+	mvpUbo.projection[1][1] *= -1;
 
 	void* data;
-	vkMapMemory(device, uniformStagingBufferMemory, 0, sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(device, uniformStagingBufferMemory);
+	vkMapMemory(device, mvpUniformStagingBufferDeviceMemory, 0, sizeof(mvpUbo), 0, &data);
+	memcpy(data, &mvpUbo, sizeof(mvpUbo));
+	vkUnmapMemory(device, mvpUniformStagingBufferDeviceMemory);
 
-	//copyBuffer(uniformStagingBuffer, uniformBuffer, sizeof(ubo));
-
-	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, uniformStagingBuffer,
-		uniformBuffer, sizeof(ubo));
+	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, mvpUniformStagingBuffer,
+		mvpOptimalUniformBuffer, sizeof(mvpUbo));
 }
 
 void SenAbstractGLFW::collectSwapchainFeatures()
@@ -846,12 +842,12 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
 	/****************************************************************************************************************************/
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
-	descriptorSetLayoutVector.push_back(descriptorSetLayout);
+	descriptorSetLayoutVector.push_back(mvpUboDescriptorSetLayout);
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType			= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutCreateInfo.setLayoutCount	= descriptorSetLayoutVector.size();
-	pipelineLayoutCreateInfo.pSetLayouts		= descriptorSetLayoutVector.data();
+	pipelineLayoutCreateInfo.pSetLayouts	= descriptorSetLayoutVector.data();
 
 
 	SenAbstractGLFW::errorCheck(
@@ -1020,10 +1016,10 @@ void SenAbstractGLFW::transferResourceBuffer(const VkCommandPool& bufferTransfer
 void SenAbstractGLFW::createTriangleVertexBuffer() {
 	float vertices[] = {
 		// Positions	// Colors
-		-0.5f,	-0.5f,	1.0f,	0.0f,	0.0f,  // Bottom Right
-		0.0f,	-0.5f,	0.0f,	0.0f,	1.0f,  // Bottom Left
-		0.0f,	0.5f,	1.0f,	1.0f,	1.0f,   // Top Right
-		0.5f,	0.5f,	0.0f,	1.0f,	0.0f   // Top Left
+		-0.1f,	-0.75f,	1.0f,	0.0f,	0.0f,  // Bottom Right
+		0.0f,	-0.75f,	0.0f,	0.0f,	1.0f,  // Bottom Left
+		0.0f,	0.75f,	1.0f,	1.0f,	1.0f,   // Top Right
+		0.1f,	0.75f,	0.0f,	1.0f,	0.0f   // Top Left
 	};
 	size_t verticesBufferSize = sizeof(vertices);
 
@@ -1156,7 +1152,7 @@ void SenAbstractGLFW::createTriangleCommandBuffers() {
 
 		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], triangleIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &mvpUboDescriptorSet, 0, nullptr);
 
 
 		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6, 1, 0, 0, 0);
@@ -1539,15 +1535,15 @@ void SenAbstractGLFW::finalize() {
 		swapchainCommandBufferVector.clear();
 	}
 	/************************************************************************************************************/
-	/*************      Destroy descriptorPool,  descriptorSetLayout, descriptorSet      ************************/
+	/*************      Destroy descriptorPool,  mvpUboDescriptorSetLayout, mvpUboDescriptorSet      ************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != descriptorPool) {
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-		vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+		vkDestroyDescriptorSetLayout(device, mvpUboDescriptorSetLayout, nullptr);
 
-		descriptorSetLayout = VK_NULL_HANDLE;
+		mvpUboDescriptorSetLayout = VK_NULL_HANDLE;
 		descriptorPool = VK_NULL_HANDLE;
-		descriptorSet = VK_NULL_HANDLE;
+		mvpUboDescriptorSet = VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
@@ -1578,19 +1574,19 @@ void SenAbstractGLFW::finalize() {
 		triangleIndexBuffer = VK_NULL_HANDLE;
 		triangleIndexBufferMemory = VK_NULL_HANDLE;
 	}
-	if (VK_NULL_HANDLE != uniformStagingBuffer) {
-		vkDestroyBuffer(device, uniformStagingBuffer, nullptr);
-		vkFreeMemory(device, uniformStagingBufferMemory, nullptr);	// always try to destroy before free
+	if (VK_NULL_HANDLE != mvpUniformStagingBuffer) {
+		vkDestroyBuffer(device, mvpUniformStagingBuffer, nullptr);
+		vkFreeMemory(device, mvpUniformStagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 
-		uniformStagingBuffer = VK_NULL_HANDLE;
-		uniformStagingBufferMemory = VK_NULL_HANDLE;
+		mvpUniformStagingBuffer = VK_NULL_HANDLE;
+		mvpUniformStagingBufferDeviceMemory = VK_NULL_HANDLE;
 	}
-	if (VK_NULL_HANDLE != uniformBuffer) {
-		vkDestroyBuffer(device, uniformBuffer, nullptr);
-		vkFreeMemory(device, uniformBufferMemory, nullptr);	// always try to destroy before free
+	if (VK_NULL_HANDLE != mvpOptimalUniformBuffer) {
+		vkDestroyBuffer(device, mvpOptimalUniformBuffer, nullptr);
+		vkFreeMemory(device, mvpOptimalUniformBufferMemory, nullptr);	// always try to destroy before free
 
-		uniformBuffer = VK_NULL_HANDLE;
-		uniformBufferMemory = VK_NULL_HANDLE;
+		mvpOptimalUniformBuffer = VK_NULL_HANDLE;
+		mvpOptimalUniformBufferMemory = VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy depthStencil Memory, ImageView, Image     ***********************************/

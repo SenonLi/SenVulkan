@@ -33,7 +33,7 @@
 #include <vulkan/vulkan.h>
 #include <algorithm>		// std::max, std::min
 
-//#define GLM_FORCE_RADIANS
+#define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -129,18 +129,18 @@ protected:
 	VkSemaphore paintReadyToPresentSemaphore;	// wait for GPU, from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	
 
-	struct UniformBufferObject {
+	struct MvpUniformBufferObject {
 		glm::mat4 model;
 		glm::mat4 view;
-		glm::mat4 proj;
+		glm::mat4 projection;
 	};
-	VkDescriptorSetLayout			descriptorSetLayout					= VK_NULL_HANDLE;
-	VkBuffer						uniformStagingBuffer				= VK_NULL_HANDLE;
-	VkDeviceMemory					uniformStagingBufferMemory			= VK_NULL_HANDLE;
-	VkBuffer						uniformBuffer						= VK_NULL_HANDLE;
-	VkDeviceMemory					uniformBufferMemory					= VK_NULL_HANDLE;
+	VkDescriptorSetLayout			mvpUboDescriptorSetLayout					= VK_NULL_HANDLE;
+	VkBuffer						mvpUniformStagingBuffer				= VK_NULL_HANDLE;
+	VkDeviceMemory					mvpUniformStagingBufferDeviceMemory	= VK_NULL_HANDLE;
+	VkBuffer						mvpOptimalUniformBuffer				= VK_NULL_HANDLE;
+	VkDeviceMemory					mvpOptimalUniformBufferMemory		= VK_NULL_HANDLE;
 	VkDescriptorPool				descriptorPool						= VK_NULL_HANDLE;
-	VkDescriptorSet					descriptorSet						= VK_NULL_HANDLE;
+	VkDescriptorSet					mvpUboDescriptorSet					= VK_NULL_HANDLE;
 
 
 	VkRenderPass						depthTestRenderPass				= VK_NULL_HANDLE;
