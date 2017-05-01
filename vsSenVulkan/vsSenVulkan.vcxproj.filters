@@ -58,6 +58,9 @@
     <ClCompile Include="VulkanAPI\SenWindow_xcb.cpp">
       <Filter>Sources\VulkanAPI</Filter>
     </ClCompile>
+    <ClCompile Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.cpp">
+      <Filter>Sources\SenVulkanTutorial</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Support\SenAbstractGLFW.h">
@@ -80,6 +83,9 @@
     </ClInclude>
     <ClInclude Include="VulkanAPI\SenWindow.h">
       <Filter>Headers\VulkanAPI</Filter>
+    </ClInclude>
+    <ClInclude Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.h">
+      <Filter>Headers\SenVulkanTutorial</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

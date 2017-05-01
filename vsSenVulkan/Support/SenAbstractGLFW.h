@@ -215,7 +215,7 @@ private:
 	void createSemaphores();
 
 	void createDescriptorSetLayout();
-	void createUniformBuffer();
+	void createUniformBuffers();
 	void createDescriptorPool();
 	void createDescriptorSet();
 	void updateUniformBuffer();

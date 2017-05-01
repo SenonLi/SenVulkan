@@ -97,6 +97,14 @@ in other words, each of the layers means to support some extensions, which means
 		and cleaning up resources while that is happening is a bad idea;
 * 27. The stagingBuffer copy command requires a queue family that supports transfer operations, which is indicated using VK_QUEUE_TRANSFER_BIT;
 		The good news is that any queue family with VK_QUEUE_GRAPHICS_BIT or VK_QUEUE_COMPUTE_BIT capabilities already implicitly support VK_QUEUE_TRANSFER_BIT operations;
+* 28.	A pipeline layout allow a pipeline to access the descriptor sets;
+		A descriptor set connects a given resource to the shader;
+		A descriptor set layout is a collection of zero or more descriptor bindings;
+		A descriptor consists of descriptor set objects, and it helps connect the resources with the shaders;
+	Sum: A pipeline layout can contain zero or more descriptor sets in sequence, with each set up through a specific descriptor layout;
+		this descriptor layout defines the interfaces between shader stages and shader resources, with each resource bound through descriptorLayoutBinding.
+* 29. When a DescriptorPool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid;
+		Descriptor sets allocated from a given pool do not need to be freed before destroying that descriptor pool.
 * 
 
 ### V++ / Debug
@@ -122,3 +130,10 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 	if a triangle with correct coordinates in OpenGL disappeared running in Vulkan, it might be caused by face culling.
 * 6. Check the type of indicesArray if you cannot say what you draw, make sure uint16_t (instead of float) if you vkCmdBindIndexBuffer with VK_INDEX_TYPE_UINT16;
 * 
+
+### Problems to solve
+1. Dynamic pipeline reuse for resizing;
+2. Memory allocator to solve the maximum count to allocate deviceMemory;
+3. put model view projection into different descriptorLayoutBinding;
+4. Write online_compileShader class;
+5. 

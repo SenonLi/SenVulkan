@@ -180,7 +180,7 @@ void SenAbstractGLFW::initGlfwVulkan()
 	createTriangleVertexBuffer();
 	createTriangleIndexBuffer();
 	
-	createUniformBuffer();
+	createUniformBuffers();
 	createDescriptorPool();
 	createDescriptorSet();
 
@@ -217,6 +217,7 @@ void SenAbstractGLFW::showWidget()
 	glfwTerminate();
 }
 
+// createDescriptorSetLayout() need to be called before createPipeline for the pipelineLayout
 void SenAbstractGLFW::createDescriptorSetLayout() {
 	VkDescriptorSetLayoutBinding mvpUboDescriptorSetLayoutBinding{};
 	mvpUboDescriptorSetLayoutBinding.binding			= 0;
@@ -230,12 +231,13 @@ void SenAbstractGLFW::createDescriptorSetLayout() {
 	mvpUboDescriptorSetLayoutCreateInfo.bindingCount	= 1;
 	mvpUboDescriptorSetLayoutCreateInfo.pBindings		= &mvpUboDescriptorSetLayoutBinding;
 
-	if (vkCreateDescriptorSetLayout(device, &mvpUboDescriptorSetLayoutCreateInfo, nullptr, &mvpUboDescriptorSetLayout) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create descriptor set layout!");
-	}
+	SenAbstractGLFW::errorCheck(
+		vkCreateDescriptorSetLayout(device, &mvpUboDescriptorSetLayoutCreateInfo, nullptr, &mvpUboDescriptorSetLayout),
+		std::string("Fail to Create mvpUboDescriptorSetLayout !")
+	);
 }
 
-void SenAbstractGLFW::createUniformBuffer() {
+void SenAbstractGLFW::createUniformBuffers() {
 	VkDeviceSize mvpUboUniformBufferDeviceSize = sizeof(MvpUniformBufferObject);
 
 	SenAbstractGLFW::createResourceBuffer(device, mvpUboUniformBufferDeviceSize,
@@ -249,59 +251,66 @@ void SenAbstractGLFW::createUniformBuffer() {
 }
 
 void SenAbstractGLFW::createDescriptorPool() {
-	VkDescriptorPoolSize poolSize = {};
-	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSize.descriptorCount = 1;
+	VkDescriptorPoolSize descriptorPoolSize{};
+	descriptorPoolSize.type				= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descriptorPoolSize.descriptorCount	= 1;
 
-	VkDescriptorPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = 1;
-	poolInfo.pPoolSizes = &poolSize;
-	poolInfo.maxSets = 1;
+	std::vector<VkDescriptorPoolSize> descriptorPoolSizeVector;
+	descriptorPoolSizeVector.push_back(descriptorPoolSize);
 
-	if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create descriptor pool!");
-	}
+	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{};
+	descriptorPoolCreateInfo.sType			= VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	descriptorPoolCreateInfo.poolSizeCount	= descriptorPoolSizeVector.size();
+	descriptorPoolCreateInfo.pPoolSizes		= descriptorPoolSizeVector.data();
+	descriptorPoolCreateInfo.maxSets		= descriptorPoolSizeVector.size();
+
+	SenAbstractGLFW::errorCheck(
+		vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool),
+		std::string("Fail to Create descriptorPool !")
+	);
 }
 
 void SenAbstractGLFW::createDescriptorSet() {
-	VkDescriptorSetLayout layouts[] = { mvpUboDescriptorSetLayout };
-	VkDescriptorSetAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = descriptorPool;
-	allocInfo.descriptorSetCount = 1;
-	allocInfo.pSetLayouts = layouts;
+	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
+	descriptorSetLayoutVector.push_back(mvpUboDescriptorSetLayout);
 
-	if (vkAllocateDescriptorSets(device, &allocInfo, &mvpUboDescriptorSet) != VK_SUCCESS) {
-		throw std::runtime_error("failed to allocate descriptor set!");
-	}
+	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+	descriptorSetAllocateInfo.sType					= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	descriptorSetAllocateInfo.descriptorPool		= descriptorPool;
+	descriptorSetAllocateInfo.descriptorSetCount	= descriptorSetLayoutVector.size();
+	descriptorSetAllocateInfo.pSetLayouts			= descriptorSetLayoutVector.data();
 
-	VkDescriptorBufferInfo bufferInfo = {};
-	bufferInfo.buffer = mvpOptimalUniformBuffer;
-	bufferInfo.offset = 0;
-	bufferInfo.range = sizeof(MvpUniformBufferObject);
+	SenAbstractGLFW::errorCheck(
+		vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &mvpUboDescriptorSet),
+		std::string("Fail to Allocate mvpUboDescriptorSet !")
+	);
 
-	VkWriteDescriptorSet descriptorWrite = {};
-	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorWrite.dstSet = mvpUboDescriptorSet;
-	descriptorWrite.dstBinding = 0;
-	descriptorWrite.dstArrayElement = 0;
-	descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorWrite.descriptorCount = 1;
-	descriptorWrite.pBufferInfo = &bufferInfo;
+	VkDescriptorBufferInfo mvpDescriptorBufferInfo{};
+	mvpDescriptorBufferInfo.buffer	= mvpOptimalUniformBuffer;
+	mvpDescriptorBufferInfo.offset	= 0;
+	mvpDescriptorBufferInfo.range	= sizeof(MvpUniformBufferObject);
 
-	vkUpdateDescriptorSets(device, 1, &descriptorWrite, 0, nullptr);
+	std::vector<VkDescriptorBufferInfo> descriptorBufferInfoVector;
+	descriptorBufferInfoVector.push_back(mvpDescriptorBufferInfo);
+
+	VkWriteDescriptorSet writeDescriptorSet{};
+	writeDescriptorSet.sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	writeDescriptorSet.dstSet			= mvpUboDescriptorSet;
+	writeDescriptorSet.dstBinding		= 0;	// binding number, same as the binding index specified in shader for a given shader stage
+	writeDescriptorSet.dstArrayElement	= 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
+	writeDescriptorSet.descriptorCount	= descriptorBufferInfoVector.size();// the total number of descriptors to update in pBufferInfo
+	writeDescriptorSet.pBufferInfo		= descriptorBufferInfoVector.data();
+
+	vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
 }
 
 void SenAbstractGLFW::updateUniformBuffer() {
 	static auto startTime = std::chrono::high_resolution_clock::now();
-
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	int duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
 
-	MvpUniformBufferObject mvpUbo = {};
-	//mvpUbo.model = glm::mat4();
-
+	MvpUniformBufferObject mvpUbo{};
 	mvpUbo.model = glm::rotate(glm::mat4(), -duration * glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	//mvpUbo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	//mvpUbo.projection = glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 100.0f);
