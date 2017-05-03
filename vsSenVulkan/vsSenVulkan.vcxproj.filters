@@ -96,6 +96,12 @@
       <Filter>Shaders\SenVulkanTutorial</Filter>
     </None>
     <None Include="..\README.md" />
+    <None Include="SenVulkanTutorial\Shaders\Texture.vert">
+      <Filter>Shaders\SenVulkanTutorial</Filter>
+    </None>
+    <None Include="SenVulkanTutorial\Shaders\Texture.frag">
+      <Filter>Shaders\SenVulkanTutorial</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Support\CMakeLists.txt">
