@@ -105,6 +105,10 @@ in other words, each of the layers means to support some extensions, which means
 		this descriptor layout defines the interfaces between shader stages and shader resources, with each resource bound through descriptorLayoutBinding.
 * 29. When a DescriptorPool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid;
 		Descriptor sets allocated from a given pool do not need to be freed before destroying that descriptor pool.
+* 30. Pipeline barriers are primarily used for synchronizing access to resources:
+		making sure that an image was written to before it is read;
+		transition the layout of an image;
+		transfer queue family ownership when using VK_SHARING_MODE_EXCLUSIVE;
 * 
 
 ### V++ / Debug

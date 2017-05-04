@@ -1,5 +1,10 @@
 #include "SenAbstractGLFW.h"
 
+// Since stb_image.h header file contains the implementation of functions, only one class source file could include it to make new implementation
+// all stb_image realated functions have to be implemented in this class
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb/stb_image.h>
+
 SenAbstractGLFW::SenAbstractGLFW()
 //:xRot(0), yRot(0), aspect(1.0)
 {
@@ -17,6 +22,56 @@ SenAbstractGLFW::~SenAbstractGLFW()
 {
 	finalize();
 	OutputDebugString("\n ~SenAbstractGLWidget()\n");
+}
+
+
+void SenAbstractGLFW::createDeviceLocalTextureImage(int& imageWidth, int& imageHeight, int& imageChannels)
+{
+	// The pointer ptrBackgroundTexture returned from stbi_load(...) is the first element in an array of pixel values.
+	stbi_uc* ptrBackgroundTexture = stbi_load("../Images/SunRaise.jpg", &imageWidth, &imageHeight, &imageChannels, STBI_rgb_alpha);
+	VkDeviceSize backgroundTextureDeviceSize = imageWidth * imageHeight * imageChannels;
+
+	if (!ptrBackgroundTexture) {
+		throw std::runtime_error("failed to load texture image!");
+	}
+
+	VkImage stagingImage;
+	VkDeviceMemory stagingImageMemory;
+	//createImage(imageWidth, imageHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingImage, stagingImageMemory);
+
+	//VkImageSubresource subresource = {};
+	//subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	//subresource.mipLevel = 0;
+	//subresource.arrayLayer = 0;
+
+	//VkSubresourceLayout stagingImageLayout;
+	//vkGetImageSubresourceLayout(device, stagingImage, &subresource, &stagingImageLayout);
+
+	//void* data;
+	//vkMapMemory(device, stagingImageMemory, 0, backgroundTextureDeviceSize, 0, &data);
+
+	//if (stagingImageLayout.rowPitch == imageWidth * 4) {
+	//	memcpy(data, ptrBackgroundTexture, (size_t)backgroundTextureDeviceSize);
+	//}
+	//else {
+	//	uint8_t* dataBytes = reinterpret_cast<uint8_t*>(data);
+
+	//	for (int y = 0; y < imageHeight; y++) {
+	//		memcpy(&dataBytes[y * stagingImageLayout.rowPitch], &ptrBackgroundTexture[y * imageWidth * 4], imageWidth * 4);
+	//	}
+	//}
+
+	//vkUnmapMemory(device, stagingImageMemory);
+
+	//stbi_image_free(ptrBackgroundTexture);
+
+	//createImage(imageWidth, imageHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
+
+	//transitionImageLayout(stagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	//copyImage(stagingImage, textureImage, imageWidth, imageHeight);
+
+	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 void SenAbstractGLFW::paintVulkan(void)

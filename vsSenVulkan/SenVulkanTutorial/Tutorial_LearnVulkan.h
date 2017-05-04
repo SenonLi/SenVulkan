@@ -7,9 +7,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#define STB_IMAGE_IMPLEMENTATION
-#include <stb/stb_image.h>
-
 #include <iostream>
 #include <stdexcept>
 #include <functional>
@@ -38,22 +35,8 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
-VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
-	auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-	if (func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pCallback);
-	}
-	else {
-		return VK_ERROR_EXTENSION_NOT_PRESENT;
-	}
-}
-
-void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
-	auto func = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
-	if (func != nullptr) {
-		func(instance, callback, pAllocator);
-	}
-}
+extern VkResult CreateDebugReportCallbackEXT(VkInstance instance, const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
+extern void DestroyDebugReportCallbackEXT(VkInstance instance, VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator);
 
 template <typename T>
 class VDeleter {
@@ -181,7 +164,9 @@ const std::vector<uint16_t> indices = {
 	0, 1, 2, 2, 3, 0
 };
 
-class Tutorial_Triangle {
+
+
+class Tutorial_LearnVulkan {
 public:
 	void run() {
 		initWindow();
@@ -248,7 +233,7 @@ private:
 		window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", nullptr, nullptr);
 
 		glfwSetWindowUserPointer(window, this);
-		glfwSetWindowSizeCallback(window, Tutorial_Triangle::onWindowResized);
+		glfwSetWindowSizeCallback(window, Tutorial_LearnVulkan::onWindowResized);
 	}
 
 	void initVulkan() {
@@ -299,7 +284,7 @@ private:
 	static void onWindowResized(GLFWwindow* window, int width, int height) {
 		if (width == 0 || height == 0) return;
 
-		Tutorial_Triangle* app = reinterpret_cast<Tutorial_Triangle*>(glfwGetWindowUserPointer(window));
+		Tutorial_LearnVulkan* app = reinterpret_cast<Tutorial_LearnVulkan*>(glfwGetWindowUserPointer(window));
 		app->recreateSwapChain();
 	}
 
@@ -725,53 +710,7 @@ private:
 		}
 	}
 
-	void createTextureImage() {
-		int texWidth, texHeight, texChannels;
-		stbi_uc* pixels = stbi_load("../Images/SunRaise.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-		VkDeviceSize imageSize = texWidth * texHeight * 4;
-
-		if (!pixels) {
-			throw std::runtime_error("failed to load texture image!");
-		}
-
-		VDeleter<VkImage> stagingImage{ device, vkDestroyImage };
-		VDeleter<VkDeviceMemory> stagingImageMemory{ device, vkFreeMemory };
-		createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingImage, stagingImageMemory);
-
-		VkImageSubresource subresource = {};
-		subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		subresource.mipLevel = 0;
-		subresource.arrayLayer = 0;
-
-		VkSubresourceLayout stagingImageLayout;
-		vkGetImageSubresourceLayout(device, stagingImage, &subresource, &stagingImageLayout);
-
-		void* data;
-		vkMapMemory(device, stagingImageMemory, 0, imageSize, 0, &data);
-
-		if (stagingImageLayout.rowPitch == texWidth * 4) {
-			memcpy(data, pixels, (size_t)imageSize);
-		}
-		else {
-			uint8_t* dataBytes = reinterpret_cast<uint8_t*>(data);
-
-			for (int y = 0; y < texHeight; y++) {
-				memcpy(&dataBytes[y * stagingImageLayout.rowPitch], &pixels[y * texWidth * 4], texWidth * 4);
-			}
-		}
-
-		vkUnmapMemory(device, stagingImageMemory);
-
-		stbi_image_free(pixels);
-
-		createImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
-
-		transitionImageLayout(stagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-		copyImage(stagingImage, textureImage, texWidth, texHeight);
-
-		transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	}
+	void createTextureImage();
 
 	void createTextureImageView() {
 		createImageView(textureImage, VK_FORMAT_R8G8B8A8_UNORM, textureImageView);
@@ -1214,7 +1153,7 @@ private:
 		// Use of a presentable image must occur only after the image is returned by vkAcquireNextImageKHR, and before it is presented by vkQueuePresentKHR.
 		// This includes transitioning the image layout and rendering commands.
 		uint32_t imageIndex;
-		VkResult result = vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+		VkResult result = vkAcquireNextImageKHR(device, swapChain, (std::numeric_limits<uint64_t>::max)(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 			recreateSwapChain();
@@ -1311,13 +1250,13 @@ private:
 	}
 
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
-		if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+		if (capabilities.currentExtent.width != (std::numeric_limits<uint32_t>::max)()) {
 			return capabilities.currentExtent;
 		}else {
 			VkExtent2D actualExtent = { WIDTH, HEIGHT };
 
-			actualExtent.width = std::max(capabilities.minImageExtent.width, std::min(capabilities.maxImageExtent.width, actualExtent.width));
-			actualExtent.height = std::max(capabilities.minImageExtent.height, std::min(capabilities.maxImageExtent.height, actualExtent.height));
+			actualExtent.width = (std::max)(capabilities.minImageExtent.width, (std::min)(capabilities.maxImageExtent.width, actualExtent.width));
+			actualExtent.height = (std::max)(capabilities.minImageExtent.height, (std::min)(capabilities.maxImageExtent.height, actualExtent.height));
 
 			return actualExtent;
 		}

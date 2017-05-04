@@ -41,6 +41,7 @@
 
 //#include "LoadShaders.h"
 
+
 class SenAbstractGLFW
 {
 public:
@@ -63,6 +64,14 @@ public:
 		VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
 	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferTransferQueue,
 		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
+
+
+	//static void createResourceImage(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
+	//	const VkBufferUsageFlags& bufferUsageFlags, const VkSharingMode& bufferSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
+	//	VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
+	static void createDeviceLocalTextureImage(int& imageWidth, int& imageHeight, int& imageChannels);
+
+
 
 //	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 
 //		keyDetection(widget, key, scancode, action, mode);
@@ -134,7 +143,7 @@ protected:
 		glm::mat4 view;
 		glm::mat4 projection;
 	};
-	VkDescriptorSetLayout			mvpUboDescriptorSetLayout					= VK_NULL_HANDLE;
+	VkDescriptorSetLayout			mvpUboDescriptorSetLayout			= VK_NULL_HANDLE;
 	VkBuffer						mvpUniformStagingBuffer				= VK_NULL_HANDLE;
 	VkDeviceMemory					mvpUniformStagingBufferDeviceMemory	= VK_NULL_HANDLE;
 	VkBuffer						mvpOptimalUniformBuffer				= VK_NULL_HANDLE;

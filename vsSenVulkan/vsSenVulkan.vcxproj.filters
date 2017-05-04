@@ -37,9 +37,6 @@
       <Filter>Suppport</Filter>
     </ClCompile>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="SenVulkanTutorial\Sen_00_Triangle.cpp">
-      <Filter>Sources\SenVulkanTutorial</Filter>
-    </ClCompile>
     <ClCompile Include="VulkanAPI\SenRenderer.cpp">
       <Filter>Sources\VulkanAPI</Filter>
     </ClCompile>
@@ -61,16 +58,16 @@
     <ClCompile Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.cpp">
       <Filter>Sources\SenVulkanTutorial</Filter>
     </ClCompile>
+    <ClCompile Include="SenVulkanTutorial\Sen_06_Triangle.cpp">
+      <Filter>Sources\SenVulkanTutorial</Filter>
+    </ClCompile>
+    <ClCompile Include="SenVulkanTutorial\Sen_07_Texture.cpp">
+      <Filter>Sources\SenVulkanTutorial</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Support\SenAbstractGLFW.h">
       <Filter>Suppport</Filter>
-    </ClInclude>
-    <ClInclude Include="SenVulkanTutorial\Tutorial_Triangle.h">
-      <Filter>Headers\SenVulkanTutorial</Filter>
-    </ClInclude>
-    <ClInclude Include="SenVulkanTutorial\Sen_00_Triangle.h">
-      <Filter>Headers\SenVulkanTutorial</Filter>
     </ClInclude>
     <ClInclude Include="VulkanAPI\SenRenderer.h">
       <Filter>Headers\VulkanAPI</Filter>
@@ -85,6 +82,12 @@
       <Filter>Headers\VulkanAPI</Filter>
     </ClInclude>
     <ClInclude Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.h">
+      <Filter>Headers\SenVulkanTutorial</Filter>
+    </ClInclude>
+    <ClInclude Include="SenVulkanTutorial\Sen_06_Triangle.h">
+      <Filter>Headers\SenVulkanTutorial</Filter>
+    </ClInclude>
+    <ClInclude Include="SenVulkanTutorial\Sen_07_Texture.h">
       <Filter>Headers\SenVulkanTutorial</Filter>
     </ClInclude>
   </ItemGroup>
