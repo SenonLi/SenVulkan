@@ -71,3 +71,19 @@ void Tutorial_LearnVulkan::createTextureImage() {
 
 	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
+
+#include "senvulkantutorial/tutorial_learnvulkan.h"
+
+int main() {
+	tutorial_learnvulkan widget;
+
+	try {
+		widget.run();
+	}
+	catch (const std::runtime_error& e) {
+		std::cerr << e.what() << std::endl;
+		return exit_failure;
+	}
+
+	return EXIT_SUCCESS;
+}

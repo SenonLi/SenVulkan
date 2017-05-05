@@ -24,52 +24,130 @@ SenAbstractGLFW::~SenAbstractGLFW()
 	OutputDebugString("\n ~SenAbstractGLWidget()\n");
 }
 
+const std::vector<VkFormat> SenAbstractGLFW::depthStencilSupportCheckFormatsVector = {
+	VK_FORMAT_D16_UNORM,
+	VK_FORMAT_D32_SFLOAT,
+	VK_FORMAT_X8_D24_UNORM_PACK32,
+	VK_FORMAT_S8_UINT,
+	VK_FORMAT_D16_UNORM_S8_UINT,
+	VK_FORMAT_D24_UNORM_S8_UINT,
+	VK_FORMAT_D32_SFLOAT_S8_UINT
+};
 
-void SenAbstractGLFW::createDeviceLocalTextureImage(int& imageWidth, int& imageHeight, int& imageChannels)
+void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const uint32_t& imageWidth, const uint32_t& imageHeight
+	,const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
+	,VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
+	,const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties)
+{
+	/***********************************************************************************************************************************************/
+	/*************    VK_IMAGE_TILING_LINEAR  have further restrictions on their limits and capabilities    ****************************************/
+	if (imageTiling == VK_IMAGE_TILING_LINEAR) {
+		for (auto posibleDepthStencilFormat : SenAbstractGLFW::depthStencilSupportCheckFormatsVector) {
+			if (imageFormat == posibleDepthStencilFormat) {
+				throw std::runtime_error("Illegal imageFormat to create VK_IMAGE_TILING_LINEAR ResourceImage  !!!");
+				break;
+			}
+		}
+		if (imageType != VK_IMAGE_TYPE_2D) 	throw std::runtime_error("Illegal imageType to create VK_IMAGE_TILING_LINEAR ResourceImage  !!!");
+		if (~(VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT) & imageUsageFlags) 	
+			throw std::runtime_error("Illegal imageUsageFlags to create VK_IMAGE_TILING_LINEAR ResourceImage  !!!");
+	}
+	/***********************************************************************************************************************************************/
+	VkImageCreateInfo imageCreateInfo{};
+	imageCreateInfo.sType			= VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imageCreateInfo.imageType		= imageType;
+	imageCreateInfo.extent.width	= imageWidth;
+	imageCreateInfo.extent.height	= imageHeight;
+	// The extent field specifies the dimensions of the image, basically how many texels there are on each axis;
+	// That's why depth must be 1 instead of 0 while VK_IMAGE_TYPE_2D
+	imageCreateInfo.extent.depth	= 1; // Need to fix this if create imageType != VK_IMAGE_TYPE_2D
+	imageCreateInfo.mipLevels		= 1; // Spec: must be greater than 0; setup later based on function of imageWidth/imageHeight
+	imageCreateInfo.arrayLayers		= 1; // Usually =1 if not working as ImageArray; Spec: must be greater than 0; have to be 1 if LINEAR format
+	imageCreateInfo.format			= imageFormat;
+	imageCreateInfo.tiling			= imageTiling;
+	// An initially undefined layout is for images used as attachments (color/depth) that will probably be cleared by a render pass before use;
+	// If you want to fill it with data, like a texture, then you should use the preinitialized layout.
+	imageCreateInfo.initialLayout	= VK_IMAGE_LAYOUT_PREINITIALIZED;
+	imageCreateInfo.usage			= imageUsageFlags;
+	imageCreateInfo.samples			= VK_SAMPLE_COUNT_1_BIT;	// Need to fix this if using multisampling
+	imageCreateInfo.sharingMode		= imageSharingMode;			// When being attachments and multiple QueueFamilies require
+
+	SenAbstractGLFW::errorCheck(
+		vkCreateImage(logicalDevice, &imageCreateInfo, nullptr, &imageToCreate),
+		std::string("Failed to create resource image !!!")
+	);
+	/***********************************************************************************************************************************************/
+	VkMemoryRequirements imageMemoryRequirements{};
+	vkGetImageMemoryRequirements(logicalDevice, imageToCreate, &imageMemoryRequirements);
+
+	VkMemoryAllocateInfo imageMemoryAllocateInfo{};
+	imageMemoryAllocateInfo.sType			= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	imageMemoryAllocateInfo.allocationSize	= imageMemoryRequirements.size;
+	imageMemoryAllocateInfo.memoryTypeIndex
+		= SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(gpuMemoryProperties, imageMemoryRequirements, requiredMemoryPropertyFlags);
+
+	SenAbstractGLFW::errorCheck(
+		vkAllocateMemory(logicalDevice, &imageMemoryAllocateInfo, nullptr, &imageDeviceMemoryToAllocate),
+		std::string("Failed to allocate reource image memory !!!")
+	);
+
+	vkBindImageMemory(logicalDevice, imageToCreate, imageDeviceMemoryToAllocate, 0);
+}
+
+void SenAbstractGLFW::createDeviceLocalTextureImage(const VkDevice& logicalDevice
+	, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+	, const char*& textureDiskAddress, const VkImageType& imageType, int& textureImageWidth, int& textureImageHeight, int& imageChannels)
 {
 	// The pointer ptrBackgroundTexture returned from stbi_load(...) is the first element in an array of pixel values.
-	stbi_uc* ptrBackgroundTexture = stbi_load("../Images/SunRaise.jpg", &imageWidth, &imageHeight, &imageChannels, STBI_rgb_alpha);
-	VkDeviceSize backgroundTextureDeviceSize = imageWidth * imageHeight * imageChannels;
-
-	if (!ptrBackgroundTexture) {
+	stbi_uc* ptrDiskTextureToUpload = stbi_load(textureDiskAddress, &textureImageWidth, &textureImageHeight, &imageChannels, STBI_rgb_alpha);
+	if (!ptrDiskTextureToUpload) {
 		throw std::runtime_error("failed to load texture image!");
 	}
+	/***********************************************************************************************************************************************/
+	/***********************      First:   Upload/MapMemory texture image as stagingImage       ****************************************************/
+	VkImage linearStagingImage;
+	VkDeviceMemory linearStagingImageDeviceMemory;
+	SenAbstractGLFW::createResourceImage(logicalDevice, textureImageWidth, textureImageHeight, imageType,
+		VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, linearStagingImage, linearStagingImageDeviceMemory,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, imageSharingMode, gpuMemoryProperties);
 
-	VkImage stagingImage;
-	VkDeviceMemory stagingImageMemory;
-	//createImage(imageWidth, imageHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingImage, stagingImageMemory);
+	// The graphics card may assume that one row of pixels is not imageWidth * 4 bytes wide, but rather texWidth * 4 + paddingBytes;
+	// To handle this for memcpy correctly, we need to query how bytes are arranged in our staging image using vkGetImageSubresourceLayout.
+	VkImageSubresource textureImageSubresource{};
+	textureImageSubresource.aspectMask	= VK_IMAGE_ASPECT_COLOR_BIT; // bitMask of color/depth/stencil/metadata
+	textureImageSubresource.mipLevel	= 0; // subresource's index of mipLevel, 0 means the first mipLevel, only 0 for a texture
+	textureImageSubresource.arrayLayer	= 0; // subresource's index of arrayLayer, 0 means the first arrayLayer, only 0 if not Textures (ArrayImage)
 
-	//VkImageSubresource subresource = {};
-	//subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	//subresource.mipLevel = 0;
-	//subresource.arrayLayer = 0;
+	VkSubresourceLayout linearStagingImageSubresourceLayout;
+	vkGetImageSubresourceLayout(logicalDevice, linearStagingImage, &textureImageSubresource, &linearStagingImageSubresourceLayout);
 
-	//VkSubresourceLayout stagingImageLayout;
-	//vkGetImageSubresourceLayout(device, stagingImage, &subresource, &stagingImageLayout);
+	void* ptrHostVisibleTexture;
+	VkDeviceSize hostVisibleImageDeviceSize = linearStagingImageSubresourceLayout.rowPitch * textureImageHeight ;
+	vkMapMemory(logicalDevice, linearStagingImageDeviceMemory, 0, hostVisibleImageDeviceSize, 0, &ptrHostVisibleTexture);
 
-	//void* data;
-	//vkMapMemory(device, stagingImageMemory, 0, backgroundTextureDeviceSize, 0, &data);
+	if (linearStagingImageSubresourceLayout.rowPitch == textureImageWidth * 4) {  // Channel == 4 due to STBI_rgb_alpha 
+		// No padding bytes in rows if in this case; Usually with rowPitch == a power-of-2 size, e.g. 512 or 1024
+		memcpy(ptrHostVisibleTexture, ptrDiskTextureToUpload, (size_t)hostVisibleImageDeviceSize);
+	}else	{
+		// otherwise, have to copy the pixels row-by-row with the right offset based on SubresourceLayout.rowPitch
+		uint8_t* ptrHostVisibleDataBytes = reinterpret_cast<uint8_t*>(ptrHostVisibleTexture);
+		for (int row = 0; row < textureImageHeight; row++) {
+			memcpy(	&ptrHostVisibleDataBytes[row * linearStagingImageSubresourceLayout.rowPitch],
+					&ptrDiskTextureToUpload	[row * textureImageWidth * 4],
+					textureImageWidth * 4);
+		}
+	}
 
-	//if (stagingImageLayout.rowPitch == imageWidth * 4) {
-	//	memcpy(data, ptrBackgroundTexture, (size_t)backgroundTextureDeviceSize);
-	//}
-	//else {
-	//	uint8_t* dataBytes = reinterpret_cast<uint8_t*>(data);
+	vkUnmapMemory(logicalDevice, linearStagingImageDeviceMemory);
+	stbi_image_free(ptrDiskTextureToUpload);
+	/***********************************************************************************************************************************************/
+	/***********************      Second:          ****************************************************/
 
-	//	for (int y = 0; y < imageHeight; y++) {
-	//		memcpy(&dataBytes[y * stagingImageLayout.rowPitch], &ptrBackgroundTexture[y * imageWidth * 4], imageWidth * 4);
-	//	}
-	//}
+	//createImage(textureImageWidth, textureImageHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
 
-	//vkUnmapMemory(device, stagingImageMemory);
-
-	//stbi_image_free(ptrBackgroundTexture);
-
-	//createImage(imageWidth, imageHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
-
-	//transitionImageLayout(stagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	//transitionImageLayout(linearStagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	//copyImage(stagingImage, textureImage, imageWidth, imageHeight);
+	//copyImage(linearStagingImage, textureImage, textureImageWidth, textureImageHeight);
 
 	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
@@ -537,14 +615,7 @@ void SenAbstractGLFW::createDepthStencilAttachment()
 {
 	/********************************************************************************************************************/
 	/******************************  Check Image Format *****************************************************************/
-	std::vector<VkFormat> tryFormatsVector{
-		VK_FORMAT_D32_SFLOAT_S8_UINT,
-		VK_FORMAT_D24_UNORM_S8_UINT,
-		VK_FORMAT_D16_UNORM_S8_UINT,
-		VK_FORMAT_D32_SFLOAT,
-		VK_FORMAT_D16_UNORM
-	};
-	for (auto f : tryFormatsVector) {
+	for (auto f : SenAbstractGLFW::depthStencilSupportCheckFormatsVector) {
 		VkFormatProperties formatProperties{};
 		vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
 		if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
@@ -1017,14 +1088,14 @@ void SenAbstractGLFW::createResourceBuffer(const VkDevice& logicalDevice, const 
 	VkMemoryRequirements bufferMemoryRequirements{};
 	vkGetBufferMemoryRequirements(logicalDevice, bufferToCreate, &bufferMemoryRequirements);
 
-	VkMemoryAllocateInfo vertexBufferMemoryMemoryAllocateInfo{};
-	vertexBufferMemoryMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	vertexBufferMemoryMemoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
-	vertexBufferMemoryMemoryAllocateInfo.memoryTypeIndex 
+	VkMemoryAllocateInfo bufferMemoryAllocateInfo{};
+	bufferMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	bufferMemoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
+	bufferMemoryAllocateInfo.memoryTypeIndex
 		= SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(gpuMemoryProperties, bufferMemoryRequirements, requiredMemoryPropertyFlags);
 
 	SenAbstractGLFW::errorCheck(
-		vkAllocateMemory(logicalDevice, &vertexBufferMemoryMemoryAllocateInfo, nullptr, &bufferDeviceMemoryToAllocate),
+		vkAllocateMemory(logicalDevice, &bufferMemoryAllocateInfo, nullptr, &bufferDeviceMemoryToAllocate),
 		std::string("Failed to allocate triangleVertexBufferMemory !!!")
 	);
 

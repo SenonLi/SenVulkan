@@ -140,4 +140,9 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 2. Memory allocator to solve the maximum count to allocate deviceMemory;
 3. put model view projection into different descriptorLayoutBinding;
 4. Write online_compileShader class;
-5. 
+5. Driver developers recommend that you also store multiple buffers, like the vertex and index buffer,
+		into a single VkBuffer and use offsets in commands like vkCmdBindVertexBuffers.
+	The advantage is that your data is more cache friendly in that case, because it's closer together.
+	It is even possible to reuse the same chunk of memory for multiple resources if they are not used during the same render operations,
+		provided that their data is refreshed, of course.
+6. 

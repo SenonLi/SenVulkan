@@ -66,11 +66,14 @@ public:
 		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
 
 
-	//static void createResourceImage(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
-	//	const VkBufferUsageFlags& bufferUsageFlags, const VkSharingMode& bufferSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
-	//	VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
-	static void createDeviceLocalTextureImage(int& imageWidth, int& imageHeight, int& imageChannels);
-
+	static void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice, const uint32_t& imageWidth, const uint32_t& imageHeight
+		, const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
+		, VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
+		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties);
+	static void createDeviceLocalTextureImage(const VkDevice& logicalDevice
+		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+		,const char*& textureDiskAddress, const VkImageType& imageType, int& textureImageWidth, int& textureImageHeight, int& imageChannels);
+	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
 
 
 //	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 
