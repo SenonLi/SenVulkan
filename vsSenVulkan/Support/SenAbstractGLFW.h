@@ -59,21 +59,26 @@ public:
 		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
 	);
 	static void errorCheck(VkResult result, std::string msg);
+
+	static void beginSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice,
+											VkCommandBuffer& tempCommandBufferToBegin);
+	static void endSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice,
+											const VkQueue& tmpCommandBufferQueue, const VkCommandBuffer& tmpCommandBufferToEnd);
+
 	static void createResourceBuffer(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
 		const VkBufferUsageFlags& bufferUsageFlags, const VkSharingMode& bufferSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 		VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
 	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferTransferQueue,
-		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
-
-
+		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize);
+	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
 	static void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice, const uint32_t& imageWidth, const uint32_t& imageHeight
 		, const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
 		, VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
 		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties);
 	static void createDeviceLocalTextureImage(const VkDevice& logicalDevice
-		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
-		,const char*& textureDiskAddress, const VkImageType& imageType, int& textureImageWidth, int& textureImageHeight, int& imageChannels);
-	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
+		, const char*& textureDiskAddress, const VkImageType& imageType, int& textureImageWidth, int& textureImageHeight
+		, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& deviceLocalTextureDeviceMemoryToAllocate, VkImageView& deviceLocalTextureImageView
+		, VkSampler& deviceLocalTextureSampler, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties);
 
 
 //	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 

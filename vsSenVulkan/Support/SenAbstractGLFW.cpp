@@ -94,12 +94,58 @@ void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const ui
 	vkBindImageMemory(logicalDevice, imageToCreate, imageDeviceMemoryToAllocate, 0);
 }
 
+
+//void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+//	VkImageMemoryBarrier imageMemoryBarrier = {};
+//	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+//	barrier.oldLayout = oldLayout;
+//	barrier.newLayout = newLayout;
+//	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+//	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+//	barrier.image = image;
+//	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+//	barrier.subresourceRange.baseMipLevel = 0;
+//	barrier.subresourceRange.levelCount = 1;
+//	barrier.subresourceRange.baseArrayLayer = 0;
+//	barrier.subresourceRange.layerCount = 1;
+//
+//	if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+//		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+//		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+//	}
+//	else if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+//		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+//		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+//	}
+//	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+//		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+//		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+//	}
+//	else {
+//		throw std::invalid_argument("unsupported layout transition!");
+//	}
+//
+//	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
+//	vkCmdPipelineBarrier(
+//		commandBuffer,
+//		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+//		0,
+//		0, nullptr,
+//		0, nullptr,
+//		1, &barrier
+//	);
+//
+//	endSingleTimeCommands(commandBuffer);
+//}
+
 void SenAbstractGLFW::createDeviceLocalTextureImage(const VkDevice& logicalDevice
-	, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
-	, const char*& textureDiskAddress, const VkImageType& imageType, int& textureImageWidth, int& textureImageHeight, int& imageChannels)
+	, const char*& textureDiskAddress, const VkImageType& imageType, int& textureImageWidth, int& textureImageHeight
+	, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& deviceLocalTextureDeviceMemoryToAllocate, VkImageView& deviceLocalTextureImageView
+	, VkSampler& deviceLocalTextureSampler, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties)
 {
 	// The pointer ptrBackgroundTexture returned from stbi_load(...) is the first element in an array of pixel values.
-	stbi_uc* ptrDiskTextureToUpload = stbi_load(textureDiskAddress, &textureImageWidth, &textureImageHeight, &imageChannels, STBI_rgb_alpha);
+	int actuallyTextureChannels		= 0;
+	stbi_uc* ptrDiskTextureToUpload = stbi_load(textureDiskAddress, &textureImageWidth, &textureImageHeight, &actuallyTextureChannels, STBI_rgb_alpha);
 	if (!ptrDiskTextureToUpload) {
 		throw std::runtime_error("failed to load texture image!");
 	}
@@ -142,9 +188,10 @@ void SenAbstractGLFW::createDeviceLocalTextureImage(const VkDevice& logicalDevic
 	stbi_image_free(ptrDiskTextureToUpload);
 	/***********************************************************************************************************************************************/
 	/***********************      Second:          ****************************************************/
-
-	//createImage(textureImageWidth, textureImageHeight, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, textureImage, textureImageMemory);
-
+	SenAbstractGLFW::createResourceImage(logicalDevice, textureImageWidth, textureImageHeight, imageType,
+		VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, deviceLocalTextureToCreate
+		, deviceLocalTextureDeviceMemoryToAllocate, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageSharingMode, gpuMemoryProperties);
+	
 	//transitionImageLayout(linearStagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	//copyImage(linearStagingImage, textureImage, textureImageWidth, textureImageHeight);
@@ -1102,50 +1149,59 @@ void SenAbstractGLFW::createResourceBuffer(const VkDevice& logicalDevice, const 
 	vkBindBufferMemory(logicalDevice, bufferToCreate, bufferDeviceMemoryToAllocate, 0);
 }
 
-void SenAbstractGLFW::transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferTransferQueue,
-	const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size) {
-	
+void SenAbstractGLFW::beginSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice, 
+												VkCommandBuffer& tempCommandBufferToBegin) {
 	// You may wish to create a separate command pool for these kinds of short - lived buffers, 
 	// because the implementation may be able to apply memory allocation optimizations.
 	// You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
+	
+	VkCommandBufferAllocateInfo tmpCommandBufferAllocateInfo{};
+	tmpCommandBufferAllocateInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	tmpCommandBufferAllocateInfo.level				= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	tmpCommandBufferAllocateInfo.commandPool		= tmpCommandBufferCommandPool;
+	tmpCommandBufferAllocateInfo.commandBufferCount = 1;
+	vkAllocateCommandBuffers(logicalDevice, &tmpCommandBufferAllocateInfo, &tempCommandBufferToBegin);
 
-	/***********************************************************************************************************************************/
-	/***************   Memory transfer operations are executed using command buffers   *************************************************/
-	VkCommandBufferAllocateInfo bufferCopyCommandBufferAllocateInfo{};
-	bufferCopyCommandBufferAllocateInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	bufferCopyCommandBufferAllocateInfo.level				= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	bufferCopyCommandBufferAllocateInfo.commandPool			= bufferTransferCommandPool;
-	bufferCopyCommandBufferAllocateInfo.commandBufferCount	= 1;
+	VkCommandBufferBeginInfo tmpCommandBufferBeginInfo{};
+	tmpCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	tmpCommandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	VkCommandBuffer bufferCopyCommandBuffer;
-	vkAllocateCommandBuffers(logicalDevice, &bufferCopyCommandBufferAllocateInfo, &bufferCopyCommandBuffer);
+	vkBeginCommandBuffer(tempCommandBufferToBegin, &tmpCommandBufferBeginInfo);
+}
 
-	/***********************************************************************************************************************************/
-	VkCommandBufferBeginInfo bufferCopyCommandBufferBeginInfo{};
-	bufferCopyCommandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	bufferCopyCommandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+void SenAbstractGLFW::endSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice
+											, const VkQueue& tmpCommandBufferQueue, const VkCommandBuffer& tmpCommandBufferToEnd) {
+	// You may wish to create a separate command pool for these kinds of short - lived buffers, 
+	// because the implementation may be able to apply memory allocation optimizations.
+	// You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
+	vkEndCommandBuffer(tmpCommandBufferToEnd);
 
-	vkBeginCommandBuffer(bufferCopyCommandBuffer, &bufferCopyCommandBufferBeginInfo);
-	VkBufferCopy bufferCopyRegion{};
-	bufferCopyRegion.size = size;
-	vkCmdCopyBuffer(bufferCopyCommandBuffer, srcBuffer, dstBuffer, 1, &bufferCopyRegion);
-	vkEndCommandBuffer(bufferCopyCommandBuffer);
+	VkSubmitInfo tmpCommandBufferSubmitInfo{};
+	tmpCommandBufferSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	tmpCommandBufferSubmitInfo.commandBufferCount = 1;
+	tmpCommandBufferSubmitInfo.pCommandBuffers = &tmpCommandBufferToEnd;
 
-	/***********************************************************************************************************************************/
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &bufferCopyCommandBuffer;
-
-	vkQueueSubmit(bufferTransferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-
+	vkQueueSubmit(tmpCommandBufferQueue, 1, &tmpCommandBufferSubmitInfo, VK_NULL_HANDLE);
 	// There are again two possible ways to wait on this transfer to complete:
 	//   1. We could use a fence and wait with vkWaitForFences, which would allow you to schedule multiple transfers simultaneously 
 	//			and wait for all of them complete, instead of executing one at a time;
 	//   2. Simply wait for the transfer queue to become idle with vkQueueWaitIdle.
-	vkQueueWaitIdle(bufferTransferQueue);
+	vkQueueWaitIdle(tmpCommandBufferQueue);
+	vkFreeCommandBuffers(logicalDevice, tmpCommandBufferCommandPool, 1, &tmpCommandBufferToEnd);
+}
 
-	vkFreeCommandBuffers(logicalDevice, bufferTransferCommandPool, 1, &bufferCopyCommandBuffer);
+void SenAbstractGLFW::transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferTransferQueue,
+	const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize) {
+
+	VkCommandBuffer bufferCopyCommandBuffer = VK_NULL_HANDLE;
+	SenAbstractGLFW::beginSingleTimeCommandBuffer(bufferTransferCommandPool, logicalDevice,	bufferCopyCommandBuffer);
+
+	VkBufferCopy bufferCopyRegion{};
+	bufferCopyRegion.size = resourceBufferSize;
+	vkCmdCopyBuffer(bufferCopyCommandBuffer, srcBuffer, dstBuffer, 1, &bufferCopyRegion);
+
+	SenAbstractGLFW::endSingleTimeCommandBuffer(bufferTransferCommandPool, logicalDevice, bufferTransferQueue, bufferCopyCommandBuffer);
+	bufferCopyCommandBuffer = VK_NULL_HANDLE;
 }
 
 void SenAbstractGLFW::createTriangleVertexBuffer() {
@@ -1169,10 +1225,10 @@ void SenAbstractGLFW::createTriangleVertexBuffer() {
 	void* data;
 	vkMapMemory(device, stagingBufferDeviceMemory, 0, verticesBufferSize, 0, &data);
 	memcpy(data, vertices, verticesBufferSize);
-	//// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
-	//// There are two ways to deal with that problem, and what we use is the first one below:
-	////  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-	////  2. Call vkFlushMappedMemoryRanges to after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
+	// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
+	// There are two ways to deal with that problem, and what we use is the first one below:
+	//  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+	//  2. Call vkFlushMappedMemoryRanges to after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
 	vkUnmapMemory(device, stagingBufferDeviceMemory);
 
 	/****************************************************************************************************************************************************/

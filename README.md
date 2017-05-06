@@ -145,4 +145,6 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 	The advantage is that your data is more cache friendly in that case, because it's closer together.
 	It is even possible to reuse the same chunk of memory for multiple resources if they are not used during the same render operations,
 		provided that their data is refreshed, of course.
-6. 
+6. You may wish to create a separate command pool for these kinds of short - lived buffers, 
+		because the implementation may be able to apply memory allocation optimizations.
+	You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
