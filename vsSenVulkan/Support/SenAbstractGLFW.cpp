@@ -95,53 +95,90 @@ void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const ui
 }
 
 
-//void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
-//	VkImageMemoryBarrier imageMemoryBarrier = {};
-//	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-//	barrier.oldLayout = oldLayout;
-//	barrier.newLayout = newLayout;
-//	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-//	barrier.image = image;
-//	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-//	barrier.subresourceRange.baseMipLevel = 0;
-//	barrier.subresourceRange.levelCount = 1;
-//	barrier.subresourceRange.baseArrayLayer = 0;
-//	barrier.subresourceRange.layerCount = 1;
-//
-//	if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
-//		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-//		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-//	}
-//	else if (oldLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-//		barrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
-//		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//	}
-//	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
-//		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-//		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-//	}
-//	else {
-//		throw std::invalid_argument("unsupported layout transition!");
-//	}
-//
-//	VkCommandBuffer commandBuffer = beginSingleTimeCommands();
-//	vkCmdPipelineBarrier(
-//		commandBuffer,
-//		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-//		0,
-//		0, nullptr,
-//		0, nullptr,
-//		1, &barrier
-//	);
-//
-//	endSingleTimeCommands(commandBuffer);
-//}
+void SenAbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
+	,const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout, const VkFormat& imageFormat
+	,const VkDevice& logicalDevice ,const VkCommandPool& transitionImageLayoutCommandPool  ,const VkQueue& imageLayoutTransitionQueue) {
+	
+	if (newImageLayout == VK_IMAGE_LAYOUT_UNDEFINED || newImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+		throw std::runtime_error(" The newImageLayout must not be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_PREINITIALIZED  !!!");
 
-void SenAbstractGLFW::createDeviceLocalTextureImage(const VkDevice& logicalDevice
-	, const char*& textureDiskAddress, const VkImageType& imageType, int& textureImageWidth, int& textureImageHeight
-	, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& deviceLocalTextureDeviceMemoryToAllocate, VkImageView& deviceLocalTextureImageView
-	, VkSampler& deviceLocalTextureSampler, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties)
+	// Transitions can happen with an image memory barrier, included as part of a vkCmdPipelineBarrier;
+	//								or a vkCmdWaitEvents command buffer command;
+	//								or as part of a subpass dependency within a render pass(see VkSubpassDependency
+	//										, like transitions between swapchain colorImage for framebuffer paiting and presentation);
+	VkImageMemoryBarrier imageMemoryBarrier{};
+	imageMemoryBarrier.sType							= VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	imageMemoryBarrier.oldLayout						= oldImageLayout; // current layout of the image subresource or else be VK_IMAGE_LAYOUT_UNDEFINED
+	imageMemoryBarrier.newLayout						= newImageLayout; // must not be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_PREINITIALIZED.
+	imageMemoryBarrier.srcQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED; // must be VK_QUEUE_FAMILY_IGNORED instead of 0
+	imageMemoryBarrier.dstQueueFamilyIndex				= VK_QUEUE_FAMILY_IGNORED; // must be VK_QUEUE_FAMILY_IGNORED instead of 0
+	imageMemoryBarrier.image							= imageToTransitionLayout;
+	imageMemoryBarrier.subresourceRange					= imageSubresourceRangeToTransition;
+
+	if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+	}else if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}else if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+	}else {
+		throw std::invalid_argument("unsupported layout transition!");
+	}
+
+	VkCommandBuffer transitionImageLayoutCommandBuffer = VK_NULL_HANDLE;
+	SenAbstractGLFW::beginSingleTimeCommandBuffer(transitionImageLayoutCommandPool, logicalDevice, transitionImageLayoutCommandBuffer);
+	vkCmdPipelineBarrier(
+		transitionImageLayoutCommandBuffer,
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,		// srcStageMask
+		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,		// dstStageMask
+		0,						// dependencyFlags, framebuffer-global instead of framebuffer-local 
+		0, nullptr,	0, nullptr, // VkMemoryBarrier or VkBufferMemoryBarrirer related
+		1,						// imageMemoryBarrierCount
+		&imageMemoryBarrier		// pImageMemoryBarriers
+	);
+	SenAbstractGLFW::endSingleTimeCommandBuffer(transitionImageLayoutCommandPool, logicalDevice, imageLayoutTransitionQueue, transitionImageLayoutCommandBuffer);
+	transitionImageLayoutCommandBuffer = VK_NULL_HANDLE;
+}
+
+void transferResourceImage(const VkCommandPool& imageTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& imageTransferQueue,
+	const VkImage& srcImage, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight) {
+
+	VkCommandBuffer imageCopyCommandBuffer = VK_NULL_HANDLE;
+	SenAbstractGLFW::beginSingleTimeCommandBuffer(imageTransferCommandPool, logicalDevice, imageCopyCommandBuffer);
+
+	VkImageSubresourceLayers imageSubresourceLayers{};
+	imageSubresourceLayers.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	imageSubresourceLayers.baseArrayLayer	= 0;
+	imageSubresourceLayers.mipLevel			= 0;
+	imageSubresourceLayers.layerCount		= 1;
+
+	VkImageCopy imageCopyRegion{};
+	imageCopyRegion.srcSubresource	= imageSubresourceLayers;
+	imageCopyRegion.dstSubresource	= imageSubresourceLayers;
+	imageCopyRegion.srcOffset		= { 0, 0, 0 };
+	imageCopyRegion.dstOffset		= { 0, 0, 0 };
+	imageCopyRegion.extent.width	= imageWidth;
+	imageCopyRegion.extent.height	= imageHeight;
+	imageCopyRegion.extent.depth	= 1;
+
+	vkCmdCopyImage(
+		imageCopyCommandBuffer,
+		srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+		dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		1, &imageCopyRegion
+	);
+
+	SenAbstractGLFW::endSingleTimeCommandBuffer(imageTransferCommandPool, logicalDevice, imageTransferQueue, imageCopyCommandBuffer);
+	imageCopyCommandBuffer = VK_NULL_HANDLE;
+}
+
+void SenAbstractGLFW::createDeviceLocalTextureImage(const VkDevice& logicalDevice, const char*& textureDiskAddress, const VkImageType& imageType
+	,int& textureImageWidth, int& textureImageHeight, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& deviceLocalTextureDeviceMemoryToAllocate
+	,VkImageView& deviceLocalTextureImageView ,VkSampler& deviceLocalTextureSampler, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+	,const VkSharingMode& imageSharingMode ,const VkCommandPool& imageLayoutTransitionCommandPool, const VkQueue& imageLayoutTransitionQueue)
 {
 	// The pointer ptrBackgroundTexture returned from stbi_load(...) is the first element in an array of pixel values.
 	int actuallyTextureChannels		= 0;
@@ -150,7 +187,7 @@ void SenAbstractGLFW::createDeviceLocalTextureImage(const VkDevice& logicalDevic
 		throw std::runtime_error("failed to load texture image!");
 	}
 	/***********************************************************************************************************************************************/
-	/***********************      First:   Upload/MapMemory texture image as stagingImage       ****************************************************/
+	/***********************      First:   Upload/MapMemory texture image file as linear stagingImage       ****************************************/
 	VkImage linearStagingImage;
 	VkDeviceMemory linearStagingImageDeviceMemory;
 	SenAbstractGLFW::createResourceImage(logicalDevice, textureImageWidth, textureImageHeight, imageType,
@@ -187,16 +224,27 @@ void SenAbstractGLFW::createDeviceLocalTextureImage(const VkDevice& logicalDevic
 	vkUnmapMemory(logicalDevice, linearStagingImageDeviceMemory);
 	stbi_image_free(ptrDiskTextureToUpload);
 	/***********************************************************************************************************************************************/
-	/***********************      Second:          ****************************************************/
+	/****************      Second: Transfer stagingImage to deviceLocalTextureImage with correct textureImageLayout      ***************************/
 	SenAbstractGLFW::createResourceImage(logicalDevice, textureImageWidth, textureImageHeight, imageType,
 		VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, deviceLocalTextureToCreate
 		, deviceLocalTextureDeviceMemoryToAllocate, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageSharingMode, gpuMemoryProperties);
 	
-	//transitionImageLayout(linearStagingImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_PREINITIALIZED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	VkImageSubresourceRange textureImageSubresourceRange{};
+	textureImageSubresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	textureImageSubresourceRange.baseMipLevel	= 0;	// first mipMap level to start
+	textureImageSubresourceRange.levelCount		= 1;
+	textureImageSubresourceRange.baseArrayLayer	= 0;	// first arrayLayer to start
+	textureImageSubresourceRange.layerCount		= 1;
+
+	SenAbstractGLFW::transitionResourceImageLayout(linearStagingImage, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+		VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, logicalDevice, imageLayoutTransitionCommandPool, imageLayoutTransitionQueue);
+	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, logicalDevice, imageLayoutTransitionCommandPool, imageLayoutTransitionQueue);
+
 	//copyImage(linearStagingImage, textureImage, textureImageWidth, textureImageHeight);
 
-	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, logicalDevice, imageLayoutTransitionCommandPool, imageLayoutTransitionQueue);
 }
 
 void SenAbstractGLFW::paintVulkan(void)
@@ -646,9 +694,9 @@ void SenAbstractGLFW::createSwapchainImageViews() {
 		swapchainImageViewCreateInfo.components.b	= VK_COMPONENT_SWIZZLE_IDENTITY;
 		swapchainImageViewCreateInfo.components.a	= VK_COMPONENT_SWIZZLE_IDENTITY;
 		swapchainImageViewCreateInfo.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT; // color/depth/stencil/metadata
-		swapchainImageViewCreateInfo.subresourceRange.baseMipLevel		= 0;
+		swapchainImageViewCreateInfo.subresourceRange.baseMipLevel		= 0; // first mipmap level accessible to the view
 		swapchainImageViewCreateInfo.subresourceRange.levelCount		= 1; // amount of mipmaps
-		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer	= 0;
+		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer	= 0; // first array layer accessible to the view
 		swapchainImageViewCreateInfo.subresourceRange.layerCount		= 1; // if larger than 1, .viewType needs to be array
 
 		SenAbstractGLFW::errorCheck(
@@ -1732,9 +1780,9 @@ void SenAbstractGLFW::finalize() {
 		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
 		vkDestroyDescriptorSetLayout(device, mvpUboDescriptorSetLayout, nullptr);
 
-		mvpUboDescriptorSetLayout = VK_NULL_HANDLE;
-		descriptorPool = VK_NULL_HANDLE;
-		mvpUboDescriptorSet = VK_NULL_HANDLE;
+		mvpUboDescriptorSetLayout	= VK_NULL_HANDLE;
+		descriptorPool				= VK_NULL_HANDLE;
+		mvpUboDescriptorSet			= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
@@ -1762,22 +1810,22 @@ void SenAbstractGLFW::finalize() {
 		vkDestroyBuffer(device, triangleIndexBuffer, nullptr);
 		vkFreeMemory(device, triangleIndexBufferMemory, nullptr);	// always try to destroy before free
 
-		triangleIndexBuffer = VK_NULL_HANDLE;
-		triangleIndexBufferMemory = VK_NULL_HANDLE;
+		triangleIndexBuffer			= VK_NULL_HANDLE;
+		triangleIndexBufferMemory	= VK_NULL_HANDLE;
 	}
 	if (VK_NULL_HANDLE != mvpUniformStagingBuffer) {
 		vkDestroyBuffer(device, mvpUniformStagingBuffer, nullptr);
 		vkFreeMemory(device, mvpUniformStagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 
-		mvpUniformStagingBuffer = VK_NULL_HANDLE;
+		mvpUniformStagingBuffer				= VK_NULL_HANDLE;
 		mvpUniformStagingBufferDeviceMemory = VK_NULL_HANDLE;
 	}
 	if (VK_NULL_HANDLE != mvpOptimalUniformBuffer) {
 		vkDestroyBuffer(device, mvpOptimalUniformBuffer, nullptr);
 		vkFreeMemory(device, mvpOptimalUniformBufferMemory, nullptr);	// always try to destroy before free
 
-		mvpOptimalUniformBuffer = VK_NULL_HANDLE;
-		mvpOptimalUniformBufferMemory = VK_NULL_HANDLE;
+		mvpOptimalUniformBuffer			= VK_NULL_HANDLE;
+		mvpOptimalUniformBufferMemory	= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy depthStencil Memory, ImageView, Image     ***********************************/
@@ -1787,9 +1835,9 @@ void SenAbstractGLFW::finalize() {
 		vkDestroyImageView(device, depthStencilImageView, nullptr);
 		vkFreeMemory(device, depthStencilImageDeviceMemory, nullptr); 	// always try to destroy before free
 
-		depthStencilImage = VK_NULL_HANDLE;
-		depthStencilImageDeviceMemory = VK_NULL_HANDLE;
-		depthStencilImageView = VK_NULL_HANDLE;
+		depthStencilImage				= VK_NULL_HANDLE;
+		depthStencilImageDeviceMemory	= VK_NULL_HANDLE;
+		depthStencilImageView			= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/*****  SwapChain is a child of Logical Device, must be destroyed before Logical Device  ********************/

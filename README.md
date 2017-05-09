@@ -105,11 +105,30 @@ in other words, each of the layers means to support some extensions, which means
 		this descriptor layout defines the interfaces between shader stages and shader resources, with each resource bound through descriptorLayoutBinding.
 * 29. When a DescriptorPool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid;
 		Descriptor sets allocated from a given pool do not need to be freed before destroying that descriptor pool.
-* 30. Pipeline barriers are primarily used for synchronizing access to resources:
-		making sure that an image was written to before it is read;
-		transition the layout of an image;
-		transfer queue family ownership when using VK_SHARING_MODE_EXCLUSIVE;
+* 30. Spec Image Layout Transition:
+		Transitions can happen with 
+						a. an image memory barrier, included as part of a vkCmdPipelineBarrier;
+						b. or a vkCmdWaitEvents command buffer command;
+						c. or as part of a subpass dependency within a render pass (VkSubpassDependency).
+		When performing a layout transition on the image subresource,
+			The old layout value must either equal the current layout of the image subresource (at the time the transition executes);
+				or else be VK_IMAGE_LAYOUT_UNDEFINED (implying that the contents of the image subresource need not be preserved);
+			The new layout used in a transition must not be VK_IMAGE_LAYOUT_UNDEFINED or VK_IMAGE_LAYOUT_PREINITIALIZED.
+		When a layout transition is specified in a memory dependency,
+			it happens-after the availability operations in the memory dependency, and happens-before the visibility operations;
+			Image layout transitions may perform read and write accesses on all memory bound to the image subresource range,
+				so applications must ensure that all memory writes have been made available before a layout transition is executed.
+		During a render pass instance, an attachment can use a different layout in each subpass, if desired.
+
+		a. Image memory barriers can be used to define image layout transitions or a queue family ownership transfer for the specified image subresource range;
+		c. VkSubpassDependency: an application provides the layout that each attachment must be in at the start and end of a renderpass,
+						and the layout it must be in during each subpass it is used in.
+				Automatic layout transitions from the layout used in a subpass happen
+											-after the availability operations for all dependencies with that subpass as the srcSubpass.
+				Automatic layout transitions into the layout used in a subpass happen
+											-before the visibility operations for all dependencies with that subpass as the dstSubpass.
 * 
+
 
 ### V++ / Debug
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>
@@ -136,6 +155,7 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 * 
 
 ### Problems to solve
+0. Change transitionResourceImageLayout(...) and copyImage(...) to use only one singleTimeCommandBuffer;
 1. Dynamic pipeline reuse for resizing;
 2. Memory allocator to solve the maximum count to allocate deviceMemory;
 3. put model view projection into different descriptorLayoutBinding;
@@ -148,3 +168,5 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 6. You may wish to create a separate command pool for these kinds of short - lived buffers, 
 		because the implementation may be able to apply memory allocation optimizations.
 	You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
+7. Use imageArray to draw SenCube.
+8. 

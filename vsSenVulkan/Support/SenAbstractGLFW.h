@@ -70,15 +70,19 @@ public:
 		VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
 	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferTransferQueue,
 		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize);
+	
 	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
-	static void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice, const uint32_t& imageWidth, const uint32_t& imageHeight
+	static void createResourceImage(const VkDevice& logicalDevice, const uint32_t& imageWidth, const uint32_t& imageHeight
 		, const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
 		, VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
 		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties);
-	static void createDeviceLocalTextureImage(const VkDevice& logicalDevice
-		, const char*& textureDiskAddress, const VkImageType& imageType, int& textureImageWidth, int& textureImageHeight
-		, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& deviceLocalTextureDeviceMemoryToAllocate, VkImageView& deviceLocalTextureImageView
-		, VkSampler& deviceLocalTextureSampler, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties);
+	static void transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
+		, const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout, const VkFormat& imageFormat
+		, const VkDevice& logicalDevice, const VkCommandPool& transitionImageLayoutCommandPool, const VkQueue& imageLayoutTransitionQueue);
+	static void createDeviceLocalTextureImage(const VkDevice& logicalDevice, const char*& textureDiskAddress, const VkImageType& imageType
+		, int& textureImageWidth, int& textureImageHeight, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& deviceLocalTextureDeviceMemoryToAllocate
+		, VkImageView& deviceLocalTextureImageView, VkSampler& deviceLocalTextureSampler, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+		, const VkSharingMode& imageSharingMode, const VkCommandPool& imageLayoutTransitionCommandPool, const VkQueue& imageLayoutTransitionQueue);
 
 
 //	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 
