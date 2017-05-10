@@ -12,23 +12,26 @@ public:
 	virtual ~Sen_07_Texture();
 
 protected:
-	//void initGlfwVulkan();
-	//void paintVulkan();
-	//void reCreateTriangleSwapchain(); // for resize window
-	void finalize();
+	void initVulkanApplication() override;
+	void reCreateRenderTarget() override; // for resize window
+	void paintVulkan() override;
+	void finalize() override;
 
 private:
-	//void createTextureImageView();
-	//void createTextureSampler();
+	void createTextureAppPipeline();
+	void createTextureAppVertexBuffer();
+	void initBackgroundTextureImage();
+	void createTextureAppDescriptorPool();
+	void createTextureAppDescriptorSetLayout();
+	void createTextureAppDescriptorSet();
 
-	int backgroundTextureWidth, backgroundTextureHeight, backgroundTextureChannels;
+	int backgroundTextureWidth, backgroundTextureHeight;
+	const char* backgroundTextureDiskAddress;
+	VkImage backgroundTextureImage						= VK_NULL_HANDLE;
+	VkDeviceMemory backgroundTextureImageDeviceMemory	= VK_NULL_HANDLE;
+	VkImageView backgroundTextureImageView				= VK_NULL_HANDLE;
 
-	VkImage backgroundTextureImage;
-	VkDeviceMemory backgroundTextureImageDeviceMemory;
-	VkImageView backgroundTextureImageView;
-	VkSampler backgroundTextureSampler;
-
-
+	VkSampler texture2DSampler							= VK_NULL_HANDLE;
 };
 
 

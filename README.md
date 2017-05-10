@@ -127,8 +127,27 @@ in other words, each of the layers means to support some extensions, which means
 											-after the availability operations for all dependencies with that subpass as the srcSubpass.
 				Automatic layout transitions into the layout used in a subpass happen
 											-before the visibility operations for all dependencies with that subpass as the dstSubpass.
-* 
-
+* 31. Spec Copy/Transfer commands:
+			Copy commands must be recorded outside of a render pass instance; 
+			Copy regions must be non-empty;
+			Source image subresources must be in either the VK_IMAGE_LAYOUT_GENERAL or VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL layout;
+			Destination image subresources must be in the VK_IMAGE_LAYOUT_GENERAL or VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL layout;
+			Source images must have been created with the VK_IMAGE_USAGE_TRANSFER_SRC_BIT usage bit enabled 
+					and destination images must have been created with the VK_IMAGE_USAGE_TRANSFER_DST_BIT usage bit enabled;
+			Source buffers must have been created with the VK_BUFFER_USAGE_TRANSFER_SRC_BIT usage bit enabled
+					and destination buffers must have been created with the VK_BUFFER_USAGE_TRANSFER_DST_BIT usage bit enabled;
+			All copy commands are treated as transfer operations for the purposes of synchronization barriers;
+			The formats of srcImage and dstImage must be compatible. Formats are considered compatible if their element size is the same between both formats;
+					For example, VK_FORMAT_R8G8B8A8_UNORM is compatible with VK_FORMAT_R32_UINT because both texels are 4 bytes in size;
+					Depth/stencil formats must match exactly.
+* 32. nVidia multiple threads presentation, Queues:
+	• Queue “families” can accept different types of work, e.g,
+			One form of work in a queue (e.g. DMA/memory transfer-only queue)
+* 33. LearnVulkan OnlineTutorial --	VK_IMAGE_LAYOUT_GENERAL doesn't necessarily offer the best performance for any operation:
+		VK_IMAGE_LAYOUT_GENERAL is required for some special cases,
+				like using an image as both input and output;
+				or for reading an image after it has left the preinitialized layout.
+*
 
 ### V++ / Debug
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>
@@ -155,7 +174,19 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 * 
 
 ### Problems to solve
+00. Why call the image and sampler combined? 
+	Why using combined?
 0. Change transitionResourceImageLayout(...) and copyImage(...) to use only one singleTimeCommandBuffer;
+		It is recommended to combine these operations in a single command buffer and execute them asynchronously for higher throughput,
+			especially the transitions and copy in the createTextureImage function.
+		Try to experiment with this by creating a setupCommandBuffer that the helper functions record commands into,
+			and add a flushSetupCommands to execute the commands that have been recorded so far.
+		It's best to do this after the texture mapping works to check if the texture resources are still set up correctly.
+0.5 add srcImageLayout dstImageLayout as arguments for function transferResourceImage(...) with default input;
+0.6 Figure out / Change imageMemoryBarrier.srcAccessMask / .dstAccessMask (VK_ACCESS_HOST_WRITE_BIT), to include as VK_IMAGE_LAYOUT_GENERAL oldImageLayout;
+0.7 Add mipMap Level handler for resourceImage Creation;
+0.8 Figure out an efficient descriptorPool, descriptorSetLayout, descriptorSets handler 
+		to handle different bindings for different application with same mvpUniformBufferObject;
 1. Dynamic pipeline reuse for resizing;
 2. Memory allocator to solve the maximum count to allocate deviceMemory;
 3. put model view projection into different descriptorLayoutBinding;

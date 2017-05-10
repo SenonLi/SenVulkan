@@ -68,7 +68,7 @@ public:
 	static void createResourceBuffer(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
 		const VkBufferUsageFlags& bufferUsageFlags, const VkSharingMode& bufferSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 		VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
-	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferTransferQueue,
+	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferMemoryTransferQueue,
 		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize);
 	
 	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
@@ -78,18 +78,36 @@ public:
 		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties);
 	static void transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
 		, const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout, const VkFormat& imageFormat
-		, const VkDevice& logicalDevice, const VkCommandPool& transitionImageLayoutCommandPool, const VkQueue& imageLayoutTransitionQueue);
-	static void createDeviceLocalTextureImage(const VkDevice& logicalDevice, const char*& textureDiskAddress, const VkImageType& imageType
-		, int& textureImageWidth, int& textureImageHeight, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& deviceLocalTextureDeviceMemoryToAllocate
-		, VkImageView& deviceLocalTextureImageView, VkSampler& deviceLocalTextureSampler, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
-		, const VkSharingMode& imageSharingMode, const VkCommandPool& imageLayoutTransitionCommandPool, const VkQueue& imageLayoutTransitionQueue);
-
+		, const VkDevice& logicalDevice, const VkCommandPool& transitionImageLayoutCommandPool, const VkQueue& imageMemoryTransferQueue);
+	static void transferResourceImage(const VkCommandPool& imageTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& imageTransferQueue,
+		const VkImage& srcImage, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight);
+	static void createDeviceLocalTexture(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+		, const char*& textureDiskAddress, const VkImageType& imageType, int& textureWidth, int& textureHeight
+		, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
+		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
+	static void createTextureSampler(const VkDevice& logicalDevice, VkSampler& textureSamplerToCreate);
 
 //	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 
 //		keyDetection(widget, key, scancode, action, mode);
 //	}
 
 protected:
+	virtual void initVulkanApplication();
+	virtual void reCreateRenderTarget(); // for resize window
+	virtual void paintVulkan();
+	virtual void finalize();
+
+	void initGlfwVulkanDebug();
+	//	virtual void keyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode);
+	const int DEFAULT_widgetWidth = 800;	// 640;
+	const int DEFAULT_widgetHeight = 600;	// 640;
+
+#ifdef _DEBUG	
+	const bool layersEnabled = true;
+#else			
+	const bool layersEnabled = false;
+#endif
+
 	GLFWwindow* widgetGLFW;
 	int widgetWidth, widgetHeight;
 	char* strWindowName;
@@ -110,6 +128,8 @@ protected:
 	int32_t							presentQueueFamilyIndex		= -1;	// The Graphics (Drawing) QueueFamily may not support presentation (WSI)
 
 	VkDevice						device						= VK_NULL_HANDLE;
+	// GPU QueueFamilies can accept different types of work, which means we could assign One form of work in One Unique queue
+	// (e.g.DMA / memoryTransfer-only queue);    Queues are on GPU, auto "multi-threads"
 	VkQueue							graphicsQueue				= VK_NULL_HANDLE;			// Handle to the graphics queue
 	VkQueue							presentQueue				= VK_NULL_HANDLE;			// Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
 	VkPresentModeKHR				presentMode					= VK_PRESENT_MODE_FIFO_KHR; // VK_PRESENT_MODE_FIFO_KHR is always available.
@@ -155,13 +175,13 @@ protected:
 		glm::mat4 view;
 		glm::mat4 projection;
 	};
-	VkDescriptorSetLayout			mvpUboDescriptorSetLayout			= VK_NULL_HANDLE;
+	VkDescriptorSetLayout			perspectiveProjection_DSL			= VK_NULL_HANDLE;
 	VkBuffer						mvpUniformStagingBuffer				= VK_NULL_HANDLE;
 	VkDeviceMemory					mvpUniformStagingBufferDeviceMemory	= VK_NULL_HANDLE;
 	VkBuffer						mvpOptimalUniformBuffer				= VK_NULL_HANDLE;
 	VkDeviceMemory					mvpOptimalUniformBufferMemory		= VK_NULL_HANDLE;
 	VkDescriptorPool				descriptorPool						= VK_NULL_HANDLE;
-	VkDescriptorSet					mvpUboDescriptorSet					= VK_NULL_HANDLE;
+	VkDescriptorSet					perspectiveProjection_DS			= VK_NULL_HANDLE;
 
 
 	VkRenderPass						depthTestRenderPass				= VK_NULL_HANDLE;
@@ -175,22 +195,37 @@ protected:
 	VkFormat							depthStencilFormat				= VK_FORMAT_UNDEFINED;
 	bool								stencilAvailable				= false;
 
-	virtual void initGlfwVulkan();
-	virtual void paintVulkan();
-	virtual void reCreateTriangleSwapchain(); // for resize window
-	virtual void finalize();
 
-//	virtual void keyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode);
+	void createLogicalDevice();
+	void createShaderModule(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
+	void collectSwapchainFeatures();
+	void createSwapchain();
+
+	void createTriangleRenderPass();
+
+	void createTrianglePipeline();
+	void createSwapchainFramebuffers();
+	void createCommandPool();
+	void createTriangleVertexBuffer();
+	void createTriangleIndexBuffer();
+
+	void createTriangleCommandBuffers();
+	void createSemaphores();
+
+	void createDescriptorSetLayout();
+	void createUniformBuffers();
+	void createDescriptorPool();
+	void createDescriptorSet();
+	void updateUniformBuffer();
 
 
-	const int DEFAULT_widgetWidth = 800;	// 640;
-	const int DEFAULT_widgetHeight = 600; // 640;
-
-#ifdef _DEBUG
-	const bool layersEnabled = true;
-#else
-	const bool layersEnabled = false;
-#endif
+	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
+		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
+		, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer);
+	void createDepthStencilAttachment();
+	void createDepthStencilRenderPass();
+	void createDepthStencilGraphicsPipeline();
+	//void createDepthStencilFramebuffers();
 
 private:
 	std::vector<const char*> debugInstanceLayersVector;
@@ -217,41 +252,6 @@ private:
 	bool isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
 	int  ratePhysicalDevice(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
 	void pickPhysicalDevice();
-	void createLogicalDevice();
-	
-	void createShaderModule(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
-	void collectSwapchainFeatures();
-	void createSwapchain();
-	void createSwapchainImageViews();
-
-	void createTriangleRenderPass();
-	
-	void createTrianglePipeline();
-	void createSwapchainFramebuffers();
-	void createCommandPool();
-	void createTriangleVertexBuffer();
-	void createTriangleIndexBuffer();
-
-	void createTriangleCommandBuffers();
-	void createSemaphores();
-
-	void createDescriptorSetLayout();
-	void createUniformBuffers();
-	void createDescriptorPool();
-	void createDescriptorSet();
-	void updateUniformBuffer();
-
-
-	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
-		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
-		, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer);
-	void createDepthStencilAttachment();
-	void createDepthStencilRenderPass();
-	void createDepthStencilGraphicsPipeline();
-	//void createDepthStencilFramebuffers();
-
-
-//	void keyboardRegister();
 
 
 	bool checkInstanceLayersSupport(std::vector<const char*> layersVector);
