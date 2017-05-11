@@ -12,14 +12,15 @@ public:
 	virtual ~Sen_07_Texture();
 
 protected:
-	void initVulkanApplication() override;
-	void reCreateRenderTarget() override; // for resize window
-	void paintVulkan() override;
+	void initVulkanApplication();
+	void reCreateRenderTarget(); // for resize window
+	void paintVulkan();
 	void finalize() override;
 
 private:
 	void createTextureAppPipeline();
 	void createTextureAppVertexBuffer();
+
 	void initBackgroundTextureImage();
 	void createTextureAppDescriptorPool();
 	void createTextureAppDescriptorSetLayout();

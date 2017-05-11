@@ -14,7 +14,6 @@ SenBegin with Vulkan 1.042, step by step
 ## Questions
 * the resource delete management VDeleter templete ? 
 * namespace and extern in C++?
-* Staging buffer? 
 * Asynchronous transfer?
 * 
 std::unique_ptr<VulkanApplication> VulkanApplication::instance;

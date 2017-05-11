@@ -21,17 +21,19 @@ void Sen_07_Texture::initVulkanApplication()
 	// Need to be segmented base on pipleStages in this function
 
 	createTriangleRenderPass();
-	createTextureAppDescriptorSetLayout();
 
-	createTrianglePipeline();
+	/***************************************/
+	createTextureAppDescriptorSetLayout();
+	createTextureAppPipeline();
+	/***************************************/
+
 	createSwapchainFramebuffers();
 	createCommandPool();
 
 	/***************************************/
 	initBackgroundTextureImage();
-
-
 	/***************************************/
+
 
 	createTextureAppVertexBuffer();
 	createTriangleIndexBuffer();
@@ -167,14 +169,202 @@ void Sen_07_Texture::finalize()
 	SenAbstractGLFW::finalize();
 }
 
+void Sen_07_Texture::createTextureAppPipeline()
+{
+	if (VK_NULL_HANDLE != trianglePipeline) {
+		vkDestroyPipeline(device, trianglePipeline, nullptr);
+		vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
+
+		trianglePipeline = VK_NULL_HANDLE;
+		trianglePipelineLayout = VK_NULL_HANDLE;
+	}
+
+	/****************************************************************************************************************************/
+	/**********                Reserve pipeline ShaderStage CreateInfos Array           *****************************************/
+	/****************************************************************************************************************************/
+	VkShaderModule vertShaderModule, fragShaderModule;
+	createShaderModule(device, SenAbstractGLFW::readFileBinaryStream("SenVulkanTutorial/Shaders/textureVert.spv"), vertShaderModule);
+	createShaderModule(device, SenAbstractGLFW::readFileBinaryStream("SenVulkanTutorial/Shaders/textureFrag.spv"), fragShaderModule);
+
+	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
+	vertPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertPipelineShaderStageCreateInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertPipelineShaderStageCreateInfo.module = vertShaderModule;
+	vertPipelineShaderStageCreateInfo.pName = "main"; // shader's entry point name
+
+	VkPipelineShaderStageCreateInfo fragPipelineShaderStageCreateInfo{};
+	fragPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragPipelineShaderStageCreateInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragPipelineShaderStageCreateInfo.module = fragShaderModule;
+	fragPipelineShaderStageCreateInfo.pName = "main"; // shader's entry point name
+
+	std::vector<VkPipelineShaderStageCreateInfo> pipelineShaderStagesCreateInfoVector;
+	pipelineShaderStagesCreateInfoVector.push_back(vertPipelineShaderStageCreateInfo);
+	pipelineShaderStagesCreateInfoVector.push_back(fragPipelineShaderStageCreateInfo);
+
+	/****************************************************************************************************************************/
+	/**********                Reserve pipeline Fixed-Function Stages CreateInfos           *************************************/
+	/****************************************************************************************************************************/
+	VkVertexInputBindingDescription vertexInputBindingDescription{};
+	vertexInputBindingDescription.binding = 0;
+	vertexInputBindingDescription.stride = 7 * sizeof(float);
+	vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	std::vector<VkVertexInputBindingDescription> vertexInputBindingDescriptionVector;
+	vertexInputBindingDescriptionVector.push_back(vertexInputBindingDescription);
+
+
+	std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescriptionVector;
+
+	VkVertexInputAttributeDescription positionVertexInputAttributeDescription;
+	positionVertexInputAttributeDescription.location	= 0;
+	positionVertexInputAttributeDescription.binding		= 0;
+	positionVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
+	positionVertexInputAttributeDescription.offset		= 0;
+	vertexInputAttributeDescriptionVector.push_back(positionVertexInputAttributeDescription);
+
+	VkVertexInputAttributeDescription colorVertexInputAttributeDescription;
+	colorVertexInputAttributeDescription.location		= 1;
+	colorVertexInputAttributeDescription.binding		= 0;
+	colorVertexInputAttributeDescription.format			= VK_FORMAT_R32G32B32_SFLOAT;
+	colorVertexInputAttributeDescription.offset			= 2 * sizeof(float);
+	vertexInputAttributeDescriptionVector.push_back(colorVertexInputAttributeDescription);
+
+	VkVertexInputAttributeDescription texCoordVertexInputAttributeDescription;
+	texCoordVertexInputAttributeDescription.location	= 2;
+	texCoordVertexInputAttributeDescription.binding		= 0;
+	texCoordVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
+	texCoordVertexInputAttributeDescription.offset		= 5 * sizeof(float);
+	vertexInputAttributeDescriptionVector.push_back(texCoordVertexInputAttributeDescription);
+
+	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
+	pipelineVertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	pipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount	= vertexInputBindingDescriptionVector.size();// spacing between data && whether the data is per-vertex or per-instance (geometry instancing)
+	pipelineVertexInputStateCreateInfo.pVertexBindingDescriptions		= vertexInputBindingDescriptionVector.data();
+	pipelineVertexInputStateCreateInfo.vertexAttributeDescriptionCount	= vertexInputAttributeDescriptionVector.size();
+	pipelineVertexInputStateCreateInfo.pVertexAttributeDescriptions		= vertexInputAttributeDescriptionVector.data();
+
+
+	VkPipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo{};
+	pipelineInputAssemblyStateCreateInfo.sType					= VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	pipelineInputAssemblyStateCreateInfo.topology				= VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	pipelineInputAssemblyStateCreateInfo.primitiveRestartEnable = VK_FALSE;
+
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	VkViewport viewport{};
+	viewport.x			= 0.0f;									viewport.y			= 0.0f;
+	viewport.width		= static_cast<float>(widgetWidth);		viewport.height		= static_cast<float>(widgetHeight);
+	viewport.minDepth	= 0.0f;									viewport.maxDepth	= 1.0f;
+	VkRect2D scissorRect2D{};
+	scissorRect2D.offset		= { 0, 0 };
+	scissorRect2D.extent.width	= static_cast<uint32_t>(widgetWidth);
+	scissorRect2D.extent.height = static_cast<uint32_t>(widgetHeight);
+
+	VkPipelineViewportStateCreateInfo pipelineViewportStateCreateInfo{};
+	pipelineViewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	pipelineViewportStateCreateInfo.viewportCount = 1;
+	pipelineViewportStateCreateInfo.pViewports = &viewport;
+	pipelineViewportStateCreateInfo.scissorCount = 1;
+	pipelineViewportStateCreateInfo.pScissors = &scissorRect2D;
+
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo{};
+	pipelineRasterizationStateCreateInfo.sType						= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	pipelineRasterizationStateCreateInfo.depthClampEnable			= VK_FALSE;
+	pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable	= VK_FALSE;
+	pipelineRasterizationStateCreateInfo.polygonMode				= VK_POLYGON_MODE_FILL;
+	pipelineRasterizationStateCreateInfo.cullMode					= VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT;
+	pipelineRasterizationStateCreateInfo.frontFace					= VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	pipelineRasterizationStateCreateInfo.depthBiasEnable			= VK_FALSE;
+	pipelineRasterizationStateCreateInfo.lineWidth					= 1.0f;
+
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	VkPipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo{}; // for anti-aliasing
+	pipelineMultisampleStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	pipelineMultisampleStateCreateInfo.sampleShadingEnable = VK_FALSE;
+	pipelineMultisampleStateCreateInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	std::vector<VkPipelineColorBlendAttachmentState> pipelineColorBlendAttachmentStateVector; // for multi-framebuffer rendering
+	VkPipelineColorBlendAttachmentState pipelineColorBlendAttachmentState{};
+	pipelineColorBlendAttachmentState.colorWriteMask	= VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+															| VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	pipelineColorBlendAttachmentState.blendEnable		= VK_FALSE;
+	pipelineColorBlendAttachmentStateVector.push_back(pipelineColorBlendAttachmentState);
+
+	VkPipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo{};
+	pipelineColorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	pipelineColorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
+	//pipelineColorBlendStateCreateInfo.logicOp						= VK_LOGIC_OP_COPY;
+	pipelineColorBlendStateCreateInfo.attachmentCount = (uint32_t)pipelineColorBlendAttachmentStateVector.size();
+	pipelineColorBlendStateCreateInfo.pAttachments = pipelineColorBlendAttachmentStateVector.data();
+	pipelineColorBlendStateCreateInfo.blendConstants[0] = 0.0f;
+	pipelineColorBlendStateCreateInfo.blendConstants[1] = 0.0f;
+	pipelineColorBlendStateCreateInfo.blendConstants[2] = 0.0f;
+	pipelineColorBlendStateCreateInfo.blendConstants[3] = 0.0f;
+
+	/****************************************************************************************************************************/
+	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
+	/****************************************************************************************************************************/
+	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
+	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
+
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+	pipelineLayoutCreateInfo.sType			= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayoutVector.size();
+	pipelineLayoutCreateInfo.pSetLayouts	= descriptorSetLayoutVector.data();
+
+	SenAbstractGLFW::errorCheck(
+		vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &trianglePipelineLayout),
+		std::string("Failed to to create pipeline layout !!!")
+	);
+
+	/****************************************************************************************************************************/
+	/**********                Create   Pipeline            *********************************************************************/
+	/****************************************************************************************************************************/
+	std::vector<VkGraphicsPipelineCreateInfo> graphicsPipelineCreateInfoVector;
+	VkGraphicsPipelineCreateInfo textureAppPipelineCreateInfo{};
+	textureAppPipelineCreateInfo.sType					= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	textureAppPipelineCreateInfo.stageCount				= (uint32_t)pipelineShaderStagesCreateInfoVector.size();
+	textureAppPipelineCreateInfo.pStages				= pipelineShaderStagesCreateInfoVector.data();
+	textureAppPipelineCreateInfo.pVertexInputState		= &pipelineVertexInputStateCreateInfo;
+	textureAppPipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
+	textureAppPipelineCreateInfo.pViewportState			= &pipelineViewportStateCreateInfo;
+	textureAppPipelineCreateInfo.pRasterizationState	= &pipelineRasterizationStateCreateInfo;
+	textureAppPipelineCreateInfo.pMultisampleState		= &pipelineMultisampleStateCreateInfo;
+	textureAppPipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
+	textureAppPipelineCreateInfo.layout					= trianglePipelineLayout;
+	textureAppPipelineCreateInfo.renderPass				= triangleRenderPass;
+	textureAppPipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the triangleRenderPass
+															//textureAppPipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
+
+	graphicsPipelineCreateInfoVector.push_back(textureAppPipelineCreateInfo);
+
+	SenAbstractGLFW::errorCheck(
+		vkCreateGraphicsPipelines(
+			device, VK_NULL_HANDLE,
+			(uint32_t)graphicsPipelineCreateInfoVector.size(),
+			graphicsPipelineCreateInfoVector.data(),
+			nullptr,
+			&trianglePipeline), // could be a pipelineArray
+		std::string("Failed to create graphics pipeline !!!")
+	);
+
+	vkDestroyShaderModule(device, vertShaderModule, nullptr);
+	vkDestroyShaderModule(device, fragShaderModule, nullptr);
+}
+
 void Sen_07_Texture::createTextureAppVertexBuffer()
 {
 	float vertices[] = {
 		// Positions	// Colors
 		-0.5f,	-0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
 		0.5f,	-0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
-		0.5f,	0.5f,	1.0f,	1.0f,	1.0f,   1.0f,	1.0f,	// Top Right
-		-0.5f,	0.5f,	0.0f,	1.0f,	0.0f,	0.0f,	1.0f   // Top Left
+		-0.5f,	0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
+		0.5f,	0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f   // Top Left
 	};
 	size_t verticesBufferSize = sizeof(vertices);
 
@@ -279,7 +469,6 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 {
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
 	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
-
 	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
 	descriptorSetAllocateInfo.sType					= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	descriptorSetAllocateInfo.descriptorPool		= descriptorPool;
@@ -290,16 +479,14 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 		vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &perspectiveProjection_DS),
 		std::string("Fail to Allocate perspectiveProjection_DS !")
 	);
-
-	std::vector<VkWriteDescriptorSet> DS_Write_Vector;
-
+	/**********************************************************************************************************************/
+	/**********************************************************************************************************************/
 	VkDescriptorBufferInfo mvpDescriptorBufferInfo{};
 	mvpDescriptorBufferInfo.buffer	= mvpOptimalUniformBuffer;
 	mvpDescriptorBufferInfo.offset	= 0;
 	mvpDescriptorBufferInfo.range	= sizeof(MvpUniformBufferObject);
 	std::vector<VkDescriptorBufferInfo> descriptorBufferInfoVector;
 	descriptorBufferInfoVector.push_back(mvpDescriptorBufferInfo);
-
 	VkWriteDescriptorSet uniformBuffer_DS_Write{};
 	uniformBuffer_DS_Write.sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	uniformBuffer_DS_Write.descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -308,7 +495,6 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 	uniformBuffer_DS_Write.dstArrayElement	= 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
 	uniformBuffer_DS_Write.descriptorCount	= descriptorBufferInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	uniformBuffer_DS_Write.pBufferInfo		= descriptorBufferInfoVector.data();
-	DS_Write_Vector.push_back(uniformBuffer_DS_Write);
 
 	VkDescriptorImageInfo backgroundTextureDescriptorImageInfo{};
 	backgroundTextureDescriptorImageInfo.imageLayout	= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -316,7 +502,6 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 	backgroundTextureDescriptorImageInfo.sampler		= texture2DSampler;
 	std::vector<VkDescriptorImageInfo> descriptorImageInfoVector;
 	descriptorImageInfoVector.push_back(backgroundTextureDescriptorImageInfo);
-
 	VkWriteDescriptorSet combinedImageSampler_DS_Write{};
 	combinedImageSampler_DS_Write.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	combinedImageSampler_DS_Write.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -325,8 +510,10 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 	combinedImageSampler_DS_Write.dstArrayElement	= 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
 	combinedImageSampler_DS_Write.descriptorCount	= descriptorImageInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	combinedImageSampler_DS_Write.pImageInfo		= descriptorImageInfoVector.data();
-	DS_Write_Vector.push_back(uniformBuffer_DS_Write);
 
+	std::vector<VkWriteDescriptorSet> DS_Write_Vector;
+	DS_Write_Vector.push_back(uniformBuffer_DS_Write);
+	DS_Write_Vector.push_back(combinedImageSampler_DS_Write);
 
 	vkUpdateDescriptorSets(device, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
 }
