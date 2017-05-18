@@ -15,7 +15,7 @@ protected:
 	void initVulkanApplication();
 	void reCreateRenderTarget(); // for resize window
 	void paintVulkan();
-	void finalize() override;
+	void finalizeWidget();
 
 private:
 	void createTextureAppPipeline();
@@ -25,6 +25,7 @@ private:
 	void createTextureAppDescriptorPool();
 	void createTextureAppDescriptorSetLayout();
 	void createTextureAppDescriptorSet();
+
 
 	int backgroundTextureWidth, backgroundTextureHeight;
 	const char* backgroundTextureDiskAddress;

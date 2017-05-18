@@ -20,7 +20,7 @@ SenAbstractGLFW::SenAbstractGLFW()
 
 SenAbstractGLFW::~SenAbstractGLFW()
 {
-	finalize();
+	finalizeAbstractGLFW();
 	OutputDebugString("\n\t ~SenAbstractGLFW()\n");
 }
 
@@ -293,78 +293,7 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	);
 }
 
-void SenAbstractGLFW::paintVulkan(void)
-{
-	/*******************************************************************************************************************************/
-	/*********         Acquire an image from the swap chain                              *******************************************/
-	/*******************************************************************************************************************************/
-	// Use of a presentable image must occur only after the image is returned by vkAcquireNextImageKHR, and before it is presented by vkQueuePresentKHR.
-	// This includes transitioning the image layout and rendering commands.
-	uint32_t swapchainImageIndex;
-	VkResult result = vkAcquireNextImageKHR(device, swapChain,
-						UINT64_MAX,							// timeout for this Image Acquire command, i.e., (std::numeric_limits<uint64_t>::max)(),
-						swapchainImageAcquiredSemaphore,	// semaphore to signal
-						VK_NULL_HANDLE,						// fence to signal
-						&swapchainImageIndex
-					);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		reCreateRenderTarget();
-		return;
-	}else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-		throw std::runtime_error("Failed to acquire swap chain image !!!!");
-	}
-
-	/*******************************************************************************************************************************/
-	/*********       Execute the command buffer with that image as attachment in the framebuffer           *************************/
-	/*******************************************************************************************************************************/
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	std::vector<VkSemaphore> submitInfoWaitSemaphoresVecotr;  
-	submitInfoWaitSemaphoresVecotr.push_back(swapchainImageAcquiredSemaphore);
-	// Commands before this submitInfoWaitDstStageMaskArray stage could be executed before semaphore signaled
-	VkPipelineStageFlags submitInfoWaitDstStageMaskArray[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount	= (uint32_t)submitInfoWaitSemaphoresVecotr.size();
-	submitInfo.pWaitSemaphores		= submitInfoWaitSemaphoresVecotr.data();
-	submitInfo.pWaitDstStageMask	= submitInfoWaitDstStageMaskArray;
-
-	submitInfo.commandBufferCount	= 1;	// wait for submitInfoCommandBuffersVecotr to be created
-	submitInfo.pCommandBuffers		= &swapchainCommandBufferVector[swapchainImageIndex];
-
-	std::vector<VkSemaphore> submitInfoSignalSemaphoresVector;  
-	submitInfoSignalSemaphoresVector.push_back(paintReadyToPresentSemaphore);
-	submitInfo.signalSemaphoreCount	= (uint32_t)submitInfoSignalSemaphoresVector.size();
-	submitInfo.pSignalSemaphores	= submitInfoSignalSemaphoresVector.data();
-
-	SenAbstractGLFW::errorCheck(
-		vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
-		std::string("Failed to submit draw command buffer !!!")
-	);
-
-	/*******************************************************************************************************************************/
-	/*********             Return the image to the swap chain for presentation                **************************************/
-	/*******************************************************************************************************************************/
-	std::vector<VkSemaphore> presentInfoWaitSemaphoresVector;
-	presentInfoWaitSemaphoresVector.push_back(paintReadyToPresentSemaphore);
-	VkPresentInfoKHR presentInfo{};
-	presentInfo.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	presentInfo.waitSemaphoreCount	= (uint32_t)presentInfoWaitSemaphoresVector.size();
-	presentInfo.pWaitSemaphores		= presentInfoWaitSemaphoresVector.data();
-
-	VkSwapchainKHR swapChainsArray[] = { swapChain };
-	presentInfo.swapchainCount	= 1;
-	presentInfo.pSwapchains		= swapChainsArray;
-	presentInfo.pImageIndices	= &swapchainImageIndex;
-
-	result = vkQueuePresentKHR(presentQueue, &presentInfo);
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-		reCreateRenderTarget();
-	}else if (result != VK_SUCCESS) {
-		throw std::runtime_error("Failed to present swap chain image !!!");
-	}
-}
-
-void SenAbstractGLFW::createSemaphores() {
+void SenAbstractGLFW::createPresentationSemaphores() {
 	VkSemaphoreCreateInfo semaphoreCreateInfo{};
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -378,29 +307,7 @@ void SenAbstractGLFW::createSemaphores() {
 	);
 }
 
-void SenAbstractGLFW::reCreateRenderTarget()
-{
-	// Call vkDeviceWaitIdle() here, because we shouldn't touch resources that may still be in use. 
-	vkDeviceWaitIdle(device);
-
-	// Have to use this 3 commands to get currentExtent
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
-	if (surfaceCapabilities.currentExtent.width < UINT32_MAX) {
-		widgetWidth = surfaceCapabilities.currentExtent.width;
-		widgetHeight = surfaceCapabilities.currentExtent.height;
-	}else {
-		glfwGetWindowSize(widgetGLFW, &widgetWidth, &widgetHeight);
-	}
-
-	createSwapchain();
-	createTrianglePipeline();
-	createSwapchainFramebuffers();
-	createTriangleCommandBuffers();
-
-	std::cout << "\n Finish  SenAbstractGLFW::reCreateRenderTarget()\n";
-}
-
-void SenAbstractGLFW::initGlfwVulkanDebug()
+void SenAbstractGLFW::initGlfwVulkanDebugWSI()
 {
 	// Init GLFW
 	glfwInit();
@@ -439,36 +346,17 @@ void SenAbstractGLFW::initGlfwVulkanDebug()
 	createSurface(); // surface == default framebuffer to draw
 	pickPhysicalDevice();
 	//showPhysicalDeviceSupportedLayersAndExtensions(physicalDevice);// only show physicalDevice after pickPhysicalDevice()
-	createLogicalDevice();
+	createDefaultLogicalDevice();
 	collectSwapchainFeatures();
 	createSwapchain();
-	createSemaphores();
+	createPresentationSemaphores();
 
-	std::cout << "\n Finish  SenAbstractGLFW::initGlfwVulkanDebug()\n";
-}
-
-void SenAbstractGLFW::initVulkanApplication()
-{
-	createTriangleRenderPass();
-	createDescriptorSetLayout();
-
-	createTrianglePipeline();
-	createSwapchainFramebuffers();
-	createCommandPool();
-
-	createTriangleVertexBuffer();
-	createTriangleIndexBuffer();
-	createUniformBuffers();
-	createDescriptorPool();
-	createDescriptorSet();
-	createTriangleCommandBuffers();
-
-	std::cout << "\n Finish  SenAbstractGLFW::initVulkanApplication()\n";
+	std::cout << "\n Finish  SenAbstractGLFW::initGlfwVulkanDebugWSI()\n";
 }
 
 void SenAbstractGLFW::showWidget()
 {
-	initGlfwVulkanDebug();
+	initGlfwVulkanDebugWSI();
 	initVulkanApplication();
 	// Game loop
 	while (!glfwWindowShouldClose(widgetGLFW))
@@ -485,8 +373,8 @@ void SenAbstractGLFW::showWidget()
 	//  drawing and presentation operations may still be going on, and cleaning up resources while that is happening is a bad idea;
 	vkDeviceWaitIdle(device);
 	// must finalize all objects after corresponding deviceWaitIdle
-	finalize();	
-
+	finalizeWidget();
+	finalizeAbstractGLFW();
 	// Terminate GLFW, clearing any resources allocated by GLFW.
 	glfwDestroyWindow(widgetGLFW);
 	glfwTerminate();
@@ -753,6 +641,24 @@ void SenAbstractGLFW::createSwapchain() {
 	}
 }
 
+void SenAbstractGLFW::reInitPresentation()
+{
+	// Call vkDeviceWaitIdle() here, because we shouldn't touch resources that may still be in use. 
+	vkDeviceWaitIdle(device);
+
+	// Have to use this 3 commands to get currentExtent
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
+	if (surfaceCapabilities.currentExtent.width < UINT32_MAX) {
+		widgetWidth = surfaceCapabilities.currentExtent.width;
+		widgetHeight = surfaceCapabilities.currentExtent.height;
+	}
+	else {
+		glfwGetWindowSize(widgetGLFW, &widgetWidth, &widgetHeight);
+	}
+
+	createSwapchain();
+}
+
 void SenAbstractGLFW::createDepthStencilAttachment()
 {
 	/********************************************************************************************************************/
@@ -858,7 +764,7 @@ void SenAbstractGLFW::createDepthStencilAttachment()
 	//assert(result == VK_SUCCESS);
 }
 
-void SenAbstractGLFW::createTriangleRenderPass() {
+void SenAbstractGLFW::createColorAttachOnlyRenderPass() {
 	/********************************************************************************************************************/
 	/************    Setting AttachmentDescription:  Only colorAttachment is needed for Triangle      *******************/
 	/********************************************************************************************************************/
@@ -916,7 +822,7 @@ void SenAbstractGLFW::createTriangleRenderPass() {
 	triangleRenderPassCreateInfo.pDependencies		= subpassDependencyVector.data();
 
 	SenAbstractGLFW::errorCheck(
-		vkCreateRenderPass(device, &triangleRenderPassCreateInfo, nullptr, &triangleRenderPass),
+		vkCreateRenderPass(device, &triangleRenderPassCreateInfo, nullptr, &colorAttachOnlyRenderPass),
 		std::string("Failed to create render pass !!")
 	);
 }
@@ -974,7 +880,7 @@ void SenAbstractGLFW::createDepthStencilGraphicsPipeline()
 {
 }
 
-void SenAbstractGLFW::createShaderModule(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule & targetShaderModule)
+void SenAbstractGLFW::createShaderModuleFromSPIRV(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule & targetShaderModule)
 {
 	VkShaderModuleCreateInfo shaderModuleCreateInfo{};
 	shaderModuleCreateInfo.sType	= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -985,6 +891,26 @@ void SenAbstractGLFW::createShaderModule(const VkDevice& logicalDevice, const st
 		vkCreateShaderModule(logicalDevice, &shaderModuleCreateInfo, nullptr, &targetShaderModule),
 		std::string("Failed to create the shader module !!")
 	);
+}
+
+void SenAbstractGLFW::createVulkanShaderModule(const VkDevice& logicalDevice, const std::string& diskFileAddress, VkShaderModule& shaderModule) {
+	std::vector<char> spirvCharVector;// (spirv32Vector.size() * sizeof(uint32_t) / sizeof(char));
+
+	if (diskFileAddress.substr(diskFileAddress.length() - 4, 4).compare(".spv") == 0)
+		spirvCharVector = SenAbstractGLFW::readFileStream(diskFileAddress, true);
+	else {
+		std::string shaderTypeString = diskFileAddress.substr(diskFileAddress.length() - 5, 5);
+		shaderc_shader_kind shadercType;
+		if		(shaderTypeString.compare(".vert") == 0)		shadercType = shaderc_glsl_vertex_shader;
+		else if (shaderTypeString.compare(".frag") == 0)		shadercType = shaderc_glsl_fragment_shader;
+		else if (shaderTypeString.compare(".geom") == 0)		shadercType = shaderc_glsl_geometry_shader;
+		// Android system Attension:   sourceString size for shadercToSPIRV() below may change.
+		std::vector<uint32_t> spirv32Vector = SenAbstractGLFW::shadercToSPIRV("glShaderSrc", shadercType, SenAbstractGLFW::readFileStream(diskFileAddress).data());
+		spirvCharVector.resize(spirv32Vector.size() * sizeof(uint32_t) / sizeof(char));
+		memcpy(spirvCharVector.data(), spirv32Vector.data(), spirvCharVector.size());
+	}
+
+	createShaderModuleFromSPIRV(logicalDevice, spirvCharVector, shaderModule);
 }
 
 void SenAbstractGLFW::createTrianglePipeline() {
@@ -1000,8 +926,9 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	/**********                Reserve pipeline ShaderStage CreateInfos Array           *****************************************/
 	/****************************************************************************************************************************/
 	VkShaderModule vertShaderModule, fragShaderModule;
-	createShaderModule(device, SenAbstractGLFW::readFileBinaryStream("SenVulkanTutorial/Shaders/triangleVert.spv"), vertShaderModule);
-	createShaderModule(device, SenAbstractGLFW::readFileBinaryStream("SenVulkanTutorial/Shaders/triangleFrag.spv"), fragShaderModule);
+
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Triangle.vert", vertShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Triangle.frag", fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType		= VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -1147,8 +1074,8 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	trianglePipelineCreateInfo.pMultisampleState	= &pipelineMultisampleStateCreateInfo;
 	trianglePipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
 	trianglePipelineCreateInfo.layout				= trianglePipelineLayout;
-	trianglePipelineCreateInfo.renderPass			= triangleRenderPass;
-	trianglePipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the triangleRenderPass
+	trianglePipelineCreateInfo.renderPass			= colorAttachOnlyRenderPass;
+	trianglePipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the colorAttachOnlyRenderPass
 	//trianglePipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
 
 	graphicsPipelineCreateInfoVector.push_back(trianglePipelineCreateInfo);
@@ -1167,7 +1094,7 @@ void SenAbstractGLFW::createTrianglePipeline() {
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void SenAbstractGLFW::createSwapchainFramebuffers() {
+void SenAbstractGLFW::createColorAttachOnlySwapchainFramebuffers() {
 	/************************************************************************************************************/
 	/*****************     Destroy old swapchainFramebuffers first, if there are      ****************************/
 	/************************************************************************************************************/
@@ -1184,7 +1111,7 @@ void SenAbstractGLFW::createSwapchainFramebuffers() {
 
 		VkFramebufferCreateInfo framebufferCreateInfo{};
 		framebufferCreateInfo.sType				= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferCreateInfo.renderPass		= triangleRenderPass;
+		framebufferCreateInfo.renderPass		= colorAttachOnlyRenderPass;
 		framebufferCreateInfo.attachmentCount	= (uint32_t)imageViewAttachmentArray.size();
 		framebufferCreateInfo.pAttachments		= imageViewAttachmentArray.data();
 		framebufferCreateInfo.width				= widgetWidth;
@@ -1409,7 +1336,7 @@ void SenAbstractGLFW::createTriangleCommandBuffers() {
 		//======================================================================================
 		VkRenderPassBeginInfo renderPassBeginInfo{};
 		renderPassBeginInfo.sType						= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass					= triangleRenderPass;
+		renderPassBeginInfo.renderPass					= colorAttachOnlyRenderPass;
 		renderPassBeginInfo.framebuffer					= swapchainFramebufferVector[i];
 		renderPassBeginInfo.renderArea.offset			= { 0, 0 };
 		renderPassBeginInfo.renderArea.extent.width		= widgetWidth;
@@ -1769,7 +1696,7 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int
 	return score;
 }
 
-void SenAbstractGLFW::createLogicalDevice()
+void SenAbstractGLFW::createDefaultLogicalDevice()
 {
 	std::vector<VkDeviceQueueCreateInfo> deviceQueuesCreateInfosVector;
 	/*******************************************************************************************************************************/
@@ -1810,7 +1737,7 @@ void SenAbstractGLFW::createLogicalDevice()
 	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue); // We only need 1 queue, so the third parameter (index) we give is 0.
 }
 
-void SenAbstractGLFW::finalize() {
+void SenAbstractGLFW::finalizeAbstractGLFW() {
 	/************************************************************************************************************/
 	/*********************           Destroy defaultThreadCommandPool         ***********************************/
 	/************************************************************************************************************/
@@ -1838,11 +1765,11 @@ void SenAbstractGLFW::finalize() {
 	if (VK_NULL_HANDLE != trianglePipeline) {
 		vkDestroyPipeline(device, trianglePipeline, nullptr);
 		vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
-		vkDestroyRenderPass(device, triangleRenderPass, nullptr);
+		vkDestroyRenderPass(device, colorAttachOnlyRenderPass, nullptr);
 
 		trianglePipeline		= VK_NULL_HANDLE;
 		trianglePipelineLayout	= VK_NULL_HANDLE;
-		triangleRenderPass		= VK_NULL_HANDLE;
+		colorAttachOnlyRenderPass		= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ***********************************/
@@ -1963,7 +1890,7 @@ void SenAbstractGLFW::finalize() {
 		vkDestroyInstance(instance, VK_NULL_HANDLE); 	instance = VK_NULL_HANDLE;
 	}
 
-	OutputDebugString("\n\tFinish  SenAbstractGLFW::finalize()\n");
+	OutputDebugString("\n\tFinish  SenAbstractGLFW::finalizeAbstractGLFW()\n");
 }
 
 uint32_t SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
@@ -2011,11 +1938,12 @@ void SenAbstractGLFW::onWidgetResized(GLFWwindow* widget, int width, int height)
 	if (width == 0 || height == 0) return;
 
 	SenAbstractGLFW* ptrAbstractWidget = reinterpret_cast<SenAbstractGLFW*>(glfwGetWindowUserPointer(widget));
+	ptrAbstractWidget->reInitPresentation();
 	ptrAbstractWidget->reCreateRenderTarget();
 }
 
-std::vector<char> SenAbstractGLFW::readFileBinaryStream(const std::string& filename) {
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
+std::vector<char> SenAbstractGLFW::readFileStream(const std::string& diskFileAddress, bool binary) {
+	std::ifstream file(diskFileAddress, binary ? std::ios::ate | std::ios::binary : std::ios::ate);
 
 	if (!file.is_open()) {
 		throw std::runtime_error("failed to open file!");
@@ -2030,6 +1958,27 @@ std::vector<char> SenAbstractGLFW::readFileBinaryStream(const std::string& filen
 	file.close();
 
 	return buffer;
+}
+
+// Compiles a shader to a SPIR-V binary. Returns the binary as a vector of 32-bit words.
+std::vector<uint32_t> SenAbstractGLFW::shadercToSPIRV(const std::string& source_name,
+	shaderc_shader_kind kind, const std::string& source, bool optimize) {
+	shaderc::Compiler compiler;
+	shaderc::CompileOptions options;
+
+	// Like -DMY_DEFINE=1
+	options.AddMacroDefinition("MY_DEFINE", "1");
+	if (optimize) options.SetOptimizationLevel(shaderc_optimization_level_size);
+
+	shaderc::SpvCompilationResult module =
+		compiler.CompileGlslToSpv(source, kind, source_name.c_str(), options);
+
+	if (module.GetCompilationStatus() != shaderc_compilation_status_success) {
+		std::cerr << module.GetErrorMessage();
+		return std::vector<uint32_t>();
+	}
+
+	return{ module.cbegin(), module.cend() };
 }
 
 /************************************************************************************************************************************************************************************************************/

@@ -10,14 +10,14 @@
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-//#include "Support/SenAbstractGLFW.h"
+#include "SenVulkanTutorial/Sen_06_Triangle.h"
 #include "SenVulkanTutorial/Sen_07_Texture.h"
 
 //#include <functional>
 
 
 int main() {
-	Sen_07_Texture widget;
+	Sen_06_Triangle widget;
 
 	try {
 		widget.showWidget();

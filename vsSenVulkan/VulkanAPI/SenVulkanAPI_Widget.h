@@ -42,7 +42,7 @@ public:
 	void showWidget();
 
 
-	virtual void initGlfwVulkanDebug();
+	virtual void initGlfwVulkanDebugWSI();
 	//	virtual void paintVulkan();
 	virtual void finalize();
 

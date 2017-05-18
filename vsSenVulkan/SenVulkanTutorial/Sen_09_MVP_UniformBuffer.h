@@ -11,6 +11,11 @@ public:
 	Sen_09_MVP_UniformBuffer();
 	virtual ~Sen_09_MVP_UniformBuffer();
 
+protected:
+	void initVulkanApplication() { ; }
+	void reCreateRenderTarget() { ; } // for resize window
+	void paintVulkan() { ; }
+	void finalizeWidget() { ; }
 
 };
 

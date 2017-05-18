@@ -11,7 +11,7 @@ Sen_07_Texture::Sen_07_Texture()
 
 Sen_07_Texture::~Sen_07_Texture()
 {
-	finalize();
+	finalizeWidget();
 
 	OutputDebugString("\n\t ~Sen_07_Texture()\n");
 }
@@ -20,14 +20,14 @@ void Sen_07_Texture::initVulkanApplication()
 {
 	// Need to be segmented base on pipleStages in this function
 
-	createTriangleRenderPass();
+	createColorAttachOnlyRenderPass();
 
 	/***************************************/
 	createTextureAppDescriptorSetLayout();
 	createTextureAppPipeline();
 	/***************************************/
 
-	createSwapchainFramebuffers();
+	createColorAttachOnlySwapchainFramebuffers();
 	createCommandPool();
 
 	/***************************************/
@@ -64,8 +64,7 @@ void Sen_07_Texture::paintVulkan()
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		reCreateRenderTarget();
 		return;
-	}
-	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+	}else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 		throw std::runtime_error("Failed to acquire swap chain image !!!!");
 	}
 
@@ -122,28 +121,13 @@ void Sen_07_Texture::paintVulkan()
 
 void Sen_07_Texture::reCreateRenderTarget()
 {
-	// Call vkDeviceWaitIdle() here, because we shouldn't touch resources that may still be in use. 
-	vkDeviceWaitIdle(device);
-
-	// Have to use this 3 commands to get currentExtent
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
-	if (surfaceCapabilities.currentExtent.width < UINT32_MAX) {
-		widgetWidth = surfaceCapabilities.currentExtent.width;
-		widgetHeight = surfaceCapabilities.currentExtent.height;
-	}else {
-		glfwGetWindowSize(widgetGLFW, &widgetWidth, &widgetHeight);
-	}
-
-	createSwapchain();
-	createTrianglePipeline();
-	createSwapchainFramebuffers();
+	createTextureAppPipeline();
+	createColorAttachOnlySwapchainFramebuffers();
 
 	createTriangleCommandBuffers();
-
-	std::cout << "\n Finish  Sen_07_Texture::reCreateRenderTarget()\n";
 }
 
-void Sen_07_Texture::finalize()
+void Sen_07_Texture::finalizeWidget()
 {	
 	/************************************************************************************************************/
 	/******************     Destroy background Memory, ImageView, Image     ***********************************/
@@ -160,13 +144,9 @@ void Sen_07_Texture::finalize()
 		backgroundTextureImage				= VK_NULL_HANDLE;
 		backgroundTextureImageDeviceMemory	= VK_NULL_HANDLE;
 		backgroundTextureImageView			= VK_NULL_HANDLE;
-		texture2DSampler			= VK_NULL_HANDLE;
+		texture2DSampler					= VK_NULL_HANDLE;
 	}
-	OutputDebugString("\n\tFinish  Sen_07_Texture::finalize()\n");
-
-
-	// The device and instance will be finalized at the end !!
-	SenAbstractGLFW::finalize();
+	OutputDebugString("\n\tFinish  Sen_07_Texture::finalizeWidget()\n");
 }
 
 void Sen_07_Texture::createTextureAppPipeline()
@@ -183,8 +163,9 @@ void Sen_07_Texture::createTextureAppPipeline()
 	/**********                Reserve pipeline ShaderStage CreateInfos Array           *****************************************/
 	/****************************************************************************************************************************/
 	VkShaderModule vertShaderModule, fragShaderModule;
-	createShaderModule(device, SenAbstractGLFW::readFileBinaryStream("SenVulkanTutorial/Shaders/textureVert.spv"), vertShaderModule);
-	createShaderModule(device, SenAbstractGLFW::readFileBinaryStream("SenVulkanTutorial/Shaders/textureFrag.spv"), fragShaderModule);
+
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/textureVert.spv", vertShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/textureVert.spv", fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -337,8 +318,8 @@ void Sen_07_Texture::createTextureAppPipeline()
 	textureAppPipelineCreateInfo.pMultisampleState		= &pipelineMultisampleStateCreateInfo;
 	textureAppPipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
 	textureAppPipelineCreateInfo.layout					= trianglePipelineLayout;
-	textureAppPipelineCreateInfo.renderPass				= triangleRenderPass;
-	textureAppPipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the triangleRenderPass
+	textureAppPipelineCreateInfo.renderPass				= colorAttachOnlyRenderPass;
+	textureAppPipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the colorAttachOnlyRenderPass
 															//textureAppPipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
 
 	graphicsPipelineCreateInfoVector.push_back(textureAppPipelineCreateInfo);

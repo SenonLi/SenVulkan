@@ -14,7 +14,7 @@ SenVulkanAPI_Widget::~SenVulkanAPI_Widget()
 	OutputDebugString("\n ~SenVulkanAPI_Widget()\n");
 }
 
-void SenVulkanAPI_Widget::initGlfwVulkanDebug()
+void SenVulkanAPI_Widget::initGlfwVulkanDebugWSI()
 {
 
 	initCommandBuffers();
@@ -115,7 +115,7 @@ void SenVulkanAPI_Widget::initCommandBuffers()
 
 void SenVulkanAPI_Widget::showWidget()
 {
-	//initGlfwVulkanDebug();
+	//initGlfwVulkanDebugWSI();
 
 	auto w = renderer.openSenWindow(800, 600, strWindowName);
 

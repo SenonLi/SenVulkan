@@ -39,7 +39,7 @@
 
 #include <chrono>
 
-//#include "LoadShaders.h"
+#include <shaderc/shaderc.hpp>
 
 
 class SenAbstractGLFW
@@ -49,10 +49,11 @@ public:
 	virtual ~SenAbstractGLFW();
 
 	void showWidget();
-
-	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags, VkDebugReportObjectTypeEXT, uint64_t, size_t, int32_t, const char*, const char*, void *);
 	static void onWidgetResized(GLFWwindow* widget, int width, int height);
-	static std::vector<char> readFileBinaryStream(const std::string& filename);
+
+	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags, VkDebugReportObjectTypeEXT, uint64_t, size_t, int32_t, const char*, const char*, void *);	
+	static void createVulkanShaderModule(const VkDevice& logicalDevice, const std::string& diskFileAddress, VkShaderModule& shaderModule);
+
 	static uint32_t findPhysicalDeviceMemoryPropertyIndex(
 		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 		const VkMemoryRequirements& memoryRequirements,
@@ -61,16 +62,16 @@ public:
 	static void errorCheck(VkResult result, std::string msg);
 
 	static void beginSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice,
-											VkCommandBuffer& tempCommandBufferToBegin);
+		VkCommandBuffer& tempCommandBufferToBegin);
 	static void endSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice,
-											const VkQueue& tmpCommandBufferQueue, const VkCommandBuffer& tmpCommandBufferToEnd);
+		const VkQueue& tmpCommandBufferQueue, const VkCommandBuffer& tmpCommandBufferToEnd);
 
 	static void createResourceBuffer(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
 		const VkBufferUsageFlags& bufferUsageFlags, const VkSharingMode& bufferSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 		VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
 	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferMemoryTransferQueue,
 		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize);
-	
+
 	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
 	static void createResourceImage(const VkDevice& logicalDevice, const uint32_t& imageWidth, const uint32_t& imageHeight
 		, const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
@@ -87,20 +88,17 @@ public:
 		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
 	static void createTextureSampler(const VkDevice& logicalDevice, VkSampler& textureSamplerToCreate);
 
-//	void _protectedKeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode) { 
-//		keyDetection(widget, key, scancode, action, mode);
-//	}
-
 protected:
-	virtual void initVulkanApplication();
-	virtual void reCreateRenderTarget(); // for resize window
-	virtual void paintVulkan();
-	virtual void finalize();
+	virtual void initVulkanApplication() = 0;
+	virtual void reCreateRenderTarget() = 0; // for resize window
+	virtual void paintVulkan() = 0;
+	virtual void finalizeWidget() = 0;
 
-	void initGlfwVulkanDebug();
-	//	virtual void keyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode);
-	const int DEFAULT_widgetWidth = 800;	// 640;
-	const int DEFAULT_widgetHeight = 600;	// 640;
+	const int DEFAULT_widgetWidth	= 800;	// 640;
+	const int DEFAULT_widgetHeight	= 600;	// 640;
+
+	void createColorAttachOnlyRenderPass();
+	void createColorAttachOnlySwapchainFramebuffers();
 
 #ifdef _DEBUG	
 	const bool layersEnabled = true;
@@ -111,9 +109,7 @@ protected:
 	GLFWwindow* widgetGLFW;
 	int widgetWidth, widgetHeight;
 	char* strWindowName;
-
 	VkInstance						instance					= VK_NULL_HANDLE;
-
 	/*******************************************************************************************************************************/
 	/********* VkSurfaceKHR object that represents an abstract type of surface to present rendered images to. **********************/
 	/********* The surface in our program will be backed by the window that we've already opened with GLFW.   **********************/
@@ -123,7 +119,7 @@ protected:
 	VkSurfaceCapabilitiesKHR		surfaceCapabilities{};
 	
 	VkPhysicalDevice				physicalDevice				= VK_NULL_HANDLE;
-	VkPhysicalDeviceProperties		physicalDeviceProperties{};			// GPU name, type (discrete)
+	VkPhysicalDeviceProperties		physicalDeviceProperties{};	
 	int32_t							graphicsQueueFamilyIndex	= -1;	// Index of Graphics QueueFamily of GPU that we will choose to 
 	int32_t							presentQueueFamilyIndex		= -1;	// The Graphics (Drawing) QueueFamily may not support presentation (WSI)
 
@@ -140,16 +136,12 @@ protected:
 	std::vector<VkImageView>		swapchainImageViewsVector;
 	std::vector<VkFramebuffer>		swapchainFramebufferVector;
 	std::vector<VkCommandBuffer>	swapchainCommandBufferVector;
+	VkSemaphore swapchainImageAcquiredSemaphore;// wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+	VkSemaphore paintReadyToPresentSemaphore;	// wait for GPU, from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 
-	VkCommandPool						defaultThreadCommandPool;
-
-	VkRenderPass						triangleRenderPass				= VK_NULL_HANDLE;
-	VkPipelineLayout					trianglePipelineLayout			= VK_NULL_HANDLE;
-	VkPipeline							trianglePipeline				= VK_NULL_HANDLE;
-	VkBuffer							triangleVertexBuffer			= VK_NULL_HANDLE;
-	VkDeviceMemory						triangleVertexBufferMemory		= VK_NULL_HANDLE;
-	VkBuffer							triangleIndexBuffer				= VK_NULL_HANDLE;
-	VkDeviceMemory						triangleIndexBufferMemory		= VK_NULL_HANDLE;
+	VkCommandPool					defaultThreadCommandPool	= VK_NULL_HANDLE;
+	VkRenderPass					colorAttachOnlyRenderPass	= VK_NULL_HANDLE;
+	
 	// It should be noted that in a real world application, you're not supposed to actually call vkAllocateMemory for every individual buffer.
 	// The maximum number of simultaneous memory allocations is limited by the maxMemoryAllocationCount physical device limit, 
 	//		which may be as low as 4096 even on high end hardware like an NVIDIA GTX 1080.
@@ -166,15 +158,32 @@ protected:
 	//		provided that their data is refreshed, of course.
 	// This is known as aliasing and some Vulkan functions have explicit flags to specify that you want to do this.
 	
-	VkSemaphore swapchainImageAcquiredSemaphore;// wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-	VkSemaphore paintReadyToPresentSemaphore;	// wait for GPU, from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-	
+	void createTrianglePipeline();
+	void createCommandPool();
+	void createTriangleVertexBuffer();
+	void createTriangleIndexBuffer();
+
+	void createTriangleCommandBuffers();
+	void createPresentationSemaphores();
+
+	void createDescriptorSetLayout();
+	void createUniformBuffers();
+	void createDescriptorPool();
+	void createDescriptorSet(); // need to be after createDescriptorPool
+	void updateUniformBuffer();
 
 	struct MvpUniformBufferObject {
 		glm::mat4 model;
 		glm::mat4 view;
 		glm::mat4 projection;
 	};
+	VkPipelineLayout					trianglePipelineLayout		= VK_NULL_HANDLE;
+	VkPipeline							trianglePipeline			= VK_NULL_HANDLE;
+	VkBuffer							triangleVertexBuffer		= VK_NULL_HANDLE;
+	VkDeviceMemory						triangleVertexBufferMemory	= VK_NULL_HANDLE;
+	VkBuffer							triangleIndexBuffer			= VK_NULL_HANDLE;
+	VkDeviceMemory						triangleIndexBufferMemory	= VK_NULL_HANDLE;
+
 	VkDescriptorSetLayout			perspectiveProjection_DSL			= VK_NULL_HANDLE;
 	VkBuffer						mvpUniformStagingBuffer				= VK_NULL_HANDLE;
 	VkDeviceMemory					mvpUniformStagingBufferDeviceMemory	= VK_NULL_HANDLE;
@@ -196,28 +205,6 @@ protected:
 	bool								stencilAvailable				= false;
 
 
-	void createLogicalDevice();
-	void createShaderModule(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
-	void collectSwapchainFeatures();
-	void createSwapchain();
-
-	void createTriangleRenderPass();
-
-	void createTrianglePipeline();
-	void createSwapchainFramebuffers();
-	void createCommandPool();
-	void createTriangleVertexBuffer();
-	void createTriangleIndexBuffer();
-
-	void createTriangleCommandBuffers();
-	void createSemaphores();
-
-	void createDescriptorSetLayout();
-	void createUniformBuffers();
-	void createDescriptorPool();
-	void createDescriptorSet();
-	void updateUniformBuffer();
-
 
 	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
 		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
@@ -228,21 +215,25 @@ protected:
 	//void createDepthStencilFramebuffers();
 
 private:
+	static std::vector<char> readFileStream(const std::string& diskFileAddress, bool binary = false);
+	static void createShaderModuleFromSPIRV(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
+	static std::vector<uint32_t> shadercToSPIRV(const std::string& source_name, shaderc_shader_kind kind, const std::string& source, bool optimize = true);
+
 	std::vector<const char*> debugInstanceLayersVector;
 	std::vector<const char*> debugInstanceExtensionsVector;
 	std::vector<const char*> debugDeviceLayersVector; 		// depricated, but still recommended
 	std::vector<const char*> debugDeviceExtensionsVector;
 
-	VkDebugReportCallbackCreateInfoEXT debugReportCallbackCreateInfo{}; // important for creations of both instance and debugReportCallback
-	VkDebugReportCallbackEXT	debugReportCallback = VK_NULL_HANDLE;
-	PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT = VK_NULL_HANDLE;
-	PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT = VK_NULL_HANDLE;
+	VkDebugReportCallbackCreateInfoEXT	debugReportCallbackCreateInfo{}; // important for creations of both instance and debugReportCallback
+	VkDebugReportCallbackEXT			debugReportCallback						= VK_NULL_HANDLE;
+	PFN_vkCreateDebugReportCallbackEXT	fetch_vkCreateDebugReportCallbackEXT	= VK_NULL_HANDLE;
+	PFN_vkDestroyDebugReportCallbackEXT	fetch_vkDestroyDebugReportCallbackEXT	= VK_NULL_HANDLE;
 
+	void initGlfwVulkanDebugWSI();
 	void initDebugLayers();
 	void initExtensions();
 	void createInstance();
 	void initDebugReportCallback();
-
 	/*******************************************************************************************************************************/
 	/********* The window surface needs to be created right after the instance creation, *******************************************/
 	/********* because it can actually influence the physical device selection.          *******************************************/
@@ -252,11 +243,16 @@ private:
 	bool isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
 	int  ratePhysicalDevice(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex);
 	void pickPhysicalDevice();
+	void createDefaultLogicalDevice();
 
+	void collectSwapchainFeatures();
+	void createSwapchain();
 
+	void reInitPresentation();
+	void finalizeAbstractGLFW();
+	/*******************************************************************************************************************************/
 	bool checkInstanceLayersSupport(std::vector<const char*> layersVector);
-
-// Enumerate All
+	// Enumerate All
 	void showAllSupportedInstanceExtensions();
 	void showAllSupportedInstanceLayers();
 	void showAllSupportedExtensionsEachUnderInstanceLayer();

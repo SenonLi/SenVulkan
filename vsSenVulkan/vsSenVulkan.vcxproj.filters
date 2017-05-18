@@ -105,6 +105,12 @@
     <None Include="SenVulkanTutorial\Shaders\Texture.frag">
       <Filter>Shaders\SenVulkanTutorial</Filter>
     </None>
+    <None Include="SenVulkanTutorial\Shaders\triangleFrag.spv">
+      <Filter>Shaders\SenVulkanTutorial</Filter>
+    </None>
+    <None Include="SenVulkanTutorial\Shaders\triangleVert.spv">
+      <Filter>Shaders\SenVulkanTutorial</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Support\CMakeLists.txt">
