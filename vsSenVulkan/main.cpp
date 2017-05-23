@@ -12,12 +12,12 @@
 
 #include "SenVulkanTutorial/Sen_06_Triangle.h"
 #include "SenVulkanTutorial/Sen_07_Texture.h"
-
+#include "SenVulkanTutorial/Sen_22_DepthTest.h"
 //#include <functional>
 
 
 int main() {
-	Sen_06_Triangle widget;
+	Sen_22_DepthTest widget;
 
 	try {
 		widget.showWidget();

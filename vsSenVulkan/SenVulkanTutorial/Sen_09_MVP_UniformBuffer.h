@@ -14,9 +14,8 @@ public:
 protected:
 	void initVulkanApplication() { ; }
 	void reCreateRenderTarget() { ; } // for resize window
-	void paintVulkan() { ; }
 	void finalizeWidget() { ; }
-
+	void updateUniformBuffer() { ; }
 };
 
 #endif // !__Sen_09_MVP_UniformBuffer__

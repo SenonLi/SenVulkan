@@ -91,14 +91,17 @@ public:
 protected:
 	virtual void initVulkanApplication() = 0;
 	virtual void reCreateRenderTarget() = 0; // for resize window
-	virtual void paintVulkan() = 0;
 	virtual void finalizeWidget() = 0;
+	virtual void updateUniformBuffer() = 0;
 
 	const int DEFAULT_widgetWidth	= 800;	// 640;
 	const int DEFAULT_widgetHeight	= 600;	// 640;
 
 	void createColorAttachOnlyRenderPass();
 	void createColorAttachOnlySwapchainFramebuffers();
+	void createDefaultCommandPool();
+	void createSingleRectIndexBuffer();
+	void createMvpUniformBuffers();
 
 #ifdef _DEBUG	
 	const bool layersEnabled = true;
@@ -119,7 +122,8 @@ protected:
 	VkSurfaceCapabilitiesKHR		surfaceCapabilities{};
 	
 	VkPhysicalDevice				physicalDevice				= VK_NULL_HANDLE;
-	VkPhysicalDeviceProperties		physicalDeviceProperties{};	
+	VkPhysicalDeviceProperties		physicalDeviceProperties{};
+	VkPhysicalDeviceFeatures		physicalDeviceFeatures{};
 	int32_t							graphicsQueueFamilyIndex	= -1;	// Index of Graphics QueueFamily of GPU that we will choose to 
 	int32_t							presentQueueFamilyIndex		= -1;	// The Graphics (Drawing) QueueFamily may not support presentation (WSI)
 
@@ -141,7 +145,9 @@ protected:
 
 	VkCommandPool					defaultThreadCommandPool	= VK_NULL_HANDLE;
 	VkRenderPass					colorAttachOnlyRenderPass	= VK_NULL_HANDLE;
-	
+	VkBuffer						singleRectIndexBuffer		= VK_NULL_HANDLE;
+	VkDeviceMemory					singleRectIndexBufferMemory = VK_NULL_HANDLE;
+
 	// It should be noted that in a real world application, you're not supposed to actually call vkAllocateMemory for every individual buffer.
 	// The maximum number of simultaneous memory allocations is limited by the maxMemoryAllocationCount physical device limit, 
 	//		which may be as low as 4096 even on high end hardware like an NVIDIA GTX 1080.
@@ -158,31 +164,11 @@ protected:
 	//		provided that their data is refreshed, of course.
 	// This is known as aliasing and some Vulkan functions have explicit flags to specify that you want to do this.
 	
-	void createTrianglePipeline();
-	void createCommandPool();
-	void createTriangleVertexBuffer();
-	void createTriangleIndexBuffer();
-
-	void createTriangleCommandBuffers();
-	void createPresentationSemaphores();
-
-	void createDescriptorSetLayout();
-	void createUniformBuffers();
-	void createDescriptorPool();
-	void createDescriptorSet(); // need to be after createDescriptorPool
-	void updateUniformBuffer();
-
 	struct MvpUniformBufferObject {
 		glm::mat4 model;
 		glm::mat4 view;
 		glm::mat4 projection;
 	};
-	VkPipelineLayout					trianglePipelineLayout		= VK_NULL_HANDLE;
-	VkPipeline							trianglePipeline			= VK_NULL_HANDLE;
-	VkBuffer							triangleVertexBuffer		= VK_NULL_HANDLE;
-	VkDeviceMemory						triangleVertexBufferMemory	= VK_NULL_HANDLE;
-	VkBuffer							triangleIndexBuffer			= VK_NULL_HANDLE;
-	VkDeviceMemory						triangleIndexBufferMemory	= VK_NULL_HANDLE;
 
 	VkDescriptorSetLayout			perspectiveProjection_DSL			= VK_NULL_HANDLE;
 	VkBuffer						mvpUniformStagingBuffer				= VK_NULL_HANDLE;
@@ -247,6 +233,8 @@ private:
 
 	void collectSwapchainFeatures();
 	void createSwapchain();
+	void createPresentationSemaphores();
+	void updateSwapchain();
 
 	void reInitPresentation();
 	void finalizeAbstractGLFW();

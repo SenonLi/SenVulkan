@@ -1,22 +1,22 @@
-#include "Sen_07_Texture.h"
+#include "Sen_22_DepthTest.h"
 
-Sen_07_Texture::Sen_07_Texture()
+Sen_22_DepthTest::Sen_22_DepthTest()
 {
-	std::cout << "Constructor: Sen_07_Texture()\n\n";
-	strWindowName = "Sen Vulkan Texture Tutorial";
+	std::cout << "Constructor: Sen_22_DepthTest()\n\n";
+	strWindowName = "Sen Vulkan Depth Test Tutorial";
 
 	backgroundTextureDiskAddress = "../Images/SunRaise.jpg";
 }
 
 
-Sen_07_Texture::~Sen_07_Texture()
+Sen_22_DepthTest::~Sen_22_DepthTest()
 {
 	finalizeWidget();
 
-	OutputDebugString("\n\t ~Sen_07_Texture()\n");
+	OutputDebugString("\n\t ~Sen_22_DepthTest()\n");
 }
 
-void Sen_07_Texture::initVulkanApplication()
+void Sen_22_DepthTest::initVulkanApplication()
 {
 	// Need to be segmented base on pipleStages in this function
 
@@ -44,10 +44,10 @@ void Sen_07_Texture::initVulkanApplication()
 
 	createTextureAppCommandBuffers();
 
-	std::cout << "\n Finish  Sen_07_Texture::initVulkanApplication()\n";
+	std::cout << "\n Finish  Sen_22_DepthTest::initVulkanApplication()\n";
 }
 
-void Sen_07_Texture::reCreateRenderTarget()
+void Sen_22_DepthTest::reCreateRenderTarget()
 {
 	createTextureAppPipeline();
 	createColorAttachOnlySwapchainFramebuffers();
@@ -55,7 +55,7 @@ void Sen_07_Texture::reCreateRenderTarget()
 	createTextureAppCommandBuffers();
 }
 
-void Sen_07_Texture::updateUniformBuffer() {
+void Sen_22_DepthTest::updateUniformBuffer() {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 	auto currentTime = std::chrono::high_resolution_clock::now();
 	int duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
@@ -75,7 +75,7 @@ void Sen_07_Texture::updateUniformBuffer() {
 		mvpOptimalUniformBuffer, sizeof(mvpUbo));
 }
 
-void Sen_07_Texture::finalizeWidget()
+void Sen_22_DepthTest::finalizeWidget()
 {	
 	/************************************************************************************************************/
 	/******************     Destroy background Memory, ImageView, Image     ***********************************/
@@ -117,10 +117,10 @@ void Sen_07_Texture::finalizeWidget()
 		textureAppVertexBufferMemory	= VK_NULL_HANDLE;
 	}
 
-	OutputDebugString("\n\tFinish  Sen_07_Texture::finalizeWidget()\n");
+	OutputDebugString("\n\tFinish  Sen_22_DepthTest::finalizeWidget()\n");
 }
 
-void Sen_07_Texture::createTextureAppPipeline()
+void Sen_22_DepthTest::createTextureAppPipeline()
 {
 	if (VK_NULL_HANDLE != textureAppPipeline) {
 		vkDestroyPipeline(device, textureAppPipeline, nullptr);
@@ -309,7 +309,7 @@ void Sen_07_Texture::createTextureAppPipeline()
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void Sen_07_Texture::createTextureAppVertexBuffer()
+void Sen_22_DepthTest::createTextureAppVertexBuffer()
 {
 	float vertices[] = {
 		// Positions	// Colors
@@ -350,7 +350,7 @@ void Sen_07_Texture::createTextureAppVertexBuffer()
 	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
-void Sen_07_Texture::initBackgroundTextureImage()
+void Sen_22_DepthTest::initBackgroundTextureImage()
 {
 	SenAbstractGLFW::createDeviceLocalTexture(device, physicalDeviceMemoryProperties
 		, backgroundTextureDiskAddress, VK_IMAGE_TYPE_2D, backgroundTextureWidth, backgroundTextureHeight
@@ -360,7 +360,7 @@ void Sen_07_Texture::initBackgroundTextureImage()
 	SenAbstractGLFW::createTextureSampler(device, texture2DSampler);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorPool()
+void Sen_22_DepthTest::createTextureAppDescriptorPool()
 {
 	std::vector<VkDescriptorPoolSize> descriptorPoolSizeVector;
 
@@ -386,7 +386,7 @@ void Sen_07_Texture::createTextureAppDescriptorPool()
 	);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorSetLayout()
+void Sen_22_DepthTest::createTextureAppDescriptorSetLayout()
 {
 	std::vector<VkDescriptorSetLayoutBinding> perspectiveProjectionDSL_BindingVector;
 
@@ -417,7 +417,7 @@ void Sen_07_Texture::createTextureAppDescriptorSetLayout()
 	);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorSet()
+void Sen_22_DepthTest::createTextureAppDescriptorSet()
 {
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
 	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
@@ -470,7 +470,7 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 	vkUpdateDescriptorSets(device, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
 }
 
-void Sen_07_Texture::createTextureAppCommandBuffers()
+void Sen_22_DepthTest::createTextureAppCommandBuffers()
 {
 	if (swapchainCommandBufferVector.size() > 0) {
 		vkFreeCommandBuffers(device, defaultThreadCommandPool, (uint32_t)swapchainCommandBufferVector.size(), swapchainCommandBufferVector.data());

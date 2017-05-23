@@ -169,6 +169,7 @@
     <ClCompile Include="SenVulkanTutorial\Sen_06_Triangle.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_07_Texture.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.cpp" />
+    <ClCompile Include="SenVulkanTutorial\Sen_22_DepthTest.cpp" />
     <ClCompile Include="Support\SenAbstractGLFW.cpp" />
     <ClCompile Include="VulkanAPI\SenRenderer.cpp" />
     <ClCompile Include="VulkanAPI\SenVulkanAPI_Widget.cpp" />
@@ -181,6 +182,7 @@
     <ClInclude Include="SenVulkanTutorial\Sen_06_Triangle.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_07_Texture.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.h" />
+    <ClInclude Include="SenVulkanTutorial\Sen_22_DepthTest.h" />
     <ClInclude Include="Support\SenAbstractGLFW.h" />
     <ClInclude Include="VulkanAPI\SenRenderer.h" />
     <ClInclude Include="VulkanAPI\SenVulkanAPI_Widget.h" />

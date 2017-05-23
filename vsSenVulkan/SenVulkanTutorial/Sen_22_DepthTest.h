@@ -1,15 +1,15 @@
 #pragma once
 
-#ifndef __Sen_07_Texture__
-#define __Sen_07_Texture__
+#ifndef __Sen_22_DepthTest__
+#define __Sen_22_DepthTest__
 
 #include "../Support/SenAbstractGLFW.h"
 
-class Sen_07_Texture :	public SenAbstractGLFW
+class Sen_22_DepthTest :	public SenAbstractGLFW
 {
 public:
-	Sen_07_Texture();
-	virtual ~Sen_07_Texture();
+	Sen_22_DepthTest();
+	virtual ~Sen_22_DepthTest();
 
 protected:
 	void initVulkanApplication();

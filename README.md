@@ -146,7 +146,8 @@ in other words, each of the layers means to support some extensions, which means
 		VK_IMAGE_LAYOUT_GENERAL is required for some special cases,
 				like using an image as both input and output;
 				or for reading an image after it has left the preinitialized layout.
-*
+* 34. NVIDIA Blog: PushConstants can be practical for very a small amount of information passed to drawcalls.
+		Too much information would slow down CPU side due to additional allocations for the values being alone.
 
 ### V++ / Debug
 * 0. nullptr is special NULL in C++ for solving Overriding problem <br>
