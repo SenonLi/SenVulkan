@@ -17,6 +17,7 @@ protected:
 	void finalizeWidget();
 
 	void updateUniformBuffer();
+	void cleanUpDepthStencil() { ; }
 
 private:
 	void createTextureAppPipeline();

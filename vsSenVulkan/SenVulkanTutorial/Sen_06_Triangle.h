@@ -15,6 +15,7 @@ protected:
 	void initVulkanApplication();
 	void reCreateRenderTarget();// for resize window
 
+	void cleanUpDepthStencil() { ; }
 	void finalizeWidget();
 	void updateUniformBuffer();
 	

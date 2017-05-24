@@ -16,6 +16,8 @@ protected:
 	void reCreateRenderTarget() { ; } // for resize window
 	void finalizeWidget() { ; }
 	void updateUniformBuffer() { ; }
+	void cleanUpDepthStencil() { ; }
+
 };
 
 #endif // !__Sen_09_MVP_UniformBuffer__

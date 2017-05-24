@@ -191,6 +191,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\README.md" />
+    <None Include="SenVulkanTutorial\Shaders\depthTest.frag" />
+    <None Include="SenVulkanTutorial\Shaders\depthTest.vert" />
     <None Include="SenVulkanTutorial\Shaders\Texture.frag" />
     <None Include="SenVulkanTutorial\Shaders\Texture.vert" />
     <None Include="SenVulkanTutorial\Shaders\Triangle.frag" />

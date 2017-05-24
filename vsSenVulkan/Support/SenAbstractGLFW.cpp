@@ -34,6 +34,13 @@ const std::vector<VkFormat> SenAbstractGLFW::depthStencilSupportCheckFormatsVect
 	VK_FORMAT_D32_SFLOAT_S8_UINT
 };
 
+bool SenAbstractGLFW::hasStencilComponent(VkFormat formatToCheck)	{
+	return	formatToCheck == VK_FORMAT_D32_SFLOAT_S8_UINT ||
+		formatToCheck == VK_FORMAT_D24_UNORM_S8_UINT ||
+		formatToCheck == VK_FORMAT_D16_UNORM_S8_UINT ||
+		formatToCheck == VK_FORMAT_S8_UINT;
+}
+
 void SenAbstractGLFW::createTextureSampler(const VkDevice& logicalDevice, VkSampler& textureSamplerToCreate) {
 	VkSamplerCreateInfo textureSamplerCreateInfo{};
 	textureSamplerCreateInfo.sType						= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -137,12 +144,15 @@ void SenAbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransi
 	imageMemoryBarrier.image							= imageToTransitionLayout;
 	imageMemoryBarrier.subresourceRange					= imageSubresourceRangeToTransition;
 
-	if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
+	if		(oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;	// the first access scope includes command buffer submission (HOST_WRITE)
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 	}else if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;	// the first access scope includes command buffer submission (HOST_WRITE)
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+	}else if (oldImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED && newImageLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+		imageMemoryBarrier.srcAccessMask = 0;
+		imageMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 	}else if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newImageLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -564,8 +574,7 @@ void SenAbstractGLFW::updateSwapchain()
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		reCreateRenderTarget();
 		return;
-	}
-	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+	}else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 		throw std::runtime_error("Failed to acquire swap chain image !!!!");
 	}
 
@@ -614,10 +623,61 @@ void SenAbstractGLFW::updateSwapchain()
 	result = vkQueuePresentKHR(presentQueue, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		reCreateRenderTarget();
-	}
-	else if (result != VK_SUCCESS) {
+	}else if (result != VK_SUCCESS) {
 		throw std::runtime_error("Failed to present swap chain image !!!");
 	}
+}
+
+void SenAbstractGLFW::cleanUpSwapChain() {
+	cleanUpDepthStencil();
+
+	/************************************************************************************************************/
+	/******************     Destroy depthStencil Memory, ImageView, Image     ***********************************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != depthStencilImage) {
+		vkDestroyImage(device, depthStencilImage, nullptr);
+		vkDestroyImageView(device, depthStencilImageView, nullptr);
+		vkFreeMemory(device, depthStencilImageDeviceMemory, nullptr); 	// always try to destroy before free
+
+		depthStencilImage = VK_NULL_HANDLE;
+		depthStencilImageDeviceMemory = VK_NULL_HANDLE;
+		depthStencilImageView = VK_NULL_HANDLE;
+	}
+
+
+
+
+	if (VK_NULL_HANDLE != swapChain) {
+		vkDestroySwapchainKHR(device, swapChain, nullptr);
+		// swapChainImages will be handled by the destroy of swapchain
+		// But swapchainImageViews need to be dstroyed first, before the destroy of swapchain.
+		for (auto swapchainImageView : swapchainImageViewsVector) {
+			vkDestroyImageView(device, swapchainImageView, nullptr);
+		}
+		swapchainImageViewsVector.clear();
+
+		swapChain = VK_NULL_HANDLE;
+		swapchainImagesVector.clear();
+
+		// The memory of swapChain images is not managed by programmer (No allocation, nor free)
+		// It may not be freed until the window is destroyed, or another swapchain is created for the window.
+
+		/************************************************************************************************************/
+		/*********************           Destroy swapchainFramebuffer         ***************************************/
+		/************************************************************************************************************/
+		for (auto swapchainFramebuffer : swapchainFramebufferVector) {
+			vkDestroyFramebuffer(device, swapchainFramebuffer, nullptr);
+		}
+		swapchainFramebufferVector.clear();
+	}
+
+
+
+
+	//vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+	//vkDestroyPipeline(device, graphicsPipeline, nullptr);
+	//vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	//vkDestroyRenderPass(device, renderPass, nullptr);
 }
 
 void SenAbstractGLFW::reInitPresentation()
@@ -634,7 +694,7 @@ void SenAbstractGLFW::reInitPresentation()
 	else {
 		glfwGetWindowSize(widgetGLFW, &widgetWidth, &widgetHeight);
 	}
-
+	cleanUpSwapChain();
 	createSwapchain();
 }
 
@@ -1420,6 +1480,13 @@ void SenAbstractGLFW::createDefaultLogicalDevice()
 
 void SenAbstractGLFW::finalizeAbstractGLFW() {
 	/************************************************************************************************************/
+	/*********************           Destroy common RenderPass if not VK_NULL_HANDLE        *********************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != colorAttachOnlyRenderPass) {
+		vkDestroyRenderPass(device, colorAttachOnlyRenderPass, nullptr);
+		colorAttachOnlyRenderPass = VK_NULL_HANDLE;
+	}
+	/************************************************************************************************************/
 	/*********************           Destroy defaultThreadCommandPool         ***********************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != defaultThreadCommandPool) {
@@ -1439,13 +1506,6 @@ void SenAbstractGLFW::finalizeAbstractGLFW() {
 		perspectiveProjection_DSL	= VK_NULL_HANDLE;
 		descriptorPool				= VK_NULL_HANDLE;
 		perspectiveProjection_DS	= VK_NULL_HANDLE;
-	}
-	/************************************************************************************************************/
-	/*********************           Destroy common RenderPass if not VK_NULL_HANDLE        *********************/
-	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != colorAttachOnlyRenderPass) {
-		vkDestroyRenderPass(device, colorAttachOnlyRenderPass, nullptr);
-		colorAttachOnlyRenderPass = VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
@@ -1472,43 +1532,10 @@ void SenAbstractGLFW::finalizeAbstractGLFW() {
 		mvpOptimalUniformBufferMemory	= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
-	/******************     Destroy depthStencil Memory, ImageView, Image     ***********************************/
-	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != depthStencilImage) {
-		vkDestroyImage(device, depthStencilImage, nullptr);
-		vkDestroyImageView(device, depthStencilImageView, nullptr);
-		vkFreeMemory(device, depthStencilImageDeviceMemory, nullptr); 	// always try to destroy before free
-
-		depthStencilImage				= VK_NULL_HANDLE;
-		depthStencilImageDeviceMemory	= VK_NULL_HANDLE;
-		depthStencilImageView			= VK_NULL_HANDLE;
-	}
-	/************************************************************************************************************/
 	/*****  SwapChain is a child of Logical Device, must be destroyed before Logical Device  ********************/
 	/****************   A surface must outlive any swapchains targeting it    ***********************************/
-	if (VK_NULL_HANDLE != swapChain) {
-		vkDestroySwapchainKHR(device, swapChain, nullptr);
-		// swapChainImages will be handled by the destroy of swapchain
-		// But swapchainImageViews need to be dstroyed first, before the destroy of swapchain.
-		for (auto swapchainImageView : swapchainImageViewsVector) {
-			vkDestroyImageView(device, swapchainImageView, nullptr);
-		}
-		swapchainImageViewsVector.clear();
+	cleanUpSwapChain();
 
-		swapChain = VK_NULL_HANDLE;
-		swapchainImagesVector.clear();
-
-		// The memory of swapChain images is not managed by programmer (No allocation, nor free)
-		// It may not be freed until the window is destroyed, or another swapchain is created for the window.
-
-		/************************************************************************************************************/
-		/*********************           Destroy swapchainFramebuffer         ***************************************/
-		/************************************************************************************************************/
-		for (auto swapchainFramebuffer : swapchainFramebufferVector) {
-			vkDestroyFramebuffer(device, swapchainFramebuffer, nullptr);
-		}
-		swapchainFramebufferVector.clear();
-	}
 	/************************************************************************************************************/
 	/*********************           Destroy Synchronization Items             **********************************/
 	/************************************************************************************************************/

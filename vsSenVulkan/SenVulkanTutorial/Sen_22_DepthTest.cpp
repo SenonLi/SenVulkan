@@ -21,24 +21,20 @@ void Sen_22_DepthTest::initVulkanApplication()
 	// Need to be segmented base on pipleStages in this function
 
 	createColorAttachOnlyRenderPass();
-
-	/***************************************/
 	createTextureAppDescriptorSetLayout();
 	createTextureAppPipeline();
-	/***************************************/
-
 	createColorAttachOnlySwapchainFramebuffers();
 	createDefaultCommandPool();
 
 	/***************************************/
-	initBackgroundTextureImage();
+	createDepthResources(); // has to be called after createDefaultCommandPool();
 	/***************************************/
 
 
-	createTextureAppVertexBuffer();
-	createSingleRectIndexBuffer();
+	initBackgroundTextureImage();
+	createDepthTestVertexBuffer();
+	createDepthTestIndexBuffer();
 	createMvpUniformBuffers();
-
 	createTextureAppDescriptorPool();
 	createTextureAppDescriptorSet();
 
@@ -52,7 +48,26 @@ void Sen_22_DepthTest::reCreateRenderTarget()
 	createTextureAppPipeline();
 	createColorAttachOnlySwapchainFramebuffers();
 
+	/***************************************/
+	createDepthResources();
+	/***************************************/
+
 	createTextureAppCommandBuffers();
+}
+
+void Sen_22_DepthTest::cleanUpDepthStencil()
+{
+	if (VK_NULL_HANDLE != depthTestImage) {
+		vkDestroyImage(device, depthTestImage, nullptr);
+		if (VK_NULL_HANDLE != depthTestImageView)
+			vkDestroyImageView(device, depthTestImageView, nullptr);
+		if (VK_NULL_HANDLE != depthTestImageDeviceMemory)
+			vkFreeMemory(device, depthTestImageDeviceMemory, nullptr); 	// always try to destroy before free
+
+		depthTestImage = VK_NULL_HANDLE;
+		depthTestImageView = VK_NULL_HANDLE;
+		depthTestImageDeviceMemory = VK_NULL_HANDLE;
+	}
 }
 
 void Sen_22_DepthTest::updateUniformBuffer() {
@@ -77,8 +92,10 @@ void Sen_22_DepthTest::updateUniformBuffer() {
 
 void Sen_22_DepthTest::finalizeWidget()
 {	
+	cleanUpDepthStencil();
+
 	/************************************************************************************************************/
-	/******************     Destroy background Memory, ImageView, Image     ***********************************/
+	/******************           Destroy Memory, ImageView, Image          *************************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != backgroundTextureImage) {
 		vkDestroyImage(device, backgroundTextureImage, nullptr);
@@ -135,8 +152,8 @@ void Sen_22_DepthTest::createTextureAppPipeline()
 	/****************************************************************************************************************************/
 	VkShaderModule vertShaderModule, fragShaderModule;
 
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Texture.vert", vertShaderModule);
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Texture.frag", fragShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/depthTest.vert", vertShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/depthTest.frag", fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -158,8 +175,8 @@ void Sen_22_DepthTest::createTextureAppPipeline()
 	/**********                Reserve pipeline Fixed-Function Stages CreateInfos           *************************************/
 	/****************************************************************************************************************************/
 	VkVertexInputBindingDescription vertexInputBindingDescription{};
-	vertexInputBindingDescription.binding = 0;
-	vertexInputBindingDescription.stride = 7 * sizeof(float);
+	vertexInputBindingDescription.binding	= 0;
+	vertexInputBindingDescription.stride	= 8 * sizeof(float);
 	vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	std::vector<VkVertexInputBindingDescription> vertexInputBindingDescriptionVector;
 	vertexInputBindingDescriptionVector.push_back(vertexInputBindingDescription);
@@ -170,7 +187,7 @@ void Sen_22_DepthTest::createTextureAppPipeline()
 	VkVertexInputAttributeDescription positionVertexInputAttributeDescription;
 	positionVertexInputAttributeDescription.location	= 0;
 	positionVertexInputAttributeDescription.binding		= 0;
-	positionVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
+	positionVertexInputAttributeDescription.format		= VK_FORMAT_R32G32B32_SFLOAT;
 	positionVertexInputAttributeDescription.offset		= 0;
 	vertexInputAttributeDescriptionVector.push_back(positionVertexInputAttributeDescription);
 
@@ -178,14 +195,14 @@ void Sen_22_DepthTest::createTextureAppPipeline()
 	colorVertexInputAttributeDescription.location		= 1;
 	colorVertexInputAttributeDescription.binding		= 0;
 	colorVertexInputAttributeDescription.format			= VK_FORMAT_R32G32B32_SFLOAT;
-	colorVertexInputAttributeDescription.offset			= 2 * sizeof(float);
+	colorVertexInputAttributeDescription.offset			= 3 * sizeof(float);
 	vertexInputAttributeDescriptionVector.push_back(colorVertexInputAttributeDescription);
 
 	VkVertexInputAttributeDescription texCoordVertexInputAttributeDescription;
 	texCoordVertexInputAttributeDescription.location	= 2;
 	texCoordVertexInputAttributeDescription.binding		= 0;
 	texCoordVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
-	texCoordVertexInputAttributeDescription.offset		= 5 * sizeof(float);
+	texCoordVertexInputAttributeDescription.offset		= 6 * sizeof(float);
 	vertexInputAttributeDescriptionVector.push_back(texCoordVertexInputAttributeDescription);
 
 	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
@@ -309,14 +326,55 @@ void Sen_22_DepthTest::createTextureAppPipeline()
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void Sen_22_DepthTest::createTextureAppVertexBuffer()
+void Sen_22_DepthTest::createDepthTestIndexBuffer()
+{
+	uint16_t indices[] = {	0, 1, 2, 1, 2, 3, 
+							4, 5, 6, 5, 6, 7 };
+	size_t indicesBufferSize = sizeof(indices);
+
+	/****************************************************************************************************************************************************/
+	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferDeviceMemory;
+	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	void* data;
+	vkMapMemory(device, stagingBufferDeviceMemory, 0, indicesBufferSize, 0, &data);
+	memcpy(data, indices, indicesBufferSize);
+	//// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
+	//// There are two ways to deal with that problem, and what we use is the first one below:
+	////  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+	////  2. Call vkFlushMappedMemoryRanges to after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
+	vkUnmapMemory(device, stagingBufferDeviceMemory);
+
+	/****************************************************************************************************************************************************/
+	/***************   Transfer from stagingBuffer to Optimal triangleVertexBuffer   ********************************************************************/
+	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		singleRectIndexBuffer, singleRectIndexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
+		singleRectIndexBuffer, indicesBufferSize);
+
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
+}
+
+void Sen_22_DepthTest::createDepthTestVertexBuffer()
 {
 	float vertices[] = {
-		// Positions	// Colors
-		-0.5f,	-0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
-		0.5f,	-0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
-		-0.5f,	0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
-		0.5f,	0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f   // Top Left
+		// Positions			// Colors				// TexCoord
+		-0.5f,	-0.5f,	0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
+		0.5f,	-0.5f,	0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
+		-0.5f,	0.5f,	0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
+		0.5f,	0.5f,	0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f,   // Top Left
+
+		-0.5f,	-0.5f,	-0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
+		0.5f,	-0.5f,	-0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
+		-0.5f,	0.5f,	-0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
+		0.5f,	0.5f,	-0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f   // Top Left
 	};
 	size_t verticesBufferSize = sizeof(vertices);
 
@@ -348,6 +406,61 @@ void Sen_22_DepthTest::createTextureAppVertexBuffer()
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
+}
+
+void Sen_22_DepthTest::createDepthResources()
+{
+	/********************************************************************************************************************/
+	/******************************  Check Image Format *****************************************************************/
+	bool hasStencil = false;
+	VkFormatProperties formatProperties{};
+	vkGetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_D32_SFLOAT, &formatProperties);
+	if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+		depthTestFormat = VK_FORMAT_D32_SFLOAT; // VK_FORMAT_D32_SFLOAT is extremely common for depthTest
+	else{
+		for (auto f : SenAbstractGLFW::depthStencilSupportCheckFormatsVector) {
+			VkFormatProperties formatProperties{};
+			vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
+			if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+				depthTestFormat = f;
+				break;
+			}
+		}
+		if (depthTestFormat == VK_FORMAT_UNDEFINED) {
+			throw std::runtime_error("Depth stencil format not selected.");
+			std::exit(-1);
+		}
+		hasStencil = SenAbstractGLFW::hasStencilComponent(depthTestFormat);
+	}
+	/********************************************************************************************************************/
+	/***************************     Create depthTest Image     *********************************************************/
+	SenAbstractGLFW::createResourceImage(device, widgetWidth, widgetHeight, VK_IMAGE_TYPE_2D,  // depthTestImage is also a 2D image
+		depthTestFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthTestImage
+		, depthTestImageDeviceMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties);
+
+	/********************************************************************************************************************/
+	/******************************     Create depthTest Image View    **************************************************/
+	VkImageSubresourceRange depthTestImageSubresourceRange{};
+	depthTestImageSubresourceRange.aspectMask		= VK_IMAGE_ASPECT_DEPTH_BIT | (hasStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+	depthTestImageSubresourceRange.baseMipLevel		= 0;	// first mipMap level to start
+	depthTestImageSubresourceRange.levelCount		= 1;
+	depthTestImageSubresourceRange.baseArrayLayer	= 0;	// first arrayLayer to start
+	depthTestImageSubresourceRange.layerCount		= 1;
+	
+	VkImageViewCreateInfo depthTestImageViewCreateInfo{};
+	depthTestImageViewCreateInfo.sType				= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	depthTestImageViewCreateInfo.image				= depthTestImage;
+	depthTestImageViewCreateInfo.viewType			= VK_IMAGE_VIEW_TYPE_2D;
+	depthTestImageViewCreateInfo.format				= depthTestFormat;
+	depthTestImageViewCreateInfo.subresourceRange	= depthTestImageSubresourceRange;
+
+	vkCreateImageView(device, &depthTestImageViewCreateInfo, nullptr, &depthTestImageView);
+	/********************************************************************************************************************/
+	/******************************     Transition depthTest ImageLayout     ********************************************/
+	SenAbstractGLFW::transitionResourceImageLayout(depthTestImage, depthTestImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, depthTestFormat, device, defaultThreadCommandPool, graphicsQueue);
+
+
 }
 
 void Sen_22_DepthTest::initBackgroundTextureImage()
@@ -538,7 +651,7 @@ void Sen_22_DepthTest::createTextureAppCommandBuffers()
 		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, textureAppPipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
 
 
-		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 12, 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(swapchainCommandBufferVector[i]);
 
