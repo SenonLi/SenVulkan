@@ -122,6 +122,9 @@ void Sen_07_Texture::finalizeWidget()
 
 void Sen_07_Texture::createTextureAppPipeline()
 {
+	/************************************************************************************************************/
+	/*********     Destroy old textureAppPipeline first for widgetRezie, if there are      **********************/
+	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != textureAppPipeline) {
 		vkDestroyPipeline(device, textureAppPipeline, nullptr);
 		vkDestroyPipelineLayout(device, textureAppPipelineLayout, nullptr);
@@ -472,6 +475,9 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 
 void Sen_07_Texture::createTextureAppCommandBuffers()
 {
+	/************************************************************************************************************/
+	/*****************     Destroy old swapchainCommandBufferVector first, if there are      ********************/
+	/************************************************************************************************************/
 	if (swapchainCommandBufferVector.size() > 0) {
 		vkFreeCommandBuffers(device, defaultThreadCommandPool, (uint32_t)swapchainCommandBufferVector.size(), swapchainCommandBufferVector.data());
 	}

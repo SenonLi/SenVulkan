@@ -18,41 +18,34 @@ Sen_22_DepthTest::~Sen_22_DepthTest()
 
 void Sen_22_DepthTest::initVulkanApplication()
 {
-	// Need to be segmented base on pipleStages in this function
-
-	createColorAttachOnlyRenderPass();
 	createTextureAppDescriptorSetLayout();
-	createTextureAppPipeline();
-	createColorAttachOnlySwapchainFramebuffers();
 	createDefaultCommandPool();
 
-	/***************************************/
-	createDepthResources(); // has to be called after createDefaultCommandPool();
-	/***************************************/
-
-
 	initBackgroundTextureImage();
-	createDepthTestVertexBuffer();
-	createDepthTestIndexBuffer();
 	createMvpUniformBuffers();
 	createTextureAppDescriptorPool();
 	createTextureAppDescriptorSet();
 
-	createTextureAppCommandBuffers();
+	/***************************************/
+	createDepthResources();					// has to be called after createDefaultCommandPool();
+	createDepthTestRenderPass();			// has to be called after createDepthResources() for depthTestFormat
+	createDepthTestPipeline();
+	createDepthTestSwapchainFramebuffers(); // has to be called after createDepthResources() for the depthTestImageView
+	createDepthTestVertexBuffer();
+	createDepthTestIndexBuffer();
+	/***************************************/
+
+	createDepthTestCommandBuffers();
 
 	std::cout << "\n Finish  Sen_22_DepthTest::initVulkanApplication()\n";
 }
 
 void Sen_22_DepthTest::reCreateRenderTarget()
 {
-	createTextureAppPipeline();
-	createColorAttachOnlySwapchainFramebuffers();
-
-	/***************************************/
 	createDepthResources();
-	/***************************************/
-
-	createTextureAppCommandBuffers();
+	createDepthTestPipeline();
+	createDepthTestSwapchainFramebuffers();
+	createDepthTestCommandBuffers();
 }
 
 void Sen_22_DepthTest::cleanUpDepthStencil()
@@ -114,37 +107,40 @@ void Sen_22_DepthTest::finalizeWidget()
 	/************************************************************************************************************/
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != textureAppPipeline) {
-		vkDestroyPipeline(device, textureAppPipeline, nullptr);
+	if (VK_NULL_HANDLE != depthTestPipeline) {
+		vkDestroyPipeline(device, depthTestPipeline, nullptr);
 		vkDestroyPipelineLayout(device, textureAppPipelineLayout, nullptr);
-		vkDestroyRenderPass(device, colorAttachOnlyRenderPass, nullptr);
+		vkDestroyRenderPass(device, depthTestRenderPass, nullptr);
 
-		textureAppPipeline			= VK_NULL_HANDLE;
+		depthTestPipeline			= VK_NULL_HANDLE;
 		textureAppPipelineLayout	= VK_NULL_HANDLE;
-		colorAttachOnlyRenderPass	= VK_NULL_HANDLE;
+		depthTestRenderPass	= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != textureAppVertexBuffer) {
-		vkDestroyBuffer(device, textureAppVertexBuffer, nullptr);
-		vkFreeMemory(device, textureAppVertexBufferMemory, nullptr);	// always try to destroy before free
+	if (VK_NULL_HANDLE != depthTestVertexBuffer) {
+		vkDestroyBuffer(device, depthTestVertexBuffer, nullptr);
+		vkFreeMemory(device, depthTestVertexBufferMemory, nullptr);	// always try to destroy before free
 
-		textureAppVertexBuffer			= VK_NULL_HANDLE;
-		textureAppVertexBufferMemory	= VK_NULL_HANDLE;
+		depthTestVertexBuffer			= VK_NULL_HANDLE;
+		depthTestVertexBufferMemory	= VK_NULL_HANDLE;
 	}
 
 	OutputDebugString("\n\tFinish  Sen_22_DepthTest::finalizeWidget()\n");
 }
 
-void Sen_22_DepthTest::createTextureAppPipeline()
+void Sen_22_DepthTest::createDepthTestPipeline()
 {
-	if (VK_NULL_HANDLE != textureAppPipeline) {
-		vkDestroyPipeline(device, textureAppPipeline, nullptr);
+	/************************************************************************************************************/
+	/*********     Destroy old depthTestPipeline first for widgetRezie, if there are      ***********************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != depthTestPipeline) {
+		vkDestroyPipeline(device, depthTestPipeline, nullptr);
 		vkDestroyPipelineLayout(device, textureAppPipelineLayout, nullptr);
 
-		textureAppPipeline = VK_NULL_HANDLE;
-		textureAppPipelineLayout = VK_NULL_HANDLE;
+		depthTestPipeline			= VK_NULL_HANDLE;
+		textureAppPipelineLayout	= VK_NULL_HANDLE;
 	}
 
 	/****************************************************************************************************************************/
@@ -268,12 +264,22 @@ void Sen_22_DepthTest::createTextureAppPipeline()
 	pipelineColorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	pipelineColorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
 	//pipelineColorBlendStateCreateInfo.logicOp						= VK_LOGIC_OP_COPY;
-	pipelineColorBlendStateCreateInfo.attachmentCount = (uint32_t)pipelineColorBlendAttachmentStateVector.size();
-	pipelineColorBlendStateCreateInfo.pAttachments = pipelineColorBlendAttachmentStateVector.data();
+	pipelineColorBlendStateCreateInfo.attachmentCount	= (uint32_t)pipelineColorBlendAttachmentStateVector.size();
+	pipelineColorBlendStateCreateInfo.pAttachments		= pipelineColorBlendAttachmentStateVector.data();
 	pipelineColorBlendStateCreateInfo.blendConstants[0] = 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[1] = 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[2] = 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[3] = 0.0f;
+
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	VkPipelineDepthStencilStateCreateInfo pipelineDepthStencilStateCreateInfo{};
+	pipelineDepthStencilStateCreateInfo.sType					= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	pipelineDepthStencilStateCreateInfo.depthTestEnable			= VK_TRUE; // Enabled depth testing in the graphics pipeline
+	pipelineDepthStencilStateCreateInfo.depthWriteEnable		= VK_TRUE; // useful for drawing transparent objects
+	pipelineDepthStencilStateCreateInfo.depthCompareOp			= VK_COMPARE_OP_LESS;
+	pipelineDepthStencilStateCreateInfo.depthBoundsTestEnable	= VK_FALSE;
+	pipelineDepthStencilStateCreateInfo.stencilTestEnable		= VK_FALSE;
 
 	/****************************************************************************************************************************/
 	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
@@ -294,31 +300,32 @@ void Sen_22_DepthTest::createTextureAppPipeline()
 	/****************************************************************************************************************************/
 	/**********                Create   Pipeline            *********************************************************************/
 	/****************************************************************************************************************************/
-	std::vector<VkGraphicsPipelineCreateInfo> graphicsPipelineCreateInfoVector;
-	VkGraphicsPipelineCreateInfo textureAppPipelineCreateInfo{};
-	textureAppPipelineCreateInfo.sType					= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	textureAppPipelineCreateInfo.stageCount				= (uint32_t)pipelineShaderStagesCreateInfoVector.size();
-	textureAppPipelineCreateInfo.pStages				= pipelineShaderStagesCreateInfoVector.data();
-	textureAppPipelineCreateInfo.pVertexInputState		= &pipelineVertexInputStateCreateInfo;
-	textureAppPipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
-	textureAppPipelineCreateInfo.pViewportState			= &pipelineViewportStateCreateInfo;
-	textureAppPipelineCreateInfo.pRasterizationState	= &pipelineRasterizationStateCreateInfo;
-	textureAppPipelineCreateInfo.pMultisampleState		= &pipelineMultisampleStateCreateInfo;
-	textureAppPipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
-	textureAppPipelineCreateInfo.layout					= textureAppPipelineLayout;
-	textureAppPipelineCreateInfo.renderPass				= colorAttachOnlyRenderPass;
-	textureAppPipelineCreateInfo.subpass				= 0; // index of this textureAppPipeline's subpass of the colorAttachOnlyRenderPass
-															//textureAppPipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
+	std::vector<VkGraphicsPipelineCreateInfo> depthTestGraphicsPipelineCreateInfoVector;
+	VkGraphicsPipelineCreateInfo depthTestPipelineCreateInfo{};
+	depthTestPipelineCreateInfo.sType				= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	depthTestPipelineCreateInfo.stageCount			= (uint32_t)pipelineShaderStagesCreateInfoVector.size();
+	depthTestPipelineCreateInfo.pStages				= pipelineShaderStagesCreateInfoVector.data();
+	depthTestPipelineCreateInfo.pVertexInputState	= &pipelineVertexInputStateCreateInfo;
+	depthTestPipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
+	depthTestPipelineCreateInfo.pViewportState		= &pipelineViewportStateCreateInfo;
+	depthTestPipelineCreateInfo.pRasterizationState	= &pipelineRasterizationStateCreateInfo;
+	depthTestPipelineCreateInfo.pMultisampleState	= &pipelineMultisampleStateCreateInfo;
+	depthTestPipelineCreateInfo.pColorBlendState	= &pipelineColorBlendStateCreateInfo;
+	depthTestPipelineCreateInfo.pDepthStencilState	= &pipelineDepthStencilStateCreateInfo;
+	depthTestPipelineCreateInfo.layout				= textureAppPipelineLayout;
+	depthTestPipelineCreateInfo.renderPass			= depthTestRenderPass;
+	depthTestPipelineCreateInfo.subpass				= 0;	// index of this depthTestPipeline's subpass of the depthTestRenderPass
+															//depthTestPipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
 
-	graphicsPipelineCreateInfoVector.push_back(textureAppPipelineCreateInfo);
+	depthTestGraphicsPipelineCreateInfoVector.push_back(depthTestPipelineCreateInfo);
 
 	SenAbstractGLFW::errorCheck(
 		vkCreateGraphicsPipelines(
 			device, VK_NULL_HANDLE,
-			(uint32_t)graphicsPipelineCreateInfoVector.size(),
-			graphicsPipelineCreateInfoVector.data(),
+			(uint32_t)depthTestGraphicsPipelineCreateInfoVector.size(),
+			depthTestGraphicsPipelineCreateInfoVector.data(),
 			nullptr,
-			&textureAppPipeline), // could be a pipelineArray
+			&depthTestPipeline), // could be a pipelineArray
 		std::string("Failed to create graphics pipeline !!!")
 	);
 
@@ -396,13 +403,13 @@ void Sen_22_DepthTest::createDepthTestVertexBuffer()
 	vkUnmapMemory(device, stagingBufferDeviceMemory);
 
 	/****************************************************************************************************************************************************/
-	/***************   Transfer from stagingBuffer to Optimal textureAppVertexBuffer   ********************************************************************/
+	/***************   Transfer from stagingBuffer to Optimal depthTestVertexBuffer   ********************************************************************/
 	SenAbstractGLFW::createResourceBuffer(device, verticesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
-		textureAppVertexBuffer, textureAppVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		depthTestVertexBuffer, depthTestVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
-		textureAppVertexBuffer, verticesBufferSize);
+		depthTestVertexBuffer, verticesBufferSize);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
@@ -411,26 +418,33 @@ void Sen_22_DepthTest::createDepthTestVertexBuffer()
 void Sen_22_DepthTest::createDepthResources()
 {
 	/********************************************************************************************************************/
-	/******************************  Check Image Format *****************************************************************/
-	bool hasStencil = false;
-	VkFormatProperties formatProperties{};
-	vkGetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_D32_SFLOAT, &formatProperties);
-	if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-		depthTestFormat = VK_FORMAT_D32_SFLOAT; // VK_FORMAT_D32_SFLOAT is extremely common for depthTest
-	else{
-		for (auto f : SenAbstractGLFW::depthStencilSupportCheckFormatsVector) {
-			VkFormatProperties formatProperties{};
-			vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
-			if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-				depthTestFormat = f;
-				break;
+	/******    If first time (not resize):  Check depthTestImage Format,  Initial depthTestImageSubresourceRange     ****/
+	if (depthTestFormat == VK_FORMAT_UNDEFINED) {
+		VkFormatProperties formatProperties{};
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_D32_SFLOAT, &formatProperties);
+		if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+			depthTestFormat = VK_FORMAT_D32_SFLOAT; // VK_FORMAT_D32_SFLOAT is extremely common for depthTest
+		else {
+			for (auto f : SenAbstractGLFW::depthStencilSupportCheckFormatsVector) {
+				VkFormatProperties formatProperties{};
+				vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
+				if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+					depthTestFormat = f;
+					break;
+				}
 			}
+			if (depthTestFormat == VK_FORMAT_UNDEFINED) {
+				throw std::runtime_error("Depth stencil format not selected.");
+				std::exit(-1);
+			}
+			hasStencil = SenAbstractGLFW::hasStencilComponent(depthTestFormat);
 		}
-		if (depthTestFormat == VK_FORMAT_UNDEFINED) {
-			throw std::runtime_error("Depth stencil format not selected.");
-			std::exit(-1);
-		}
-		hasStencil = SenAbstractGLFW::hasStencilComponent(depthTestFormat);
+
+		depthTestImageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | (hasStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+		depthTestImageSubresourceRange.baseMipLevel = 0;	// first mipMap level to start
+		depthTestImageSubresourceRange.levelCount = 1;
+		depthTestImageSubresourceRange.baseArrayLayer = 0;	// first arrayLayer to start
+		depthTestImageSubresourceRange.layerCount = 1;
 	}
 	/********************************************************************************************************************/
 	/***************************     Create depthTest Image     *********************************************************/
@@ -440,13 +454,6 @@ void Sen_22_DepthTest::createDepthResources()
 
 	/********************************************************************************************************************/
 	/******************************     Create depthTest Image View    **************************************************/
-	VkImageSubresourceRange depthTestImageSubresourceRange{};
-	depthTestImageSubresourceRange.aspectMask		= VK_IMAGE_ASPECT_DEPTH_BIT | (hasStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-	depthTestImageSubresourceRange.baseMipLevel		= 0;	// first mipMap level to start
-	depthTestImageSubresourceRange.levelCount		= 1;
-	depthTestImageSubresourceRange.baseArrayLayer	= 0;	// first arrayLayer to start
-	depthTestImageSubresourceRange.layerCount		= 1;
-	
 	VkImageViewCreateInfo depthTestImageViewCreateInfo{};
 	depthTestImageViewCreateInfo.sType				= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	depthTestImageViewCreateInfo.image				= depthTestImage;
@@ -459,8 +466,6 @@ void Sen_22_DepthTest::createDepthResources()
 	/******************************     Transition depthTest ImageLayout     ********************************************/
 	SenAbstractGLFW::transitionResourceImageLayout(depthTestImage, depthTestImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
 		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, depthTestFormat, device, defaultThreadCommandPool, graphicsQueue);
-
-
 }
 
 void Sen_22_DepthTest::initBackgroundTextureImage()
@@ -583,8 +588,11 @@ void Sen_22_DepthTest::createTextureAppDescriptorSet()
 	vkUpdateDescriptorSets(device, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
 }
 
-void Sen_22_DepthTest::createTextureAppCommandBuffers()
+void Sen_22_DepthTest::createDepthTestCommandBuffers()
 {
+	/************************************************************************************************************/
+	/*********     Destroy old swapchainCommandBufferVector first for widgetRezie, if there are      ************/
+	/************************************************************************************************************/
 	if (swapchainCommandBufferVector.size() > 0) {
 		vkFreeCommandBuffers(device, defaultThreadCommandPool, (uint32_t)swapchainCommandBufferVector.size(), swapchainCommandBufferVector.data());
 	}
@@ -618,25 +626,27 @@ void Sen_22_DepthTest::createTextureAppCommandBuffers()
 		//======================================================================================
 		//======================================================================================
 		VkRenderPassBeginInfo renderPassBeginInfo{};
-		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass = colorAttachOnlyRenderPass;
-		renderPassBeginInfo.framebuffer = swapchainFramebufferVector[i];
-		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent.width = widgetWidth;
-		renderPassBeginInfo.renderArea.extent.height = widgetHeight;
+		renderPassBeginInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass			= depthTestRenderPass;
+		renderPassBeginInfo.framebuffer			= swapchainFramebufferVector[i];
+		renderPassBeginInfo.renderArea.offset	= { 0, 0 };
+		renderPassBeginInfo.renderArea.extent.width		= widgetWidth;
+		renderPassBeginInfo.renderArea.extent.height	= widgetHeight;
 
-		std::vector<VkClearValue> clearValueVector;
-		clearValueVector.push_back(VkClearValue{ 0.2f, 0.3f, 0.3f, 1.0f });
-		renderPassBeginInfo.clearValueCount = (uint32_t)clearValueVector.size();
-		renderPassBeginInfo.pClearValues = clearValueVector.data();
+		// Because we now have both color & depth attachments with VK_ATTACHMENT_LOAD_OP_CLEAR, we also need to specify multiple clear values. 
+		std::array<VkClearValue, 2> clearValueArray{};
+		clearValueArray[0].color		= { 0.2f, 0.3f, 0.3f, 1.0f };
+		clearValueArray[1].depthStencil = { 1.0f, 0 };
+		renderPassBeginInfo.clearValueCount = (uint32_t)clearValueArray.size();
+		renderPassBeginInfo.pClearValues	= clearValueArray.data();
 
 		vkCmdBeginRenderPass(swapchainCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		//======================================================================================
 		//======================================================================================
-		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, textureAppPipeline);
+		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, depthTestPipeline);
 		VkDeviceSize offsetDeviceSize = 0;
-		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &textureAppVertexBuffer, &offsetDeviceSize);
+		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &depthTestVertexBuffer, &offsetDeviceSize);
 
 		//vkCmdDraw(
 		//	swapchainCommandBufferVector[i],
@@ -658,6 +668,123 @@ void Sen_22_DepthTest::createTextureAppCommandBuffers()
 		SenAbstractGLFW::errorCheck(
 			vkEndCommandBuffer(swapchainCommandBufferVector[i]),
 			std::string("Failed to end record of Triangle Swapchain commandBuffers !!!")
+		);
+	}
+}
+
+void Sen_22_DepthTest::createDepthTestRenderPass()
+{
+	/********************************************************************************************************************/
+	/************    Setting AttachmentDescription:  colorAttachment + depthTestAttachment      *************************/
+	/********************************************************************************************************************/
+	VkAttachmentDescription colorAttachmentDescription{};
+	colorAttachmentDescription.format			= surfaceFormat.format;// swapChainImageFormat;
+	colorAttachmentDescription.samples			= VK_SAMPLE_COUNT_1_BIT; // Not using multi-sampling
+	colorAttachmentDescription.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	colorAttachmentDescription.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
+	colorAttachmentDescription.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachmentDescription.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	colorAttachmentDescription.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;       // layout before renderPass
+	colorAttachmentDescription.finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // auto transition after renderPass
+
+	VkAttachmentDescription depthTestAttachmentDescription{};
+	depthTestAttachmentDescription.format			= depthTestFormat;
+	depthTestAttachmentDescription.samples			= VK_SAMPLE_COUNT_1_BIT; // Not using multi-sampling
+	depthTestAttachmentDescription.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depthTestAttachmentDescription.storeOp			= VK_ATTACHMENT_STORE_OP_DONT_CARE; // don't care storing because depth data will not be used after drawing has finished. 
+	depthTestAttachmentDescription.stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depthTestAttachmentDescription.stencilStoreOp	= VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depthTestAttachmentDescription.initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED; // bug happen if preinitialized, not sure why
+	depthTestAttachmentDescription.finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	std::vector<VkAttachmentDescription> attachmentDescriptionVector;
+	attachmentDescriptionVector.push_back(colorAttachmentDescription);		// The colorAttachment index is 0
+	attachmentDescriptionVector.push_back(depthTestAttachmentDescription);	// The depthTestAttachment index is 1
+	/********************************************************************************************************************/
+	/********    Setting Subpasses with Dependencies: One subpass is enough to paint the triangle     *******************/
+	/********************************************************************************************************************/
+	std::array<VkAttachmentReference, 1> colorAttachmentReferenceArray{};
+	colorAttachmentReferenceArray[0].attachment = 0;						// The colorAttachment index is 0
+	colorAttachmentReferenceArray[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // auto transition during renderPass
+
+	VkAttachmentReference depthTestAttachmentReferenceArray{};
+	depthTestAttachmentReferenceArray.attachment = 1;						// The depthTestAttachment index is 1
+	depthTestAttachmentReferenceArray.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	std::array<VkSubpassDescription, 1> subpassDescriptionArray{};
+	subpassDescriptionArray[0].pipelineBindPoint		= VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDescriptionArray[0].colorAttachmentCount		= (uint32_t)colorAttachmentReferenceArray.size();	// Every subpass references one or more attachments
+	subpassDescriptionArray[0].pColorAttachments		= colorAttachmentReferenceArray.data();
+	subpassDescriptionArray[0].pDepthStencilAttachment	= &depthTestAttachmentReferenceArray;
+
+	/******* There are two built-in dependencies that take care of the transition at the start of the render pass and at the end of the render pass,
+	/////       but the former does not occur at the right time.
+	/////       It assumes that the transition occurs at the start of the pipeline, but we haven't acquired the image yet at that point! ****/
+	/******* There are two ways to deal with this problem.
+	/////       We could change the waitStages for the imageAvailableSemaphore to VK_PIPELINE_STAGE_TOP_OF_PIPELINE_BIT
+	/////        to ensure that the render passes don't begin until the image is available,
+	/////       or we can make the render pass wait for the VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT stage. ****************************/
+	std::vector<VkSubpassDependency> subpassDependencyVector;
+	VkSubpassDependency headSubpassDependency{};
+	headSubpassDependency.srcSubpass	= VK_SUBPASS_EXTERNAL;		// subpassIndex, from external
+	headSubpassDependency.dstSubpass	= 0;						// subpassIndex, to the first subpass, which is also the only one
+	headSubpassDependency.srcStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT; // specify the operations to wait on and the stages in which these operations occur.
+	headSubpassDependency.dstStageMask	= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	headSubpassDependency.srcAccessMask = 0;											 // specify the operations to wait on and the stages in which these operations occur.
+	headSubpassDependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+										| VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	subpassDependencyVector.push_back(headSubpassDependency);
+
+	/********************************************************************************************************************/
+	/*********************    Create RenderPass for rendering triangle      *********************************************/
+	/********************************************************************************************************************/
+	VkRenderPassCreateInfo depthTestRenderPassCreateInfo{};
+	depthTestRenderPassCreateInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	depthTestRenderPassCreateInfo.attachmentCount	= (uint32_t)attachmentDescriptionVector.size();
+	depthTestRenderPassCreateInfo.pAttachments		= attachmentDescriptionVector.data();
+	depthTestRenderPassCreateInfo.subpassCount		= (uint32_t)subpassDescriptionArray.size();
+	depthTestRenderPassCreateInfo.pSubpasses		= subpassDescriptionArray.data();
+	depthTestRenderPassCreateInfo.dependencyCount	= (uint32_t)subpassDependencyVector.size();
+	depthTestRenderPassCreateInfo.pDependencies		= subpassDependencyVector.data();
+
+	SenAbstractGLFW::errorCheck(
+		vkCreateRenderPass(device, &depthTestRenderPassCreateInfo, nullptr, &depthTestRenderPass),
+		std::string("Failed to create render pass !!")
+	);
+}
+
+void Sen_22_DepthTest::createDepthTestSwapchainFramebuffers()
+{
+	/************************************************************************************************************/
+	/*********     Destroy old swapchainFramebuffers first for widgetRezie, if there are      *******************/
+	/************************************************************************************************************/
+	for (auto swapchainFramebuffer : swapchainFramebufferVector) {
+		vkDestroyFramebuffer(device, swapchainFramebuffer, nullptr);
+	}
+	swapchainFramebufferVector.clear();
+	swapchainFramebufferVector.resize(swapchainImagesCount);
+
+	for (size_t i = 0; i < swapchainImagesCount; i++) {
+		std::array<VkImageView, 2> imageViewAttachmentArray = {
+			swapchainImageViewsVector[i],
+			// The same depth image can be used by all of them,
+			// because only a single subpass is running at the same time in this example due to the semaphores.
+			depthTestImageView
+		};
+
+		VkFramebufferCreateInfo framebufferCreateInfo{};
+		framebufferCreateInfo.sType				= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.renderPass		= depthTestRenderPass;
+		framebufferCreateInfo.attachmentCount	= (uint32_t)imageViewAttachmentArray.size();
+		framebufferCreateInfo.pAttachments		= imageViewAttachmentArray.data();
+		framebufferCreateInfo.width				= widgetWidth;
+		framebufferCreateInfo.height			= widgetHeight;
+		framebufferCreateInfo.layers			= 1;
+
+		SenAbstractGLFW::errorCheck(
+			vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &swapchainFramebufferVector[i]),
+			std::string("Failed to create framebuffer !!!")
 		);
 	}
 }

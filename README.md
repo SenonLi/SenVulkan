@@ -171,7 +171,9 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 * 5. Vulakn system coordinate is right handed, instead of (OpenGL) left handed, due to the opposite Y-axis direction;
 	if a triangle with correct coordinates in OpenGL disappeared running in Vulkan, it might be caused by face culling.
 * 6. Check the type of indicesArray if you cannot say what you draw, make sure uint16_t (instead of float) if you vkCmdBindIndexBuffer with VK_INDEX_TYPE_UINT16;
-* 
+* 7. Children's destructor runs before parent' virtual desctructor, which means we cannot call an abstract function in the parent's virtual desctructor;
+*
+
 
 ### Problems to solve
 00. Why call the image and sampler combined? 

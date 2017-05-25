@@ -74,6 +74,8 @@ public:
 		VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
 	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferMemoryTransferQueue,
 		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize);
+	static void transferResourceBufferToImage(const VkCommandPool& bufferToImageCommandPool, const VkQueue& bufferToImageTransferQueue
+		,const VkDevice& logicalDevice, const VkBuffer& srcBuffer, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight);
 
 	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
 	static bool hasStencilComponent(VkFormat formatToCheck);
@@ -127,7 +129,7 @@ protected:
 	VkSurfaceCapabilitiesKHR		surfaceCapabilities{};
 	
 
-	VkPhysicalDevice					physicalDevice				= VK_NULL_HANDLE;
+	VkPhysicalDevice					physicalDevice			= VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties			physicalDeviceProperties{};
 	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties{};
 	VkPhysicalDeviceFeatures			physicalDeviceFeatures{};

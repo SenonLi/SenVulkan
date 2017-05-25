@@ -23,24 +23,23 @@ private:
 	void createDepthTestIndexBuffer();
 	void createDepthTestVertexBuffer();
 	void createDepthResources();
+	void createDepthTestCommandBuffers();
+	void createDepthTestRenderPass();
+	void createDepthTestSwapchainFramebuffers();
+	void createDepthTestPipeline();
 
-	void createTextureAppPipeline();
 	void initBackgroundTextureImage();
 	void createTextureAppDescriptorPool();
 	void createTextureAppDescriptorSetLayout();
 	void createTextureAppDescriptorSet();
-	void createTextureAppCommandBuffers();
 
 
+	VkBuffer						depthTestVertexBuffer				= VK_NULL_HANDLE;
+	VkDeviceMemory					depthTestVertexBufferMemory			= VK_NULL_HANDLE;
 	VkRenderPass					depthTestRenderPass					= VK_NULL_HANDLE;
-	VkPipelineLayout				depthTestPipelineLayout				= VK_NULL_HANDLE;
 	VkPipeline						depthTestPipeline					= VK_NULL_HANDLE;
 
 	VkPipelineLayout				textureAppPipelineLayout			= VK_NULL_HANDLE;
-	VkPipeline						textureAppPipeline					= VK_NULL_HANDLE;
-	
-	VkBuffer						textureAppVertexBuffer				= VK_NULL_HANDLE;
-	VkDeviceMemory					textureAppVertexBufferMemory		= VK_NULL_HANDLE;
 
 	int backgroundTextureWidth, backgroundTextureHeight;
 	const char* backgroundTextureDiskAddress;
@@ -53,6 +52,8 @@ private:
 	VkDeviceMemory					depthTestImageDeviceMemory			= VK_NULL_HANDLE;
 	VkImageView						depthTestImageView					= VK_NULL_HANDLE;
 	VkFormat						depthTestFormat						= VK_FORMAT_UNDEFINED;
+	bool							hasStencil							= false;
+	VkImageSubresourceRange			depthTestImageSubresourceRange{};
 };
 
 
