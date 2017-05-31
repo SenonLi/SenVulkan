@@ -36,7 +36,6 @@ void Sen_06_Triangle::initVulkanApplication()
 
 void Sen_06_Triangle::reCreateRenderTarget()
 {
-	createTrianglePipeline();
 	createColorAttachOnlySwapchainFramebuffers();
 	createTriangleCommandBuffers();
 }
@@ -238,33 +237,32 @@ void Sen_06_Triangle::createTrianglePipeline() {
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
-	VkViewport viewport{};
-	viewport.x = 0.0f;									viewport.y = 0.0f;
-	viewport.width = static_cast<float>(widgetWidth);		viewport.height = static_cast<float>(widgetHeight);
-	viewport.minDepth = 0.0f;									viewport.maxDepth = 1.0f;
-	VkRect2D scissorRect2D{};
-	scissorRect2D.offset = { 0, 0 };
-	scissorRect2D.extent.width = static_cast<uint32_t>(widgetWidth);
-	scissorRect2D.extent.height = static_cast<uint32_t>(widgetHeight);
+	resizeViewport.x		= 0.0f;									resizeViewport.y		= 0.0f;
+	resizeViewport.width	= static_cast<float>(widgetWidth);		resizeViewport.height	= static_cast<float>(widgetHeight);
+	resizeViewport.minDepth	= 0.0f;									resizeViewport.maxDepth	= 1.0f;
+
+	resizeScissorRect2D.offset			= { 0, 0 };
+	resizeScissorRect2D.extent.width	= static_cast<uint32_t>(widgetWidth);
+	resizeScissorRect2D.extent.height	= static_cast<uint32_t>(widgetHeight);
 
 	VkPipelineViewportStateCreateInfo pipelineViewportStateCreateInfo{};
-	pipelineViewportStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	pipelineViewportStateCreateInfo.viewportCount = 1;
-	pipelineViewportStateCreateInfo.pViewports = &viewport;
-	pipelineViewportStateCreateInfo.scissorCount = 1;
-	pipelineViewportStateCreateInfo.pScissors = &scissorRect2D;
+	pipelineViewportStateCreateInfo.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	pipelineViewportStateCreateInfo.viewportCount	= 1;
+	pipelineViewportStateCreateInfo.pViewports		= &resizeViewport;
+	pipelineViewportStateCreateInfo.scissorCount	= 1;
+	pipelineViewportStateCreateInfo.pScissors		= &resizeScissorRect2D;
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
 	VkPipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo{};
-	pipelineRasterizationStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	pipelineRasterizationStateCreateInfo.depthClampEnable = VK_FALSE;
-	pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable = VK_FALSE;
-	pipelineRasterizationStateCreateInfo.polygonMode = VK_POLYGON_MODE_FILL;
-	pipelineRasterizationStateCreateInfo.cullMode = VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT;
-	pipelineRasterizationStateCreateInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-	pipelineRasterizationStateCreateInfo.depthBiasEnable = VK_FALSE;
-	pipelineRasterizationStateCreateInfo.lineWidth = 1.0f;
+	pipelineRasterizationStateCreateInfo.sType						= VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	pipelineRasterizationStateCreateInfo.depthClampEnable			= VK_FALSE;
+	pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable	= VK_FALSE;
+	pipelineRasterizationStateCreateInfo.polygonMode				= VK_POLYGON_MODE_FILL;
+	pipelineRasterizationStateCreateInfo.cullMode					= VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT;
+	pipelineRasterizationStateCreateInfo.frontFace					= VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	pipelineRasterizationStateCreateInfo.depthBiasEnable			= VK_FALSE;
+	pipelineRasterizationStateCreateInfo.lineWidth					= 1.0f;
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
@@ -293,6 +291,17 @@ void Sen_06_Triangle::createTrianglePipeline() {
 	pipelineColorBlendStateCreateInfo.blendConstants[2] = 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[3] = 0.0f;
 
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	std::vector<VkDynamicState> dynamicStateEnablesVector;
+	dynamicStateEnablesVector.push_back(VK_DYNAMIC_STATE_VIEWPORT);
+	dynamicStateEnablesVector.push_back(VK_DYNAMIC_STATE_SCISSOR);
+
+	VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo{};
+	pipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	pipelineDynamicStateCreateInfo.dynamicStateCount = dynamicStateEnablesVector.size();
+	pipelineDynamicStateCreateInfo.pDynamicStates = dynamicStateEnablesVector.data();
+
 	/****************************************************************************************************************************/
 	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
 	/****************************************************************************************************************************/
@@ -315,19 +324,20 @@ void Sen_06_Triangle::createTrianglePipeline() {
 	/****************************************************************************************************************************/
 	std::vector<VkGraphicsPipelineCreateInfo> graphicsPipelineCreateInfoVector;
 	VkGraphicsPipelineCreateInfo trianglePipelineCreateInfo{};
-	trianglePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	trianglePipelineCreateInfo.stageCount = (uint32_t)pipelineShaderStagesCreateInfoVector.size();
-	trianglePipelineCreateInfo.pStages = pipelineShaderStagesCreateInfoVector.data();
-	trianglePipelineCreateInfo.pVertexInputState = &pipelineVertexInputStateCreateInfo;
-	trianglePipelineCreateInfo.pInputAssemblyState = &pipelineInputAssemblyStateCreateInfo;
-	trianglePipelineCreateInfo.pViewportState = &pipelineViewportStateCreateInfo;
-	trianglePipelineCreateInfo.pRasterizationState = &pipelineRasterizationStateCreateInfo;
-	trianglePipelineCreateInfo.pMultisampleState = &pipelineMultisampleStateCreateInfo;
-	trianglePipelineCreateInfo.pColorBlendState = &pipelineColorBlendStateCreateInfo;
-	trianglePipelineCreateInfo.layout = trianglePipelineLayout;
-	trianglePipelineCreateInfo.renderPass = colorAttachOnlyRenderPass;
-	trianglePipelineCreateInfo.subpass = 0; // index of this trianglePipeline's subpass of the colorAttachOnlyRenderPass
-											//trianglePipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
+	trianglePipelineCreateInfo.sType				= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	trianglePipelineCreateInfo.stageCount			= (uint32_t)pipelineShaderStagesCreateInfoVector.size();
+	trianglePipelineCreateInfo.pStages				= pipelineShaderStagesCreateInfoVector.data();
+	trianglePipelineCreateInfo.pDynamicState		= &pipelineDynamicStateCreateInfo;
+	trianglePipelineCreateInfo.pVertexInputState	= &pipelineVertexInputStateCreateInfo;
+	trianglePipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
+	trianglePipelineCreateInfo.pViewportState		= &pipelineViewportStateCreateInfo;
+	trianglePipelineCreateInfo.pRasterizationState	= &pipelineRasterizationStateCreateInfo;
+	trianglePipelineCreateInfo.pMultisampleState	= &pipelineMultisampleStateCreateInfo;
+	trianglePipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
+	trianglePipelineCreateInfo.layout				= trianglePipelineLayout;
+	trianglePipelineCreateInfo.renderPass			= colorAttachOnlyRenderPass;
+	trianglePipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the colorAttachOnlyRenderPass
+														//trianglePipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
 
 	graphicsPipelineCreateInfoVector.push_back(trianglePipelineCreateInfo);
 
@@ -439,6 +449,8 @@ void Sen_06_Triangle::createTriangleCommandBuffers() {
 		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
 		VkDeviceSize offsetDeviceSize = 0;
 		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &triangleVertexBuffer, &offsetDeviceSize);
+		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], singleRectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
 
 		//vkCmdDraw(
 		//	swapchainCommandBufferVector[i],
@@ -448,10 +460,8 @@ void Sen_06_Triangle::createTriangleCommandBuffers() {
 		//	0  // firstInstance
 		//);
 
-		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], singleRectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
-
-		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
-
+		vkCmdSetViewport(swapchainCommandBufferVector[i], 0, 1, &resizeViewport);
+		vkCmdSetScissor(swapchainCommandBufferVector[i], 0, 1, &resizeScissorRect2D);
 
 		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6, 1, 0, 0, 0);
 

@@ -1,15 +1,15 @@
 #pragma once
 
-#ifndef __Sen_22_DepthTest__
-#define __Sen_22_DepthTest__
+#ifndef __Sen_221_Cube__
+#define __Sen_221_Cube__
 
 #include "../Support/SenAbstractGLFW.h"
 
-class Sen_22_DepthTest :	public SenAbstractGLFW
+class Sen_221_Cube :	public SenAbstractGLFW
 {
 public:
-	Sen_22_DepthTest();
-	virtual ~Sen_22_DepthTest();
+	Sen_221_Cube();
+	virtual ~Sen_221_Cube();
 
 protected:
 	void initVulkanApplication();
@@ -46,5 +46,5 @@ private:
 };
 
 
-#endif // !__Sen_22_DepthTest__
+#endif // !__Sen_221_Cube__
 

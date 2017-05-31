@@ -67,6 +67,9 @@
     <ClCompile Include="SenVulkanTutorial\Sen_22_DepthTest.cpp">
       <Filter>Sources\SenVulkanTutorial</Filter>
     </ClCompile>
+    <ClCompile Include="SenVulkanTutorial\Sen_221_Cube.cpp">
+      <Filter>Sources\SenVulkanTutorial</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Support\SenAbstractGLFW.h">
@@ -96,6 +99,9 @@
     <ClInclude Include="SenVulkanTutorial\Sen_22_DepthTest.h">
       <Filter>Headers\SenVulkanTutorial</Filter>
     </ClInclude>
+    <ClInclude Include="SenVulkanTutorial\Sen_221_Cube.h">
+      <Filter>Headers\SenVulkanTutorial</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="SenVulkanTutorial\Shaders\Triangle.frag">
@@ -121,6 +127,12 @@
       <Filter>Shaders\SenVulkanTutorial</Filter>
     </None>
     <None Include="SenVulkanTutorial\Shaders\depthTest.frag">
+      <Filter>Shaders\SenVulkanTutorial</Filter>
+    </None>
+    <None Include="SenVulkanTutorial\Shaders\SenCube.frag">
+      <Filter>Shaders\SenVulkanTutorial</Filter>
+    </None>
+    <None Include="SenVulkanTutorial\Shaders\SenCube.vert">
       <Filter>Shaders\SenVulkanTutorial</Filter>
     </None>
   </ItemGroup>

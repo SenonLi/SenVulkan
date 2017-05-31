@@ -109,6 +109,19 @@ protected:
 	void createDefaultCommandPool();
 	void createSingleRectIndexBuffer();
 	void createMvpUniformBuffers();
+	/*****************************************************************************************************************/
+	void createDepthTestAttachment();
+	void createDepthTestRenderPass();
+	void createDepthTestSwapchainFramebuffers();
+
+	VkRenderPass					depthTestRenderPass					= VK_NULL_HANDLE;
+	VkImage							depthTestImage						= VK_NULL_HANDLE;
+	VkDeviceMemory					depthTestImageDeviceMemory			= VK_NULL_HANDLE;
+	VkImageView						depthTestImageView					= VK_NULL_HANDLE;
+	VkFormat						depthTestFormat						= VK_FORMAT_UNDEFINED;
+	bool							hasStencil							= false;
+	VkImageSubresourceRange			depthTestImageSubresourceRange{};
+	/*****************************************************************************************************************/
 
 #ifdef _DEBUG	
 	const bool layersEnabled = true;
@@ -118,6 +131,8 @@ protected:
 
 	GLFWwindow* widgetGLFW;
 	int widgetWidth, widgetHeight;
+	VkViewport resizeViewport{};
+	VkRect2D   resizeScissorRect2D{};
 	char* strWindowName;
 	VkInstance						instance					= VK_NULL_HANDLE;
 	/*******************************************************************************************************************************/
@@ -128,7 +143,6 @@ protected:
 	VkSurfaceFormatKHR				surfaceFormat{};
 	VkSurfaceCapabilitiesKHR		surfaceCapabilities{};
 	
-
 	VkPhysicalDevice					physicalDevice			= VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties			physicalDeviceProperties{};
 	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties{};
@@ -192,7 +206,6 @@ protected:
 	VkImageView							depthStencilImageView			= VK_NULL_HANDLE;
 	VkFormat							depthStencilFormat				= VK_FORMAT_UNDEFINED;
 	bool								stencilAvailable				= false;
-	VkRenderPass						depthTestRenderPass = VK_NULL_HANDLE;
 
 	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
 		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
@@ -237,7 +250,7 @@ private:
 	void createSwapchain();
 	void cleanUpSwapChain();
 	void createPresentationSemaphores();
-	void updateSwapchain();
+	void swapSwapchain();
 
 	void reInitPresentation();
 	void finalizeAbstractGLFW();

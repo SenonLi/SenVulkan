@@ -169,6 +169,7 @@
     <ClCompile Include="SenVulkanTutorial\Sen_06_Triangle.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_07_Texture.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.cpp" />
+    <ClCompile Include="SenVulkanTutorial\Sen_221_Cube.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_22_DepthTest.cpp" />
     <ClCompile Include="Support\SenAbstractGLFW.cpp" />
     <ClCompile Include="VulkanAPI\SenRenderer.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="SenVulkanTutorial\Sen_06_Triangle.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_07_Texture.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.h" />
+    <ClInclude Include="SenVulkanTutorial\Sen_221_Cube.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_22_DepthTest.h" />
     <ClInclude Include="Support\SenAbstractGLFW.h" />
     <ClInclude Include="VulkanAPI\SenRenderer.h" />
@@ -193,6 +195,8 @@
     <None Include="..\README.md" />
     <None Include="SenVulkanTutorial\Shaders\depthTest.frag" />
     <None Include="SenVulkanTutorial\Shaders\depthTest.vert" />
+    <None Include="SenVulkanTutorial\Shaders\SenCube.frag" />
+    <None Include="SenVulkanTutorial\Shaders\SenCube.vert" />
     <None Include="SenVulkanTutorial\Shaders\Texture.frag" />
     <None Include="SenVulkanTutorial\Shaders\Texture.vert" />
     <None Include="SenVulkanTutorial\Shaders\Triangle.frag" />
