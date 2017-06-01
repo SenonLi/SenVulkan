@@ -298,9 +298,9 @@ void Sen_06_Triangle::createTrianglePipeline() {
 	dynamicStateEnablesVector.push_back(VK_DYNAMIC_STATE_SCISSOR);
 
 	VkPipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo{};
-	pipelineDynamicStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	pipelineDynamicStateCreateInfo.dynamicStateCount = dynamicStateEnablesVector.size();
-	pipelineDynamicStateCreateInfo.pDynamicStates = dynamicStateEnablesVector.data();
+	pipelineDynamicStateCreateInfo.sType				= VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	pipelineDynamicStateCreateInfo.dynamicStateCount	= dynamicStateEnablesVector.size();
+	pipelineDynamicStateCreateInfo.pDynamicStates		= dynamicStateEnablesVector.data();
 
 	/****************************************************************************************************************************/
 	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
@@ -406,10 +406,10 @@ void Sen_06_Triangle::createTriangleCommandBuffers() {
 	swapchainCommandBufferVector.resize(swapchainImagesCount);
 
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
-	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	commandBufferAllocateInfo.commandPool = defaultThreadCommandPool;
-	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	commandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(swapchainCommandBufferVector.size());
+	commandBufferAllocateInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.commandPool			= defaultThreadCommandPool;
+	commandBufferAllocateInfo.level					= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufferAllocateInfo.commandBufferCount	= static_cast<uint32_t>(swapchainCommandBufferVector.size());
 
 	SenAbstractGLFW::errorCheck(
 		vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, swapchainCommandBufferVector.data()),
@@ -424,18 +424,18 @@ void Sen_06_Triangle::createTriangleCommandBuffers() {
 		//======================================================================================
 		VkCommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // In case we may already be scheduling the drawing commands for the next frame while the last frame hass not finished yet.
+		//commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // In case we may already be scheduling the drawing commands for the next frame while the last frame hass not finished yet.
 		vkBeginCommandBuffer(swapchainCommandBufferVector[i], &commandBufferBeginInfo);
 
 		//======================================================================================
 		//======================================================================================
 		VkRenderPassBeginInfo renderPassBeginInfo{};
-		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass = colorAttachOnlyRenderPass;
-		renderPassBeginInfo.framebuffer = swapchainFramebufferVector[i];
-		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent.width = widgetWidth;
-		renderPassBeginInfo.renderArea.extent.height = widgetHeight;
+		renderPassBeginInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass			= colorAttachOnlyRenderPass;
+		renderPassBeginInfo.framebuffer			= swapchainFramebufferVector[i];
+		renderPassBeginInfo.renderArea.offset	= { 0, 0 };
+		renderPassBeginInfo.renderArea.extent.width		= widgetWidth;
+		renderPassBeginInfo.renderArea.extent.height	= widgetHeight;
 
 		std::vector<VkClearValue> clearValueVector;
 		clearValueVector.push_back(VkClearValue{ 0.2f, 0.3f, 0.3f, 1.0f });

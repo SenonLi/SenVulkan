@@ -20,9 +20,10 @@ protected:
 	void updateUniformBuffer();
 
 private:
-	void createDepthTestIndexBuffer();
-	void createDepthTestVertexBuffer();
-	void createDepthTestCommandBuffers();
+	void createCubeIndexBuffer();
+	void createCubeVertexBuffer();
+	void createCubeCommandBuffers();
+
 	void createDepthTestPipeline();
 	void initBackgroundTextureImage();
 	void createTextureAppDescriptorPool();
@@ -35,8 +36,11 @@ private:
 	VkSampler						texture2DSampler					= VK_NULL_HANDLE;
 
 
-	VkBuffer						depthTestVertexBuffer				= VK_NULL_HANDLE;
-	VkDeviceMemory					depthTestVertexBufferMemory			= VK_NULL_HANDLE;
+	VkBuffer						cubeVertexBuffer					= VK_NULL_HANDLE;
+	VkDeviceMemory					cubeVertexBufferMemory				= VK_NULL_HANDLE;
+	VkBuffer						cubeIndexBuffer						= VK_NULL_HANDLE;
+	VkDeviceMemory					cubeIndexBufferMemory				= VK_NULL_HANDLE;
+
 	VkPipeline						depthTestPipeline					= VK_NULL_HANDLE;
 
 	VkPipelineLayout				textureAppPipelineLayout			= VK_NULL_HANDLE;

@@ -366,7 +366,7 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	);
 }
 
-void SenAbstractGLFW::createPresentationSemaphores() {
+void SenAbstractGLFW::createSynchronizationPrimitives() {
 	VkSemaphoreCreateInfo semaphoreCreateInfo{};
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -378,6 +378,18 @@ void SenAbstractGLFW::createPresentationSemaphores() {
 		vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &paintReadyToPresentSemaphore),
 		std::string("Failed to create paintReadyToPresentSemaphore !!!")
 	);
+
+	VkFenceCreateInfo fenceCreateInfo{};
+	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;	// Signaled state, no wait for the first render of each command buffer
+	waitCommandBufferCompleteFencesVector.resize(swapchainImagesCount);
+	for (auto& fence : waitCommandBufferCompleteFencesVector)
+	{
+		SenAbstractGLFW::errorCheck(
+			vkCreateFence(device, &fenceCreateInfo, nullptr, &fence),
+			std::string("Failed to create waitCommandBufferCompleteFences !!!")
+		);
+	}
 }
 
 void SenAbstractGLFW::initGlfwVulkanDebugWSI()
@@ -422,7 +434,7 @@ void SenAbstractGLFW::initGlfwVulkanDebugWSI()
 	createDefaultLogicalDevice();
 	collectSwapchainFeatures();
 	createSwapchain();
-	createPresentationSemaphores();
+	createSynchronizationPrimitives(); // has to be after createSwapchain() for the correct swapchainImagesCount
 
 	std::cout << "\n Finish  SenAbstractGLFW::initGlfwVulkanDebugWSI()\n";
 }
@@ -624,6 +636,13 @@ void SenAbstractGLFW::swapSwapchain()
 		throw std::runtime_error("Failed to acquire swap chain image !!!!");
 	}
 
+	// Use a fence to wait until the swapchainCommandBufferVector[swapchainImageIndex] has finished last execution before using it again
+	SenAbstractGLFW::errorCheck(
+		vkWaitForFences(device, 1, &waitCommandBufferCompleteFencesVector[swapchainImageIndex], VK_TRUE, UINT64_MAX),
+		std::string("Failed to vkWaitForFences waitCommandBufferCompleteFencesVector[swapchainImageIndex] !!")
+	); 
+	vkResetFences(device, 1, &waitCommandBufferCompleteFencesVector[swapchainImageIndex]);
+
 	/*******************************************************************************************************************************/
 	/*********       Execute the command buffer with that image as attachment in the framebuffer           *************************/
 	/*******************************************************************************************************************************/
@@ -634,20 +653,20 @@ void SenAbstractGLFW::swapSwapchain()
 	submitInfoWaitSemaphoresVecotr.push_back(swapchainImageAcquiredSemaphore);
 	// Commands before this submitInfoWaitDstStageMaskArray stage could be executed before semaphore signaled
 	VkPipelineStageFlags submitInfoWaitDstStageMaskArray[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount = (uint32_t)submitInfoWaitSemaphoresVecotr.size();
-	submitInfo.pWaitSemaphores = submitInfoWaitSemaphoresVecotr.data();
-	submitInfo.pWaitDstStageMask = submitInfoWaitDstStageMaskArray;
+	submitInfo.waitSemaphoreCount	= (uint32_t)submitInfoWaitSemaphoresVecotr.size();
+	submitInfo.pWaitSemaphores		= submitInfoWaitSemaphoresVecotr.data();
+	submitInfo.pWaitDstStageMask	= submitInfoWaitDstStageMaskArray;
 
-	submitInfo.commandBufferCount = 1;	// wait for submitInfoCommandBuffersVecotr to be created
-	submitInfo.pCommandBuffers = &swapchainCommandBufferVector[swapchainImageIndex];
+	submitInfo.commandBufferCount	= 1;	// wait for submitInfoCommandBuffersVecotr to be created
+	submitInfo.pCommandBuffers		= &swapchainCommandBufferVector[swapchainImageIndex];
 
 	std::vector<VkSemaphore> submitInfoSignalSemaphoresVector;
 	submitInfoSignalSemaphoresVector.push_back(paintReadyToPresentSemaphore);
 	submitInfo.signalSemaphoreCount = (uint32_t)submitInfoSignalSemaphoresVector.size();
-	submitInfo.pSignalSemaphores = submitInfoSignalSemaphoresVector.data();
+	submitInfo.pSignalSemaphores	= submitInfoSignalSemaphoresVector.data();
 
 	SenAbstractGLFW::errorCheck(
-		vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE),
+		vkQueueSubmit(graphicsQueue, 1, &submitInfo, waitCommandBufferCompleteFencesVector[swapchainImageIndex]),
 		std::string("Failed to submit draw command buffer !!!")
 	);
 
@@ -1757,6 +1776,11 @@ void SenAbstractGLFW::finalizeAbstractGLFW() {
 		vkDestroySemaphore(device, paintReadyToPresentSemaphore, nullptr);
 		paintReadyToPresentSemaphore = VK_NULL_HANDLE;
 	}
+	for (auto& fence : waitCommandBufferCompleteFencesVector)	{
+		vkDestroyFence(device, fence, nullptr);
+	}
+	waitCommandBufferCompleteFencesVector.clear();
+
 	/************************************************************************************************************/
 	/*********************           Destroy logical device                **************************************/
 	/************************************************************************************************************/

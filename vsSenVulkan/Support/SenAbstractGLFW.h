@@ -163,6 +163,7 @@ protected:
 	std::vector<VkImageView>		swapchainImageViewsVector;
 	std::vector<VkFramebuffer>		swapchainFramebufferVector;
 	std::vector<VkCommandBuffer>	swapchainCommandBufferVector;
+	std::vector<VkFence>			waitCommandBufferCompleteFencesVector;
 	VkSemaphore swapchainImageAcquiredSemaphore;// wait for SWI, from VK_IMAGE_LAYOUT_PRESENT_SRC_KHR to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 	VkSemaphore paintReadyToPresentSemaphore;	// wait for GPU, from VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL to VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 
@@ -249,7 +250,7 @@ private:
 	void collectSwapchainFeatures();
 	void createSwapchain();
 	void cleanUpSwapChain();
-	void createPresentationSemaphores();
+	void createSynchronizationPrimitives();
 	void swapSwapchain();
 
 	void reInitPresentation();

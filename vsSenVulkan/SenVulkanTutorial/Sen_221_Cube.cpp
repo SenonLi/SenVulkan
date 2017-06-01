@@ -31,11 +31,11 @@ void Sen_221_Cube::initVulkanApplication()
 	createDepthTestRenderPass();			// has to be called after createDepthTestAttachment() for depthTestFormat
 	createDepthTestPipeline();
 	createDepthTestSwapchainFramebuffers(); // has to be called after createDepthTestAttachment() for the depthTestImageView
-	createDepthTestVertexBuffer();
-	createDepthTestIndexBuffer();
+	createCubeVertexBuffer();
+	createCubeIndexBuffer();
 	/***************************************/
 
-	createDepthTestCommandBuffers();
+	createCubeCommandBuffers();
 
 	std::cout << "\n Finish  Sen_221_Cube::initVulkanApplication()\n";
 }
@@ -44,7 +44,7 @@ void Sen_221_Cube::reCreateRenderTarget()
 {
 	createDepthTestAttachment();
 	createDepthTestSwapchainFramebuffers();
-	createDepthTestCommandBuffers();
+	createCubeCommandBuffers();
 }
 
 void Sen_221_Cube::cleanUpDepthStencil()
@@ -120,14 +120,20 @@ void Sen_221_Cube::finalizeWidget()
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != depthTestVertexBuffer) {
-		vkDestroyBuffer(device, depthTestVertexBuffer, nullptr);
-		vkFreeMemory(device, depthTestVertexBufferMemory, nullptr);	// always try to destroy before free
+	if (VK_NULL_HANDLE != cubeVertexBuffer) {
+		vkDestroyBuffer(device, cubeVertexBuffer, nullptr);
+		vkFreeMemory(device, cubeVertexBufferMemory, nullptr);	// always try to destroy before free
 
-		depthTestVertexBuffer			= VK_NULL_HANDLE;
-		depthTestVertexBufferMemory	= VK_NULL_HANDLE;
+		cubeVertexBuffer			= VK_NULL_HANDLE;
+		cubeVertexBufferMemory	= VK_NULL_HANDLE;
 	}
+	if (VK_NULL_HANDLE != cubeIndexBuffer) {
+		vkDestroyBuffer(device, cubeIndexBuffer, nullptr);
+		vkFreeMemory(device, cubeIndexBufferMemory, nullptr);	// always try to destroy before free
 
+		cubeIndexBuffer = VK_NULL_HANDLE;
+		cubeIndexBufferMemory = VK_NULL_HANDLE;
+	}
 	OutputDebugString("\n\tFinish  Sen_221_Cube::finalizeWidget()\n");
 }
 
@@ -345,7 +351,7 @@ void Sen_221_Cube::createDepthTestPipeline()
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void Sen_221_Cube::createDepthTestIndexBuffer()
+void Sen_221_Cube::createCubeIndexBuffer()
 {
 	//uint16_t indices[] = {	0, 1, 2, 1, 2, 3, 
 	//						4, 5, 6, 5, 6, 7 };
@@ -387,16 +393,16 @@ void Sen_221_Cube::createDepthTestIndexBuffer()
 	/***************   Transfer from stagingBuffer to Optimal triangleVertexBuffer   ********************************************************************/
 	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
-		singleRectIndexBuffer, singleRectIndexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		cubeIndexBuffer, cubeIndexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
-		singleRectIndexBuffer, indicesBufferSize);
+		cubeIndexBuffer, indicesBufferSize);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
-void Sen_221_Cube::createDepthTestVertexBuffer()
+void Sen_221_Cube::createCubeVertexBuffer()
 {
 	//float vertices[] = {
 	//	// Positions			// Colors				// TexCoord
@@ -463,13 +469,13 @@ void Sen_221_Cube::createDepthTestVertexBuffer()
 	vkUnmapMemory(device, stagingBufferDeviceMemory);
 
 	/****************************************************************************************************************************************************/
-	/***************   Transfer from stagingBuffer to Optimal depthTestVertexBuffer   ********************************************************************/
+	/***************   Transfer from stagingBuffer to Optimal cubeVertexBuffer   ********************************************************************/
 	SenAbstractGLFW::createResourceBuffer(device, verticesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
-		depthTestVertexBuffer, depthTestVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		cubeVertexBuffer, cubeVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
-		depthTestVertexBuffer, verticesBufferSize);
+		cubeVertexBuffer, verticesBufferSize);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
@@ -595,7 +601,7 @@ void Sen_221_Cube::createTextureAppDescriptorSet()
 	vkUpdateDescriptorSets(device, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
 }
 
-void Sen_221_Cube::createDepthTestCommandBuffers()
+void Sen_221_Cube::createCubeCommandBuffers()
 {
 	/************************************************************************************************************/
 	/*********     Destroy old swapchainCommandBufferVector first for widgetRezie, if there are      ************/
@@ -627,7 +633,6 @@ void Sen_221_Cube::createDepthTestCommandBuffers()
 		//======================================================================================
 		VkCommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // In case we may already be scheduling the drawing commands for the next frame while the last frame hass not finished yet.
 		vkBeginCommandBuffer(swapchainCommandBufferVector[i], &commandBufferBeginInfo);
 
 		//======================================================================================
@@ -653,8 +658,8 @@ void Sen_221_Cube::createDepthTestCommandBuffers()
 		//======================================================================================
 		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, depthTestPipeline);
 		VkDeviceSize offsetDeviceSize = 0;
-		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &depthTestVertexBuffer, &offsetDeviceSize);
-		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], singleRectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &cubeVertexBuffer, &offsetDeviceSize);
+		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], cubeIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
 		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
 			textureAppPipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
 
