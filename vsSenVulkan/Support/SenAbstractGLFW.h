@@ -52,11 +52,8 @@ public:
 	virtual ~SenAbstractGLFW();
 
 	void showWidget();
-	static void onWidgetResized(GLFWwindow* widget, int width, int height);
 
-	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags, VkDebugReportObjectTypeEXT, uint64_t, size_t, int32_t, const char*, const char*, void *);	
 	static void createVulkanShaderModule(const VkDevice& logicalDevice, const std::string& diskFileAddress, VkShaderModule& shaderModule);
-
 	static uint32_t findPhysicalDeviceMemoryPropertyIndex(
 		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 		const VkMemoryRequirements& memoryRequirements,
@@ -75,14 +72,15 @@ public:
 	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferMemoryTransferQueue,
 		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize);
 	static void transferResourceBufferToImage(const VkCommandPool& bufferToImageCommandPool, const VkQueue& bufferToImageTransferQueue
-		,const VkDevice& logicalDevice, const VkBuffer& srcBuffer, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight);
+		,const VkDevice& logicalDevice, const VkBuffer& srcBuffer, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight
+		, const uint32_t& layerCount , const uint32_t& regionCount , const VkBufferImageCopy* ptrBufferImageCopyRegionVec);
 
 	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
 	static bool hasStencilComponent(VkFormat formatToCheck);
 	static void createResourceImage(const VkDevice& logicalDevice, const uint32_t& imageWidth, const uint32_t& imageHeight
 		, const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
 		, VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
-		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties);
+		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties, const uint32_t& layerCount);
 	static void transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
 		, const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout, const VkFormat& imageFormat
 		, const VkDevice& logicalDevice, const VkCommandPool& transitionImageLayoutCommandPool, const VkQueue& imageMemoryTransferQueue);
@@ -94,12 +92,18 @@ public:
 		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
 	static void createTextureSampler(const VkDevice& logicalDevice, VkSampler& textureSamplerToCreate);
 
+	void createDeviceLocalTextureArray(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+		, const std::vector<std::string> & texturesDiskAddressVector, const VkImageType& imageType
+		, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
+		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
+
 protected:
 	virtual void initVulkanApplication() = 0;
 	virtual void cleanUpDepthStencil() = 0;
 	virtual void reCreateRenderTarget() = 0; // for resize window
 	virtual void finalizeWidget() = 0;
 	virtual void updateUniformBuffer() = 0;
+	virtual void onKeyboardReaction(GLFWwindow* widget, int key, int scancode, int action, int mode);
 
 	const int DEFAULT_widgetWidth	= 800;	// 640;
 	const int DEFAULT_widgetHeight	= 600;	// 640;
@@ -214,9 +218,12 @@ protected:
 	void createDepthStencilAttachment();
 	void createDepthStencilRenderPass();
 	void createDepthStencilGraphicsPipeline();
-	//void createDepthStencilFramebuffers();
 
 private:
+	static void onWidgetResized(GLFWwindow* widget, int width, int height);
+	static void onKeyboardDetected(GLFWwindow* widget, int key, int scancode, int action, int mode);
+	static VKAPI_ATTR VkBool32 VKAPI_CALL pfnDebugCallback(VkFlags, VkDebugReportObjectTypeEXT, uint64_t, size_t, int32_t, const char*, const char*, void *);
+
 	static std::vector<char> readFileStream(const std::string& diskFileAddress, bool binary = false);
 	static void createShaderModuleFromSPIRV(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule& shaderModule);
 	static std::vector<uint32_t> shadercToSPIRV(const std::string& source_name, shaderc_shader_kind kind, const std::string& source, bool optimize = true);

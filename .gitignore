@@ -27,3 +27,9 @@
 *.exe
 *.out
 *.app
+
+# _Win32 Env files
+*.suo
+*.db
+*.VC.db
+*.opendb

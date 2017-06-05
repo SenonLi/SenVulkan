@@ -201,4 +201,13 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 		because the implementation may be able to apply memory allocation optimizations.
 	You should use the VK_COMMAND_POOL_CREATE_TRANSIENT_BIT flag during command pool generation in that case.
 5. Use imageArray to draw SenCube.
-6. 
+6. Split Abstract into SenVulkanResources, SenVulkanImage, SenVulkanBuffer....,
+	control with pointers;
+7. 
+
+
+
+To Do:
+1. add textOverlay;
+2. go through texture;
+3. add camera.

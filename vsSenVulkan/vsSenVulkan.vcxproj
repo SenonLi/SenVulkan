@@ -167,6 +167,7 @@
   <ItemGroup>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_06_Triangle.cpp" />
+    <ClCompile Include="SenVulkanTutorial\Sen_072_TextureArray.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_07_Texture.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_221_Cube.cpp" />
@@ -181,6 +182,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="SenVulkanTutorial\Sen_06_Triangle.h" />
+    <ClInclude Include="SenVulkanTutorial\Sen_072_TextureArray.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_07_Texture.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_221_Cube.h" />
@@ -199,6 +201,8 @@
     <None Include="SenVulkanTutorial\Shaders\SenCube.vert" />
     <None Include="SenVulkanTutorial\Shaders\Texture.frag" />
     <None Include="SenVulkanTutorial\Shaders\Texture.vert" />
+    <None Include="SenVulkanTutorial\Shaders\textureArray.frag" />
+    <None Include="SenVulkanTutorial\Shaders\textureArray.vert" />
     <None Include="SenVulkanTutorial\Shaders\Triangle.frag" />
     <None Include="SenVulkanTutorial\Shaders\Triangle.vert" />
     <None Include="SenVulkanTutorial\Shaders\triangleFrag.spv" />

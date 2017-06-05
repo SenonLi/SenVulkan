@@ -4,6 +4,7 @@
 // all stb_image realated functions have to be implemented in this class
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
+#include <gli/gli.hpp> // to load KTX image file
 
 SenAbstractGLFW::SenAbstractGLFW()
 {
@@ -50,7 +51,7 @@ void SenAbstractGLFW::createTextureSampler(const VkDevice& logicalDevice, VkSamp
 	textureSamplerCreateInfo.addressModeV				= VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	textureSamplerCreateInfo.addressModeW				= VK_SAMPLER_ADDRESS_MODE_REPEAT;
 	textureSamplerCreateInfo.anisotropyEnable			= VK_TRUE;
-	textureSamplerCreateInfo.maxAnisotropy				= 16.0;
+	textureSamplerCreateInfo.maxAnisotropy				= 16.0; // physicalDeviceProperties.limits.maxSamplerAnisotropy
 	textureSamplerCreateInfo.compareEnable				= VK_FALSE; // for shadow maps (percentage-closer filtering)
 	textureSamplerCreateInfo.compareOp					= VK_COMPARE_OP_ALWAYS;
 	textureSamplerCreateInfo.borderColor				= VK_BORDER_COLOR_INT_OPAQUE_BLACK;
@@ -65,7 +66,7 @@ void SenAbstractGLFW::createTextureSampler(const VkDevice& logicalDevice, VkSamp
 void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const uint32_t& imageWidth, const uint32_t& imageHeight
 	,const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
 	,VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
-	,const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties)
+	,const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties, const uint32_t& layerCount = 1)
 {
 	/***********************************************************************************************************************************************/
 	/*************    VK_IMAGE_TILING_LINEAR  have further restrictions on their limits and capabilities    ****************************************/
@@ -90,7 +91,7 @@ void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const ui
 	// That's why depth must be 1 instead of 0 while VK_IMAGE_TYPE_2D
 	imageCreateInfo.extent.depth	= 1; // Need to fix this if create imageType != VK_IMAGE_TYPE_2D
 	imageCreateInfo.mipLevels		= 1; // Spec: must be greater than 0; setup later based on function of imageWidth/imageHeight
-	imageCreateInfo.arrayLayers		= 1; // Usually =1 if not working as ImageArray; Spec: must be greater than 0; have to be 1 if LINEAR format
+	imageCreateInfo.arrayLayers		= layerCount; // 1 if not working as ImageArray; Spec: must be greater than 0; have to be 1 if LINEAR format
 	imageCreateInfo.format			= imageFormat;
 	imageCreateInfo.tiling			= imageTiling;
 	// An initially undefined layout is for images used as attachments (color/depth) that will probably be cleared by a render pass before use;
@@ -175,21 +176,25 @@ void SenAbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransi
 }
 
 void SenAbstractGLFW::transferResourceBufferToImage(const VkCommandPool& bufferToImageCommandPool, const VkQueue& bufferToImageTransferQueue
-	, const VkDevice& logicalDevice, const VkBuffer& srcBuffer, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight) {
+	, const VkDevice& logicalDevice, const VkBuffer& srcBuffer, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight
+	, const uint32_t& layerCount = 1, const uint32_t& regionCount = 1, const VkBufferImageCopy* ptrBufferImageCopyRegionVec = nullptr) {
 
 	VkCommandBuffer bufferToImageCommandBuffer = VK_NULL_HANDLE;
 	SenAbstractGLFW::beginSingleTimeCommandBuffer(bufferToImageCommandPool, logicalDevice, bufferToImageCommandBuffer);
-	
-	VkBufferImageCopy bufferImageCopyRegion{};
-	bufferImageCopyRegion.bufferRowLength	= 0; // Means no padding bytes between rows of the image.
-	bufferImageCopyRegion.bufferImageHeight = 0;
-	bufferImageCopyRegion.imageSubresource.aspectMask	= VK_IMAGE_ASPECT_COLOR_BIT;
-	bufferImageCopyRegion.imageSubresource.mipLevel		= 0; // the mipmap level to copy from; not sure why there's no mipCount
-	bufferImageCopyRegion.imageSubresource.baseArrayLayer = 0;
-	bufferImageCopyRegion.imageSubresource.layerCount	= 1;
-	bufferImageCopyRegion.imageExtent = { imageWidth, imageHeight, 1 };
-	// It's possible to specify an array of VkBufferImageCopy to perform many different copies from this buffer to the image in one operation.
-	vkCmdCopyBufferToImage(bufferToImageCommandBuffer, srcBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopyRegion);
+	if (regionCount == 1) {
+		VkBufferImageCopy bufferImageCopyRegion{};
+		bufferImageCopyRegion.bufferRowLength = 0; // Means no padding bytes between rows of the image.
+		bufferImageCopyRegion.bufferImageHeight = 0;
+		bufferImageCopyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		bufferImageCopyRegion.imageSubresource.mipLevel = 0; // the mipmap level to copy from; not sure why there's no mipCount
+		bufferImageCopyRegion.imageSubresource.baseArrayLayer = 0;
+		bufferImageCopyRegion.imageSubresource.layerCount = 1;
+		bufferImageCopyRegion.imageExtent = { imageWidth, imageHeight, 1 };
+		// It's possible to specify an array of VkBufferImageCopy to perform many different copies from this buffer to the image in one operation.
+		vkCmdCopyBufferToImage(bufferToImageCommandBuffer, srcBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufferImageCopyRegion);
+	}else 
+		vkCmdCopyBufferToImage(bufferToImageCommandBuffer, srcBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
+			regionCount, ptrBufferImageCopyRegionVec);
 
 	SenAbstractGLFW::endSingleTimeCommandBuffer(bufferToImageCommandPool, logicalDevice, bufferToImageTransferQueue, bufferToImageCommandBuffer);
 	bufferToImageCommandBuffer = VK_NULL_HANDLE;
@@ -227,16 +232,209 @@ void SenAbstractGLFW::transferResourceImage(const VkCommandPool& imageTransferCo
 	imageCopyCommandBuffer = VK_NULL_HANDLE;
 }
 
+void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+	, const std::vector<std::string> & texturesDiskAddressVector, const VkImageType& imageType
+	, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
+	, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue)
+{
+	bool usingGliLibrary = false;
+	if (texturesDiskAddressVector.size() == 1
+		 && texturesDiskAddressVector[0].substr(texturesDiskAddressVector[0].length() - 4, 4).compare(".ktx") == 0)
+		usingGliLibrary = true;
+	std::vector<stbi_uc*> ptrDiskTexToUploadVector;
+	gli::texture2d_array tex2DArray;
+	int textureArrayLayerCount, maxTextureWidth=0, minTextureWidth=999, maxTextureHeight=0, minTextureHeight=999;
+	std::vector<VkDeviceSize> hostVisibleTexDeviceSizeVector;
+	std::vector<int> textureWidthVector, textureHeightVector;
+	VkDeviceSize totalHostVisibleTexDeviceSize = 0;
+	/*****************************************************************************************************************************************/
+	if (usingGliLibrary) {
+		tex2DArray = gli::texture2d_array(gli::load(texturesDiskAddressVector[0]));
+		assert(!tex2DArray.empty());
+		if (tex2DArray.empty()) { throw std::runtime_error("failed to load texture2DArray KTX image!"); }
+		maxTextureWidth		= static_cast<uint32_t>(tex2DArray[0].extent().x);
+		maxTextureHeight	= static_cast<uint32_t>(tex2DArray[0].extent().y);
+		textureArrayLayerCount			= tex2DArray.layers();
+		totalHostVisibleTexDeviceSize	= tex2DArray.size();
+	}else {
+		textureArrayLayerCount = texturesDiskAddressVector.size(); 
+		textureWidthVector.resize(textureArrayLayerCount);
+		textureHeightVector.resize(textureArrayLayerCount);
+		// The pointer ptrBackgroundTexture returned from stbi_load(...) is the first element in an array of pixel values.
+		int actuallyTextureChannels;
+		for (int i = 0; i < textureArrayLayerCount; i++) {
+			stbi_uc* ptrDiskTextureToUpload = stbi_load(texturesDiskAddressVector[i].c_str(), &textureWidthVector[i], &textureHeightVector[i], &actuallyTextureChannels, STBI_rgb_alpha);
+			if (!ptrDiskTextureToUpload) { throw std::runtime_error("failed to load one of the texture2DArray images!"); }
+			ptrDiskTexToUploadVector.push_back(ptrDiskTextureToUpload);
+			hostVisibleTexDeviceSizeVector.push_back(textureWidthVector[i] * textureHeightVector[i] * 4);
+			totalHostVisibleTexDeviceSize += hostVisibleTexDeviceSizeVector[i];
+
+			maxTextureWidth = maxTextureWidth > textureWidthVector[i] ? maxTextureWidth : textureWidthVector[i];
+			minTextureWidth = minTextureWidth < textureWidthVector[i] ? minTextureWidth : textureWidthVector[i];
+			maxTextureHeight = maxTextureHeight > textureHeightVector[i] ? maxTextureHeight : textureHeightVector[i];
+			minTextureHeight = minTextureHeight < textureHeightVector[i] ? minTextureHeight : textureHeightVector[i];
+		}
+	}
+
+	/***********************************************************************************************************************************************/
+	/*************      First:   Upload/MapMemory texture image file to texture StagingBuffer )         ********************************************/
+	VkBuffer textureStagingBuffer;
+	VkDeviceMemory textureStagingBufferDeviceMemory;
+
+	SenAbstractGLFW::createResourceBuffer(logicalDevice, totalHostVisibleTexDeviceSize, // 4 for RGBA
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, gpuMemoryProperties,
+		textureStagingBuffer, textureStagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	void* ptrHostVisibleData;
+	vkMapMemory(logicalDevice, textureStagingBufferDeviceMemory, 0, totalHostVisibleTexDeviceSize, 0, &ptrHostVisibleData);
+
+	if (usingGliLibrary) {
+		memcpy(ptrHostVisibleData, tex2DArray.data(), static_cast<size_t>(totalHostVisibleTexDeviceSize));
+	}else {
+		int offset = 0;
+		for (int i = 0; i < textureArrayLayerCount; i++) {
+			memcpy(static_cast<char*>(ptrHostVisibleData) + offset, ptrDiskTexToUploadVector[0], static_cast<size_t>(hostVisibleTexDeviceSizeVector[0]));
+			stbi_image_free(ptrDiskTexToUploadVector[0]);
+			offset += hostVisibleTexDeviceSizeVector[0];
+		}
+	}
+	vkUnmapMemory(logicalDevice, textureStagingBufferDeviceMemory);
+	/***********************************************************************************************************************************************/
+	/**********        Second: Transfer stagingImage to deviceLocalTextureImage with correct textureImageLayout )        ***************************/
+	VkFormat textureFormat;
+	if (usingGliLibrary) {
+		gli::texture::format_type  formatType = tex2DArray.format();
+		switch (formatType)
+		{
+			case gli::texture::format_type::FORMAT_RGBA_BP_UNORM_BLOCK16:
+				textureFormat = VkFormat::VK_FORMAT_BC7_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_RGBA_DXT3_UNORM_BLOCK16:
+				textureFormat = VkFormat::VK_FORMAT_BC2_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_RG_ATI2N_UNORM_BLOCK16:
+				textureFormat = VkFormat::VK_FORMAT_BC5_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_R_ATI1N_UNORM_BLOCK8:
+				textureFormat = VkFormat::VK_FORMAT_BC4_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_RGBA_DXT5_UNORM_BLOCK16:
+				textureFormat = VkFormat::VK_FORMAT_BC3_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_RGBA_DXT1_UNORM_BLOCK8:
+				textureFormat = VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK;	break;
+			default:
+				throw std::runtime_error("May not support this KTX image format, check it out !!!");		break;
+			}
+	}
+	else	textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+
+	SenAbstractGLFW::createResourceImage(logicalDevice, maxTextureWidth, maxTextureHeight, imageType,
+		textureFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, deviceLocalTextureToCreate
+		, textureDeviceMemoryToAllocate, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageSharingMode, gpuMemoryProperties, textureArrayLayerCount);
+
+	VkImageSubresourceRange textureImageSubresourceRange{};
+	textureImageSubresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	textureImageSubresourceRange.baseMipLevel	= 0;	// first mipMap level to start
+	textureImageSubresourceRange.levelCount		= 1;
+	textureImageSubresourceRange.baseArrayLayer = 0;	// first arrayLayer to start
+	textureImageSubresourceRange.layerCount		= textureArrayLayerCount;
+
+	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
+
+	/******************************************************************************************************/
+	/**********       Setup buffer copy regions for array layers      *************************************/
+	std::vector<VkBufferImageCopy> bufferImageCopyRegionsVector;
+	
+	VkBufferImageCopy sameDemensionBufferImageCopyRegion{};
+	sameDemensionBufferImageCopyRegion.imageSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+	sameDemensionBufferImageCopyRegion.imageSubresource.mipLevel		= 0;
+	sameDemensionBufferImageCopyRegion.imageSubresource.baseArrayLayer	= 0;
+	sameDemensionBufferImageCopyRegion.imageSubresource.layerCount		= textureArrayLayerCount;
+	sameDemensionBufferImageCopyRegion.imageExtent.width	= maxTextureWidth;
+	sameDemensionBufferImageCopyRegion.imageExtent.height	= maxTextureHeight;
+	sameDemensionBufferImageCopyRegion.imageExtent.depth	= 1;
+
+	if (usingGliLibrary) {
+		// assume same dimensions for all layers
+		bufferImageCopyRegionsVector.push_back(sameDemensionBufferImageCopyRegion);
+	}else	{
+		// Check if all array layers have the same dimension
+		if (maxTextureWidth == minTextureWidth && maxTextureHeight == minTextureHeight){
+			bufferImageCopyRegionsVector.push_back(sameDemensionBufferImageCopyRegion);
+		}else { // not same dimension
+			uint32_t offset = 0;
+			// If dimensions differ, copy layer by layer and pass offsets
+			for (uint32_t layerIndex = 0; layerIndex < textureArrayLayerCount; layerIndex++) {
+				VkBufferImageCopy bufferImageCopyRegion{};
+				bufferImageCopyRegion.imageSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+				bufferImageCopyRegion.imageSubresource.mipLevel			= 0;
+				bufferImageCopyRegion.imageSubresource.baseArrayLayer	= layerIndex;
+				bufferImageCopyRegion.imageSubresource.layerCount		= 1;
+				bufferImageCopyRegion.imageExtent.width		= textureWidthVector[layerIndex];
+				bufferImageCopyRegion.imageExtent.height	= textureHeightVector[layerIndex];
+				bufferImageCopyRegion.imageExtent.depth		= 1;
+				bufferImageCopyRegion.bufferOffset			= offset;
+
+				bufferImageCopyRegionsVector.push_back(bufferImageCopyRegion);
+				offset += hostVisibleTexDeviceSizeVector[layerIndex];
+			}
+		}
+	}
+
+	SenAbstractGLFW::transferResourceBufferToImage(tmpCommandBufferCommandPool, imageMemoryTransferQueue,
+		logicalDevice, textureStagingBuffer, deviceLocalTextureToCreate, maxTextureWidth, maxTextureHeight,
+		textureArrayLayerCount, bufferImageCopyRegionsVector.size(), bufferImageCopyRegionsVector.data());
+
+	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
+
+	/***********************************************************************************************************************************************/
+	/**********            Third:  clean the staging Buffer, DeviceMemory                 ***********************************************************/
+	vkDestroyBuffer(logicalDevice, textureStagingBuffer, nullptr);
+	vkFreeMemory(logicalDevice, textureStagingBufferDeviceMemory, nullptr);
+	textureStagingBuffer = VK_NULL_HANDLE;
+	textureStagingBufferDeviceMemory = VK_NULL_HANDLE;
+
+	/***********************************************************************************************************************************************/
+	/****************          Fourth:  create textureImageView       ******************************************************************************/
+	VkImageViewCreateInfo textureImageViewCreateInfo{};
+	textureImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	textureImageViewCreateInfo.image = deviceLocalTextureToCreate;
+
+	if (imageType == VK_IMAGE_TYPE_2D)
+		textureImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+	else 	throw std::runtime_error("No supported VkImageViewType set up for this imageType, Check it out !!!!\n");
+
+	textureImageViewCreateInfo.format = textureFormat;
+	textureImageViewCreateInfo.subresourceRange = textureImageSubresourceRange;
+
+	SenAbstractGLFW::errorCheck(
+		vkCreateImageView(logicalDevice, &textureImageViewCreateInfo, nullptr, &textureImageViewToCreate),
+		std::string("Failed to create Resource Image View !!!")
+	);
+}
+
 void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
 	,const char*& textureDiskAddress, const VkImageType& imageType,  int& textureWidth, int& textureHeight
 	,VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
 	,const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue)
 {
-	// The pointer ptrBackgroundTexture returned from stbi_load(...) is the first element in an array of pixel values.
-	int actuallyTextureChannels		= 0;
-	stbi_uc* ptrDiskTextureToUpload = stbi_load(textureDiskAddress, &textureWidth, &textureHeight, &actuallyTextureChannels, STBI_rgb_alpha);
-	if (!ptrDiskTextureToUpload) {
-		throw std::runtime_error("failed to load texture image!");
+	bool usingGliLibrary = false;
+	if (std::string(textureDiskAddress).substr(std::string(textureDiskAddress).length() - 4, 4).compare(".ktx") == 0)
+		usingGliLibrary = true;
+	stbi_uc* ptrDiskTextureToUpload = nullptr;
+	gli::texture2d tex2D;
+	/*****************************************************************************************************************************************/
+	if (usingGliLibrary) {
+		tex2D = gli::texture2d(gli::load(textureDiskAddress));
+		assert(!tex2D.empty());
+		if (tex2D.empty()) { throw std::runtime_error("failed to load texture2D KTX image!"); }
+		textureWidth = static_cast<uint32_t>(tex2D[0].extent().x);
+		textureHeight = static_cast<uint32_t>(tex2D[0].extent().y);
+	}else	{
+		// The pointer ptrBackgroundTexture returned from stbi_load(...) is the first element in an array of pixel values.
+		int actuallyTextureChannels	= 0;
+		ptrDiskTextureToUpload = stbi_load(textureDiskAddress, &textureWidth, &textureHeight, &actuallyTextureChannels, STBI_rgb_alpha);
+		if (!ptrDiskTextureToUpload) {
+			throw std::runtime_error("failed to load texture image!");
+		}
 	}
 	/***********************************************************************************************************************************************/
 	/*************   Obsoleted   ( First:   Upload/MapMemory texture image file as linear stagingImage )      **************************************/
@@ -256,16 +454,16 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	//VkSubresourceLayout linearStagingImageSubresourceLayout;
 	//vkGetImageSubresourceLayout(logicalDevice, linearStagingImage, &textureImageSubresource, &linearStagingImageSubresourceLayout);
 
-	//void* ptrHostVisibleTexture;
+	//void* ptrHostVisibleData;
 	//VkDeviceSize hostVisibleImageDeviceSize = linearStagingImageSubresourceLayout.rowPitch * textureHeight ;
-	//vkMapMemory(logicalDevice, linearStagingImageDeviceMemory, 0, hostVisibleImageDeviceSize, 0, &ptrHostVisibleTexture);
+	//vkMapMemory(logicalDevice, linearStagingImageDeviceMemory, 0, hostVisibleImageDeviceSize, 0, &ptrHostVisibleData);
 
 	//if (linearStagingImageSubresourceLayout.rowPitch == textureWidth * 4) {  // Channel == 4 due to STBI_rgb_alpha 
 	//	// No padding bytes in rows if in this case; Usually with rowPitch == a power-of-2 size, e.g. 512 or 1024
-	//	memcpy(ptrHostVisibleTexture, ptrDiskTextureToUpload, (size_t)hostVisibleImageDeviceSize);
+	//	memcpy(ptrHostVisibleData, ptrDiskTextureToUpload, (size_t)hostVisibleImageDeviceSize);
 	//}else	{
 	//	// otherwise, have to copy the pixels row-by-row with the right offset based on SubresourceLayout.rowPitch
-	//	uint8_t* ptrHostVisibleDataBytes = reinterpret_cast<uint8_t*>(ptrHostVisibleTexture);
+	//	uint8_t* ptrHostVisibleDataBytes = reinterpret_cast<uint8_t*>(ptrHostVisibleData);
 	//	for (int row = 0; row < textureHeight; row++) {
 	//		memcpy(	&ptrHostVisibleDataBytes[row * linearStagingImageSubresourceLayout.rowPitch],
 	//				&ptrDiskTextureToUpload	[row * textureWidth * 4],
@@ -304,25 +502,56 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	//linearStagingImage				= VK_NULL_HANDLE;
 	//linearStagingImageDeviceMemory	= VK_NULL_HANDLE;
 	
-
 	/***********************************************************************************************************************************************/
 	/*************      First:   Upload/MapMemory texture image file to texture StagingBuffer )         ********************************************/
 	VkBuffer textureStagingBuffer;
 	VkDeviceMemory textureStagingBufferDeviceMemory;
-	VkDeviceSize hostVisibleTextureDeviceSize = textureWidth * textureHeight * 4;
+	VkDeviceSize hostVisibleTextureDeviceSize;
+	if (usingGliLibrary)
+			hostVisibleTextureDeviceSize = tex2D.size();
+	else	hostVisibleTextureDeviceSize = textureWidth * textureHeight * 4;
+
 	SenAbstractGLFW::createResourceBuffer(logicalDevice, hostVisibleTextureDeviceSize, // 4 for RGBA
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, gpuMemoryProperties,
 		textureStagingBuffer, textureStagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	void* ptrHostVisibleTexture;
-	vkMapMemory(logicalDevice, textureStagingBufferDeviceMemory, 0, hostVisibleTextureDeviceSize, 0, &ptrHostVisibleTexture);
-	memcpy(ptrHostVisibleTexture, ptrDiskTextureToUpload, static_cast<size_t>(hostVisibleTextureDeviceSize));
+	void* ptrHostVisibleData;
+	vkMapMemory(logicalDevice, textureStagingBufferDeviceMemory, 0, hostVisibleTextureDeviceSize, 0, &ptrHostVisibleData);
+
+	if (usingGliLibrary) {
+		memcpy(ptrHostVisibleData, tex2D.data(), static_cast<size_t>(hostVisibleTextureDeviceSize));
+	}else	{
+		memcpy(ptrHostVisibleData, ptrDiskTextureToUpload, static_cast<size_t>(hostVisibleTextureDeviceSize));
+		stbi_image_free(ptrDiskTextureToUpload);
+	}
 	vkUnmapMemory(logicalDevice, textureStagingBufferDeviceMemory);
-	stbi_image_free(ptrDiskTextureToUpload);
 	/***********************************************************************************************************************************************/
 	/**********        Second: Transfer stagingImage to deviceLocalTextureImage with correct textureImageLayout )        ***************************/
+	VkFormat textureFormat;
+	if (usingGliLibrary) {
+		gli::texture::format_type  formatType = tex2D.format();
+		switch (formatType)
+		{
+		case gli::texture::format_type::FORMAT_RGBA_BP_UNORM_BLOCK16:
+			textureFormat = VkFormat::VK_FORMAT_BC7_UNORM_BLOCK;			break;
+		case gli::texture::format_type::FORMAT_RGBA_DXT3_UNORM_BLOCK16:
+			textureFormat = VkFormat::VK_FORMAT_BC2_UNORM_BLOCK;			break;
+		case gli::texture::format_type::FORMAT_RG_ATI2N_UNORM_BLOCK16:
+			textureFormat = VkFormat::VK_FORMAT_BC5_UNORM_BLOCK;			break;
+		case gli::texture::format_type::FORMAT_R_ATI1N_UNORM_BLOCK8:
+			textureFormat = VkFormat::VK_FORMAT_BC4_UNORM_BLOCK;			break;
+		case gli::texture::format_type::FORMAT_RGBA_DXT5_UNORM_BLOCK16:
+			textureFormat = VkFormat::VK_FORMAT_BC3_UNORM_BLOCK;			break;
+		case gli::texture::format_type::FORMAT_RGBA_DXT1_UNORM_BLOCK8:
+			textureFormat = VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK;	break;
+		default:
+			throw std::runtime_error("May not support this KTX image format, check it out !!!");		break;
+		}
+	}
+	else	textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
+
 	SenAbstractGLFW::createResourceImage(logicalDevice, textureWidth, textureHeight, imageType,
-		VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, deviceLocalTextureToCreate
+		textureFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, deviceLocalTextureToCreate
 		, textureDeviceMemoryToAllocate, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageSharingMode, gpuMemoryProperties);
 
 	VkImageSubresourceRange textureImageSubresourceRange{};
@@ -333,12 +562,11 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	textureImageSubresourceRange.layerCount		= 1;
 
 	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 	SenAbstractGLFW::transferResourceBufferToImage(tmpCommandBufferCommandPool, imageMemoryTransferQueue,
 		logicalDevice, textureStagingBuffer, deviceLocalTextureToCreate, textureWidth, textureHeight);
-
 	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 
 	/***********************************************************************************************************************************************/
 	/**********            Third:  clean the staging Buffer, DeviceMemory                 ***********************************************************/
@@ -357,7 +585,7 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 		textureImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
 	else 	throw std::runtime_error("No supported VkImageViewType set up for this imageType, Check it out !!!!\n");
 
-	textureImageViewCreateInfo.format	= VK_FORMAT_R8G8B8A8_UNORM;
+	textureImageViewCreateInfo.format	= textureFormat;
 	textureImageViewCreateInfo.subresourceRange = textureImageSubresourceRange;
 
 	SenAbstractGLFW::errorCheck(
@@ -411,6 +639,7 @@ void SenAbstractGLFW::initGlfwVulkanDebugWSI()
 	//   This case occurs when the window is minimized and it will cause swap chain creation to fail.
 	glfwSetWindowUserPointer(widgetGLFW, this);
 	glfwSetWindowSizeCallback(widgetGLFW, SenAbstractGLFW::onWidgetResized);
+	glfwSetKeyCallback(widgetGLFW, SenAbstractGLFW::onKeyboardDetected);
 
 	/*****************************************************************************************************************************/
 	// Set the required callback functions
@@ -1870,6 +2099,18 @@ void SenAbstractGLFW::onWidgetResized(GLFWwindow* widget, int width, int height)
 	SenAbstractGLFW* ptrAbstractWidget = reinterpret_cast<SenAbstractGLFW*>(glfwGetWindowUserPointer(widget));
 	ptrAbstractWidget->reInitPresentation();
 	ptrAbstractWidget->reCreateRenderTarget();
+}
+
+void SenAbstractGLFW::onKeyboardReaction(GLFWwindow* widget, int key, int scancode, int action, int mode)
+{
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		glfwSetWindowShouldClose(widget, VK_TRUE);
+}
+
+void SenAbstractGLFW::onKeyboardDetected(GLFWwindow* widget, int key, int scancode, int action, int mode)
+{
+	SenAbstractGLFW* ptrAbstractWidget = reinterpret_cast<SenAbstractGLFW*>(glfwGetWindowUserPointer(widget));
+	ptrAbstractWidget->onKeyboardReaction(widget, key, scancode, action, mode);
 }
 
 std::vector<char> SenAbstractGLFW::readFileStream(const std::string& diskFileAddress, bool binary) {

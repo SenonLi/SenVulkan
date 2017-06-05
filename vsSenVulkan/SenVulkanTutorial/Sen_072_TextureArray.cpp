@@ -1,23 +1,24 @@
-#include "Sen_07_Texture.h"
+#include "Sen_072_TextureArray.h"
 
-Sen_07_Texture::Sen_07_Texture()
+//#include <gli/gli.hpp> // to load KTX image file
+
+Sen_072_TextureArray::Sen_072_TextureArray()
 {
-	std::cout << "Constructor: Sen_07_Texture()\n\n";
-	strWindowName = "Sen Vulkan Texture Tutorial";
+	std::cout << "Constructor: Sen_072_TextureArray()\n\n";
+	strWindowName = "Sen Vulkan TextureArray Tutorial";
 
 	backgroundTextureDiskAddress = "../Images/SunRaise.jpg";
-	//backgroundTextureDiskAddress = "../Images/pattern_02_bc2.ktx";
 }
 
 
-Sen_07_Texture::~Sen_07_Texture()
+Sen_072_TextureArray::~Sen_072_TextureArray()
 {
 	finalizeWidget();
 
-	OutputDebugString("\n\t ~Sen_07_Texture()\n");
+	OutputDebugString("\n\t ~Sen_072_TextureArray()\n");
 }
 
-void Sen_07_Texture::initVulkanApplication()
+void Sen_072_TextureArray::initVulkanApplication()
 {
 	// Need to be segmented base on pipleStages in this function
 
@@ -45,19 +46,19 @@ void Sen_07_Texture::initVulkanApplication()
 
 	createTextureAppCommandBuffers();
 
-	std::cout << "\n Finish  Sen_07_Texture::initVulkanApplication()\n";
+	std::cout << "\n Finish  Sen_072_TextureArray::initVulkanApplication()\n";
 }
 
-void Sen_07_Texture::reCreateRenderTarget()
+void Sen_072_TextureArray::reCreateRenderTarget()
 {
 	createColorAttachOnlySwapchainFramebuffers();
 	createTextureAppCommandBuffers();
 }
 
-void Sen_07_Texture::updateUniformBuffer() {
+void Sen_072_TextureArray::updateUniformBuffer() {
 	static auto startTime	= std::chrono::high_resolution_clock::now();
 	auto currentTime		= std::chrono::high_resolution_clock::now();
-	int duration			= std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+	float duration			= std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 300.0f;
 
 	MvpUniformBufferObject mvpUbo{};
 	mvpUbo.model		= glm::rotate(glm::mat4(), -duration * glm::radians(15.0f), glm::vec3(1.0f, 0.0f, 0.0f));
@@ -74,7 +75,7 @@ void Sen_07_Texture::updateUniformBuffer() {
 		mvpOptimalUniformBuffer, sizeof(mvpUbo));
 }
 
-void Sen_07_Texture::finalizeWidget()
+void Sen_072_TextureArray::finalizeWidget()
 {	
 	/************************************************************************************************************/
 	/******************     Destroy background Memory, ImageView, Image     ***********************************/
@@ -116,10 +117,10 @@ void Sen_07_Texture::finalizeWidget()
 		textureAppVertexBufferMemory	= VK_NULL_HANDLE;
 	}
 
-	OutputDebugString("\n\tFinish  Sen_07_Texture::finalizeWidget()\n");
+	OutputDebugString("\n\tFinish  Sen_072_TextureArray::finalizeWidget()\n");
 }
 
-void Sen_07_Texture::createTextureAppPipeline()
+void Sen_072_TextureArray::createTextureAppPipeline()
 {
 	/************************************************************************************************************/
 	/*********     Destroy old textureAppPipeline first for widgetRezie, if there are      **********************/
@@ -137,8 +138,8 @@ void Sen_07_Texture::createTextureAppPipeline()
 	/****************************************************************************************************************************/
 	VkShaderModule vertShaderModule, fragShaderModule;
 
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Texture.vert", vertShaderModule);
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Texture.frag", fragShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/textureArray.vert", vertShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/textureArray.frag", fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -322,14 +323,14 @@ void Sen_07_Texture::createTextureAppPipeline()
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void Sen_07_Texture::createTextureAppVertexBuffer()
+void Sen_072_TextureArray::createTextureAppVertexBuffer()
 {
 	float vertices[] = {
 		// Positions	// Colors
-		-0.5f,	-0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
-		0.5f,	-0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
-		-0.5f,	0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
-		0.5f,	0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f   // Top Left
+		-1.0f,	-1.0f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
+		1.0f,	-1.0f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
+		-1.0f,	1.0f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
+		1.0f,	1.0f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f   // Top Left
 	};
 	size_t verticesBufferSize = sizeof(vertices);
 
@@ -363,8 +364,11 @@ void Sen_07_Texture::createTextureAppVertexBuffer()
 	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
-void Sen_07_Texture::initBackgroundTextureImage()
+void Sen_072_TextureArray::initBackgroundTextureImage()
 {
+	//backgroundTextureDiskAddress = "../Images/SunRaise.jpg";
+	backgroundTextureDiskAddress = "../Images/pattern_02_bc2.ktx";
+
 	SenAbstractGLFW::createDeviceLocalTexture(device, physicalDeviceMemoryProperties
 		, backgroundTextureDiskAddress, VK_IMAGE_TYPE_2D, backgroundTextureWidth, backgroundTextureHeight
 		, backgroundTextureImage, backgroundTextureImageDeviceMemory, backgroundTextureImageView
@@ -373,7 +377,7 @@ void Sen_07_Texture::initBackgroundTextureImage()
 	SenAbstractGLFW::createTextureSampler(device, texture2DSampler);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorPool()
+void Sen_072_TextureArray::createTextureAppDescriptorPool()
 {
 	std::vector<VkDescriptorPoolSize> descriptorPoolSizeVector;
 
@@ -399,7 +403,7 @@ void Sen_07_Texture::createTextureAppDescriptorPool()
 	);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorSetLayout()
+void Sen_072_TextureArray::createTextureAppDescriptorSetLayout()
 {
 	std::vector<VkDescriptorSetLayoutBinding> perspectiveProjectionDSL_BindingVector;
 
@@ -430,7 +434,7 @@ void Sen_07_Texture::createTextureAppDescriptorSetLayout()
 	);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorSet()
+void Sen_072_TextureArray::createTextureAppDescriptorSet()
 {
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
 	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
@@ -483,7 +487,7 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 	vkUpdateDescriptorSets(device, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
 }
 
-void Sen_07_Texture::createTextureAppCommandBuffers()
+void Sen_072_TextureArray::createTextureAppCommandBuffers()
 {
 	/************************************************************************************************************/
 	/*****************     Destroy old swapchainCommandBufferVector first, if there are      ********************/
