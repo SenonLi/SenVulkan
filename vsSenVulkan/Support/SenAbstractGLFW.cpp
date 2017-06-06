@@ -181,7 +181,7 @@ void SenAbstractGLFW::transferResourceBufferToImage(const VkCommandPool& bufferT
 
 	VkCommandBuffer bufferToImageCommandBuffer = VK_NULL_HANDLE;
 	SenAbstractGLFW::beginSingleTimeCommandBuffer(bufferToImageCommandPool, logicalDevice, bufferToImageCommandBuffer);
-	if (regionCount == 1) {
+	if (layerCount == 1) {
 		VkBufferImageCopy bufferImageCopyRegion{};
 		bufferImageCopyRegion.bufferRowLength = 0; // Means no padding bytes between rows of the image.
 		bufferImageCopyRegion.bufferImageHeight = 0;
@@ -293,9 +293,9 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 	}else {
 		int offset = 0;
 		for (int i = 0; i < textureArrayLayerCount; i++) {
-			memcpy(static_cast<char*>(ptrHostVisibleData) + offset, ptrDiskTexToUploadVector[0], static_cast<size_t>(hostVisibleTexDeviceSizeVector[0]));
-			stbi_image_free(ptrDiskTexToUploadVector[0]);
-			offset += hostVisibleTexDeviceSizeVector[0];
+			memcpy(static_cast<char*>(ptrHostVisibleData) + offset, ptrDiskTexToUploadVector[i], static_cast<size_t>(hostVisibleTexDeviceSizeVector[i]));
+			stbi_image_free(ptrDiskTexToUploadVector[i]);
+			offset += hostVisibleTexDeviceSizeVector[i];
 		}
 	}
 	vkUnmapMemory(logicalDevice, textureStagingBufferDeviceMemory);

@@ -19,20 +19,17 @@ protected:
 	void updateUniformBuffer();
 	void cleanUpDepthStencil() { ; }
 
-	void createDeviceLocalTextureKTX_2D(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
-		, const char*& textureDiskAddress, const VkImageType& imageType, int& textureWidth, int& textureHeight
-		, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
-		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
-
 private:
 	void createTextureAppPipeline();
 	void createTextureAppVertexBuffer();
 
-	void initBackgroundTextureImage();
+	void initTex2DArrayImage();
+
 	void createTextureAppDescriptorPool();
 	void createTextureAppDescriptorSetLayout();
 	void createTextureAppDescriptorSet();
-	void createTextureAppCommandBuffers();
+
+	void createTex2DArrayCommandBuffers();
 
 	VkPipelineLayout					textureAppPipelineLayout		= VK_NULL_HANDLE;
 	VkPipeline							textureAppPipeline				= VK_NULL_HANDLE;

@@ -33,7 +33,7 @@ void Sen_072_TextureArray::initVulkanApplication()
 	createDefaultCommandPool();
 
 	/***************************************/
-	initBackgroundTextureImage();
+	initTex2DArrayImage();
 	/***************************************/
 
 
@@ -44,7 +44,7 @@ void Sen_072_TextureArray::initVulkanApplication()
 	createTextureAppDescriptorPool();
 	createTextureAppDescriptorSet();
 
-	createTextureAppCommandBuffers();
+	createTex2DArrayCommandBuffers();
 
 	std::cout << "\n Finish  Sen_072_TextureArray::initVulkanApplication()\n";
 }
@@ -52,7 +52,7 @@ void Sen_072_TextureArray::initVulkanApplication()
 void Sen_072_TextureArray::reCreateRenderTarget()
 {
 	createColorAttachOnlySwapchainFramebuffers();
-	createTextureAppCommandBuffers();
+	createTex2DArrayCommandBuffers();
 }
 
 void Sen_072_TextureArray::updateUniformBuffer() {
@@ -62,7 +62,7 @@ void Sen_072_TextureArray::updateUniformBuffer() {
 
 	MvpUniformBufferObject mvpUbo{};
 	mvpUbo.model		= glm::rotate(glm::mat4(), -duration * glm::radians(15.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	mvpUbo.view			= glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	mvpUbo.view			= glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 	mvpUbo.projection	= glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 100.0f);
 	mvpUbo.projection[1][1] *= -1;
 
@@ -364,13 +364,27 @@ void Sen_072_TextureArray::createTextureAppVertexBuffer()
 	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
-void Sen_072_TextureArray::initBackgroundTextureImage()
+void Sen_072_TextureArray::initTex2DArrayImage()
 {
-	//backgroundTextureDiskAddress = "../Images/SunRaise.jpg";
-	backgroundTextureDiskAddress = "../Images/pattern_02_bc2.ktx";
+	//backgroundTextureDiskAddress = "../Images/pattern_02_bc2.ktx";
+	//SenAbstractGLFW::createDeviceLocalTexture(device, physicalDeviceMemoryProperties
+	//	, backgroundTextureDiskAddress, VK_IMAGE_TYPE_2D, backgroundTextureWidth, backgroundTextureHeight
+	//	, backgroundTextureImage, backgroundTextureImageDeviceMemory, backgroundTextureImageView
+	//	, VK_SHARING_MODE_EXCLUSIVE, defaultThreadCommandPool, graphicsQueue);
 
-	SenAbstractGLFW::createDeviceLocalTexture(device, physicalDeviceMemoryProperties
-		, backgroundTextureDiskAddress, VK_IMAGE_TYPE_2D, backgroundTextureWidth, backgroundTextureHeight
+	backgroundTextureDiskAddress = "../Images/texturearray_bc3.ktx";
+	const char* strRollTexture = "../Images/SenSqaurePortrait.jpg";
+	const char* strYawTexture = "../Images/uky.jpg";
+	const char* strPitchTexture = "../Images/lau2.jpg";
+	std::vector<std::string> texturesDiskAddressVector;
+	texturesDiskAddressVector.push_back(backgroundTextureDiskAddress);
+
+	//texturesDiskAddressVector.push_back(strRollTexture);
+	//texturesDiskAddressVector.push_back(strYawTexture);
+	//texturesDiskAddressVector.push_back(strPitchTexture);
+
+	SenAbstractGLFW::createDeviceLocalTextureArray(device, physicalDeviceMemoryProperties
+		, texturesDiskAddressVector, VK_IMAGE_TYPE_2D
 		, backgroundTextureImage, backgroundTextureImageDeviceMemory, backgroundTextureImageView
 		, VK_SHARING_MODE_EXCLUSIVE, defaultThreadCommandPool, graphicsQueue);
 
@@ -487,7 +501,7 @@ void Sen_072_TextureArray::createTextureAppDescriptorSet()
 	vkUpdateDescriptorSets(device, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
 }
 
-void Sen_072_TextureArray::createTextureAppCommandBuffers()
+void Sen_072_TextureArray::createTex2DArrayCommandBuffers()
 {
 	/************************************************************************************************************/
 	/*****************     Destroy old swapchainCommandBufferVector first, if there are      ********************/
