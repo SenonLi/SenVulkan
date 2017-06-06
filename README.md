@@ -203,7 +203,8 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 5. Use imageArray to draw SenCube.
 6. Split Abstract into SenVulkanResources, SenVulkanImage, SenVulkanBuffer....,
 	control with pointers;
-7. 
+7. write independent transferResourceBuffer() for MVP commandBuffer for multiple times (instead of single time) updateUniformBuffer） using.
+8.
 
 
 
