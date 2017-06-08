@@ -19,7 +19,7 @@
 
 SenAbstractGLFW* widget;
 int main() {
-	widget = new Sen_072_TextureArray();
+	widget = new Sen_07_Texture();
 	try {
 		widget->showWidget();
 	}

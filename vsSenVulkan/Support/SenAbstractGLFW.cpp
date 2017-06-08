@@ -1,4 +1,6 @@
 #include "SenAbstractGLFW.h"
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
 
 // Since stb_image.h header file contains the implementation of functions, only one class source file could include it to make new implementation
 // all stb_image realated functions have to be implemented in this class
@@ -317,7 +319,9 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 			case gli::texture::format_type::FORMAT_RGBA_DXT5_UNORM_BLOCK16:
 				textureFormat = VkFormat::VK_FORMAT_BC3_UNORM_BLOCK;			break;
 			case gli::texture::format_type::FORMAT_RGBA_DXT1_UNORM_BLOCK8:
-				textureFormat = VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK;	break;
+				textureFormat = VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK;		break;
+			case gli::texture::format_type::FORMAT_R_EAC_UNORM_BLOCK8:
+				textureFormat = VkFormat::VK_FORMAT_EAC_R11_UNORM_BLOCK;		break;
 			default:
 				throw std::runtime_error("May not support this KTX image format, check it out !!!");		break;
 			}
@@ -532,20 +536,23 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 		gli::texture::format_type  formatType = tex2D.format();
 		switch (formatType)
 		{
-		case gli::texture::format_type::FORMAT_RGBA_BP_UNORM_BLOCK16:
-			textureFormat = VkFormat::VK_FORMAT_BC7_UNORM_BLOCK;			break;
-		case gli::texture::format_type::FORMAT_RGBA_DXT3_UNORM_BLOCK16:
-			textureFormat = VkFormat::VK_FORMAT_BC2_UNORM_BLOCK;			break;
-		case gli::texture::format_type::FORMAT_RG_ATI2N_UNORM_BLOCK16:
-			textureFormat = VkFormat::VK_FORMAT_BC5_UNORM_BLOCK;			break;
-		case gli::texture::format_type::FORMAT_R_ATI1N_UNORM_BLOCK8:
-			textureFormat = VkFormat::VK_FORMAT_BC4_UNORM_BLOCK;			break;
-		case gli::texture::format_type::FORMAT_RGBA_DXT5_UNORM_BLOCK16:
-			textureFormat = VkFormat::VK_FORMAT_BC3_UNORM_BLOCK;			break;
-		case gli::texture::format_type::FORMAT_RGBA_DXT1_UNORM_BLOCK8:
-			textureFormat = VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK;	break;
-		default:
-			throw std::runtime_error("May not support this KTX image format, check it out !!!");		break;
+			case gli::texture::format_type::FORMAT_RGBA_BP_UNORM_BLOCK16:
+				textureFormat = VkFormat::VK_FORMAT_BC7_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_RGBA_DXT3_UNORM_BLOCK16:
+				textureFormat = VkFormat::VK_FORMAT_BC2_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_RG_ATI2N_UNORM_BLOCK16:
+				textureFormat = VkFormat::VK_FORMAT_BC5_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_R_ATI1N_UNORM_BLOCK8:
+				textureFormat = VkFormat::VK_FORMAT_BC4_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_RGBA_DXT5_UNORM_BLOCK16:
+				textureFormat = VkFormat::VK_FORMAT_BC3_UNORM_BLOCK;			break;
+			case gli::texture::format_type::FORMAT_RGBA_DXT1_UNORM_BLOCK8:
+				textureFormat = VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK;		break;
+			case gli::texture::format_type::FORMAT_R_EAC_UNORM_BLOCK8:
+				textureFormat = VkFormat::VK_FORMAT_EAC_R11_UNORM_BLOCK;		break;
+
+			default:
+				throw std::runtime_error("May not support this KTX image format, check it out !!!");		break;
 		}
 	}
 	else	textureFormat = VK_FORMAT_R8G8B8A8_UNORM;

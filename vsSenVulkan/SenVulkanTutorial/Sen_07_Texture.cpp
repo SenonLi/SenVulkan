@@ -5,7 +5,9 @@ Sen_07_Texture::Sen_07_Texture()
 	std::cout << "Constructor: Sen_07_Texture()\n\n";
 	strWindowName = "Sen Vulkan Texture Tutorial";
 
-	backgroundTextureDiskAddress = "../Images/SunRaise.jpg";
+	//backgroundTextureDiskAddress = "../Images/SunRaise.jpg";
+	//test0.Y.ktx
+	backgroundTextureDiskAddress = "../Images/yuv/test0.Y.ktx";
 	//backgroundTextureDiskAddress = "../Images/pattern_02_bc2.ktx";
 }
 
@@ -34,7 +36,6 @@ void Sen_07_Texture::initVulkanApplication()
 	/***************************************/
 	initBackgroundTextureImage();
 	/***************************************/
-
 
 	createTextureAppVertexBuffer();
 	createSingleRectIndexBuffer();
