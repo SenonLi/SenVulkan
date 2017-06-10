@@ -1,6 +1,4 @@
 #include "SenAbstractGLFW.h"
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
 
 // Since stb_image.h header file contains the implementation of functions, only one class source file could include it to make new implementation
 // all stb_image realated functions have to be implemented in this class

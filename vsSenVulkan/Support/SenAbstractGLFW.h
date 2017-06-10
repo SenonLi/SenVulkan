@@ -39,7 +39,6 @@
 //#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
 #include <chrono>
 
 #include <shaderc/shaderc.hpp>
@@ -98,11 +97,11 @@ public:
 		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
 
 protected:
-	virtual void initVulkanApplication() = 0;
-	virtual void cleanUpDepthStencil() = 0;
-	virtual void reCreateRenderTarget() = 0; // for resize window
-	virtual void finalizeWidget() = 0;
-	virtual void updateUniformBuffer() = 0;
+	virtual void initVulkanApplication()	= 0;
+	virtual void cleanUpDepthStencil()		= 0;
+	virtual void reCreateRenderTarget()		= 0; // for resize window
+	virtual void finalizeWidget()			= 0;
+	virtual void updateUniformBuffer()		= 0;
 	virtual void onKeyboardReaction(GLFWwindow* widget, int key, int scancode, int action, int mode);
 
 	const int DEFAULT_widgetWidth	= 800;	// 640;

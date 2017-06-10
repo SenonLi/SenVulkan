@@ -114,6 +114,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <PreprocessorDefinitions>_MBCS;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <BuildLog>
       <Path>..\$(IntDir)$(MSBuildProjectName).log</Path>
@@ -132,6 +133,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -171,6 +173,7 @@
     <ClCompile Include="SenVulkanTutorial\Sen_07_Texture.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_221_Cube.cpp" />
+    <ClCompile Include="SenVulkanTutorial\Sen_222_TinyObjLoader.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_22_DepthTest.cpp" />
     <ClCompile Include="Support\SenAbstractGLFW.cpp" />
     <ClCompile Include="VulkanAPI\SenRenderer.cpp" />
@@ -186,8 +189,12 @@
     <ClInclude Include="SenVulkanTutorial\Sen_07_Texture.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_221_Cube.h" />
+    <ClInclude Include="SenVulkanTutorial\Sen_222_TinyObjLoader.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_22_DepthTest.h" />
     <ClInclude Include="Support\SenAbstractGLFW.h" />
+    <ClInclude Include="Support\SenMeshLinkModel.h" />
+    <ClInclude Include="Support\SenOpenGLMeshStruct.h" />
+    <ClInclude Include="Support\SenVulkanMeshStruct.h" />
     <ClInclude Include="VulkanAPI\SenRenderer.h" />
     <ClInclude Include="VulkanAPI\SenVulkanAPI_Widget.h" />
     <ClInclude Include="VulkanAPI\SenWindow.h" />

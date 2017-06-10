@@ -1,67 +1,132 @@
-#include "Sen_07_Texture.h"
+#include "Sen_222_TinyObjLoader.h"
 
-Sen_07_Texture::Sen_07_Texture()
-{
-	std::cout << "Constructor: Sen_07_Texture()\n\n";
-	strWindowName = "Sen Vulkan Texture Tutorial";
+//#include "../Support/SenVulkanMeshStruct.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>			// for tinyObjLoader
 
-	//backgroundTextureDiskAddress = "../Images/SunRaise.jpg";
-	backgroundTextureDiskAddress = "../Images/pattern_02_bc2.ktx";
+#define TINYOBJLOADER_IMPLEMENTATION
+#include <tiny_obj_loader.h>
+
+namespace std {
+	template<> struct hash<VertexStruct> {
+		size_t operator()(VertexStruct const& vertex) const {
+			return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
+		}
+	};
 }
 
+Sen_222_TinyObjLoader::Sen_222_TinyObjLoader()
+{
+	std::cout << "Constructor: Sen_222_TinyObjLoader()\n\n";
+	strWindowName = "Sen Vulkan Cube Tutorial";
 
-Sen_07_Texture::~Sen_07_Texture()
+	tinyObjCompleteTextureDiskAddress	= "../Images/MeshLinkModels/Chalet/chalet.jpg";
+	tinyMeshLinkModelDiskAddress		= "../Images/MeshLinkModels/Chalet/chalet.obj";
+}
+
+Sen_222_TinyObjLoader::~Sen_222_TinyObjLoader()
 {
 	finalizeWidget();
 
-	OutputDebugString("\n\t ~Sen_07_Texture()\n");
+	OutputDebugString("\n\t ~Sen_222_TinyObjLoader()\n");
 }
 
-void Sen_07_Texture::initVulkanApplication()
+void Sen_222_TinyObjLoader::loadModel() {
+	tinyobj::attrib_t attrib;
+	std::vector<tinyobj::shape_t> shapes;
+	std::vector<tinyobj::material_t> materials;
+	std::string err;
+
+	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, tinyMeshLinkModelDiskAddress)) {
+		throw std::runtime_error(err);
+	}
+
+	std::unordered_map<VertexStruct, uint32_t> uniqueVertices = {};
+
+	//for (const auto& shape : shapes) {
+	//	for (const auto& index : shape.mesh.indices) {
+	//		VertexStruct vertex = {};
+
+	//		vertex.pos = {
+	//			attrib.vertices[3 * index.vertex_index + 0],
+	//			attrib.vertices[3 * index.vertex_index + 1],
+	//			attrib.vertices[3 * index.vertex_index + 2]
+	//		};
+
+	//		vertex.texCoord = {
+	//			attrib.texcoords[2 * index.texcoord_index + 0],
+	//			1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+	//		};
+
+	//		vertex.color = { 1.0f, 1.0f, 1.0f };
+
+	//		if (uniqueVertices.count(vertex) == 0) {
+	//			uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+	//			vertices.push_back(vertex);
+	//		}
+
+	//		indices.push_back(uniqueVertices[vertex]);
+	//	}
+	//}
+}
+
+void Sen_222_TinyObjLoader::initVulkanApplication()
 {
-	// Need to be segmented base on pipleStages in this function
-
-	createColorAttachOnlyRenderPass();
-
-	/***************************************/
 	createTextureAppDescriptorSetLayout();
-	createTextureAppPipeline();
-	/***************************************/
-
-	createColorAttachOnlySwapchainFramebuffers();
 	createDefaultCommandPool();
 
-	/***************************************/
-	initBackgroundTextureImage();
-	/***************************************/
-
-	createTextureAppVertexBuffer();
-	createSingleRectIndexBuffer();
+	initTinyObjCompleteTextureImage();
 	createMvpUniformBuffers();
-
 	createTextureAppDescriptorPool();
 	createTextureAppDescriptorSet();
 
-	createTextureAppCommandBuffers();
+	/***************************************/
+	createDepthTestAttachment();			// has to be called after createDefaultCommandPool();
+	createDepthTestRenderPass();			// has to be called after createDepthTestAttachment() for depthTestFormat
+	createTinyObjLoaderPipeline();
+	createDepthTestSwapchainFramebuffers(); // has to be called after createDepthTestAttachment() for the depthTestImageView
+	createMeshLinkModeVertexBuffer();
+	createMeshLinkModelndexBuffer();
+	/***************************************/
 
-	std::cout << "\n Finish  Sen_07_Texture::initVulkanApplication()\n";
+	createTinyObjLoaderCommandBuffers();
+
+	std::cout << "\n Finish  Sen_222_TinyObjLoader::initVulkanApplication()\n";
 }
 
-void Sen_07_Texture::reCreateRenderTarget()
+void Sen_222_TinyObjLoader::reCreateRenderTarget()
 {
-	createColorAttachOnlySwapchainFramebuffers();
-	createTextureAppCommandBuffers();
+	createDepthTestAttachment();
+	createDepthTestSwapchainFramebuffers();
+	createTinyObjLoaderCommandBuffers();
 }
 
-void Sen_07_Texture::updateUniformBuffer() {
-	static auto startTime	= std::chrono::high_resolution_clock::now();
-	auto currentTime		= std::chrono::high_resolution_clock::now();
-	int duration			= std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+void Sen_222_TinyObjLoader::cleanUpDepthStencil()
+{
+	if (VK_NULL_HANDLE != depthTestImage) {
+		vkDestroyImage(device, depthTestImage, nullptr);
+		if (VK_NULL_HANDLE != depthTestImageView)
+			vkDestroyImageView(device, depthTestImageView, nullptr);
+		if (VK_NULL_HANDLE != depthTestImageDeviceMemory)
+			vkFreeMemory(device, depthTestImageDeviceMemory, nullptr); 	// always try to destroy before free
+
+		depthTestImage = VK_NULL_HANDLE;
+		depthTestImageView = VK_NULL_HANDLE;
+		depthTestImageDeviceMemory = VK_NULL_HANDLE;
+	}
+}
+
+void Sen_222_TinyObjLoader::updateUniformBuffer() {
+	static auto startTime = std::chrono::high_resolution_clock::now();
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 220.0f;
 
 	MvpUniformBufferObject mvpUbo{};
-	mvpUbo.model		= glm::rotate(glm::mat4(), -duration * glm::radians(15.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-	mvpUbo.view			= glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	mvpUbo.projection	= glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 100.0f);
+	mvpUbo.model = glm::rotate(glm::mat4(), duration * glm::radians(15.0f), glm::vec3(-1.0f, 1.0f, 1.0f))
+				* glm::rotate(glm::mat4(), duration * glm::radians(3.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+
+	mvpUbo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	mvpUbo.projection = glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 100.0f);
 	mvpUbo.projection[1][1] *= -1;
 
 	void* data;
@@ -73,62 +138,70 @@ void Sen_07_Texture::updateUniformBuffer() {
 		mvpOptimalUniformBuffer, sizeof(mvpUbo));
 }
 
-void Sen_07_Texture::finalizeWidget()
+void Sen_222_TinyObjLoader::finalizeWidget()
 {	
+	cleanUpDepthStencil();
+
 	/************************************************************************************************************/
-	/******************     Destroy background Memory, ImageView, Image     ***********************************/
+	/******************           Destroy Memory, ImageView, Image          *************************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != backgroundTextureImage) {
-		vkDestroyImage(device, backgroundTextureImage, nullptr);
-		if (VK_NULL_HANDLE != backgroundTextureImageView)  
-			vkDestroyImageView(device, backgroundTextureImageView, nullptr);
+	if (VK_NULL_HANDLE != tinyObjCompleteImage) {
+		vkDestroyImage(device, tinyObjCompleteImage, nullptr);
+		if (VK_NULL_HANDLE != tinyObjCompleteImageView)  
+			vkDestroyImageView(device, tinyObjCompleteImageView, nullptr);
 		if (VK_NULL_HANDLE != texture2DSampler)  
 			vkDestroySampler(device, texture2DSampler, nullptr);
-		if (VK_NULL_HANDLE != backgroundTextureImageDeviceMemory)
-			vkFreeMemory(device, backgroundTextureImageDeviceMemory, nullptr); 	// always try to destroy before free
+		if (VK_NULL_HANDLE != tinyObjCompleteImageDeviceMemory)
+			vkFreeMemory(device, tinyObjCompleteImageDeviceMemory, nullptr); 	// always try to destroy before free
 
-		backgroundTextureImage				= VK_NULL_HANDLE;
-		backgroundTextureImageDeviceMemory	= VK_NULL_HANDLE;
-		backgroundTextureImageView			= VK_NULL_HANDLE;
+		tinyObjCompleteImage				= VK_NULL_HANDLE;
+		tinyObjCompleteImageDeviceMemory	= VK_NULL_HANDLE;
+		tinyObjCompleteImageView			= VK_NULL_HANDLE;
 		texture2DSampler					= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != textureAppPipeline) {
-		vkDestroyPipeline(device, textureAppPipeline, nullptr);
-		vkDestroyPipelineLayout(device, textureAppPipelineLayout, nullptr);
-		vkDestroyRenderPass(device, colorAttachOnlyRenderPass, nullptr);
+	if (VK_NULL_HANDLE != tinyObjLoaderPipeline) {
+		vkDestroyPipeline(device, tinyObjLoaderPipeline, nullptr);
+		vkDestroyPipelineLayout(device, tinyObjLoaderPipelineLayout, nullptr);
+		vkDestroyRenderPass(device, depthTestRenderPass, nullptr);
 
-		textureAppPipeline			= VK_NULL_HANDLE;
-		textureAppPipelineLayout	= VK_NULL_HANDLE;
-		colorAttachOnlyRenderPass	= VK_NULL_HANDLE;
+		tinyObjLoaderPipeline			= VK_NULL_HANDLE;
+		tinyObjLoaderPipelineLayout	= VK_NULL_HANDLE;
+		depthTestRenderPass			= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != textureAppVertexBuffer) {
-		vkDestroyBuffer(device, textureAppVertexBuffer, nullptr);
-		vkFreeMemory(device, textureAppVertexBufferMemory, nullptr);	// always try to destroy before free
+	if (VK_NULL_HANDLE != tinyMeshLinkModelVertexBuffer) {
+		vkDestroyBuffer(device, tinyMeshLinkModelVertexBuffer, nullptr);
+		vkFreeMemory(device, tinyMeshLinkModelVertexBufferMemory, nullptr);	// always try to destroy before free
 
-		textureAppVertexBuffer			= VK_NULL_HANDLE;
-		textureAppVertexBufferMemory	= VK_NULL_HANDLE;
+		tinyMeshLinkModelVertexBuffer			= VK_NULL_HANDLE;
+		tinyMeshLinkModelVertexBufferMemory	= VK_NULL_HANDLE;
 	}
+	if (VK_NULL_HANDLE != tinyMeshLinkModelIndexBuffer) {
+		vkDestroyBuffer(device, tinyMeshLinkModelIndexBuffer, nullptr);
+		vkFreeMemory(device, tinyMeshLinkModelIndexBufferMemory, nullptr);	// always try to destroy before free
 
-	OutputDebugString("\n\tFinish  Sen_07_Texture::finalizeWidget()\n");
+		tinyMeshLinkModelIndexBuffer = VK_NULL_HANDLE;
+		tinyMeshLinkModelIndexBufferMemory = VK_NULL_HANDLE;
+	}
+	OutputDebugString("\n\tFinish  Sen_222_TinyObjLoader::finalizeWidget()\n");
 }
 
-void Sen_07_Texture::createTextureAppPipeline()
+void Sen_222_TinyObjLoader::createTinyObjLoaderPipeline()
 {
 	/************************************************************************************************************/
-	/*********     Destroy old textureAppPipeline first for widgetRezie, if there are      **********************/
+	/*********     Destroy old tinyObjLoaderPipeline first for widgetRezie, if there are      ***********************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != textureAppPipeline) {
-		vkDestroyPipeline(device, textureAppPipeline, nullptr);
-		vkDestroyPipelineLayout(device, textureAppPipelineLayout, nullptr);
+	if (VK_NULL_HANDLE != tinyObjLoaderPipeline) {
+		vkDestroyPipeline(device, tinyObjLoaderPipeline, nullptr);
+		vkDestroyPipelineLayout(device, tinyObjLoaderPipelineLayout, nullptr);
 
-		textureAppPipeline = VK_NULL_HANDLE;
-		textureAppPipelineLayout = VK_NULL_HANDLE;
+		tinyObjLoaderPipeline			= VK_NULL_HANDLE;
+		tinyObjLoaderPipelineLayout	= VK_NULL_HANDLE;
 	}
 
 	/****************************************************************************************************************************/
@@ -136,8 +209,8 @@ void Sen_07_Texture::createTextureAppPipeline()
 	/****************************************************************************************************************************/
 	VkShaderModule vertShaderModule, fragShaderModule;
 
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Texture.vert", vertShaderModule);
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Texture.frag", fragShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/SenCube.vert", vertShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/SenCube.frag", fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -159,8 +232,8 @@ void Sen_07_Texture::createTextureAppPipeline()
 	/**********                Reserve pipeline Fixed-Function Stages CreateInfos           *************************************/
 	/****************************************************************************************************************************/
 	VkVertexInputBindingDescription vertexInputBindingDescription{};
-	vertexInputBindingDescription.binding = 0;
-	vertexInputBindingDescription.stride = 7 * sizeof(float);
+	vertexInputBindingDescription.binding	= 0;
+	vertexInputBindingDescription.stride	= 5 * sizeof(float);
 	vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	std::vector<VkVertexInputBindingDescription> vertexInputBindingDescriptionVector;
 	vertexInputBindingDescriptionVector.push_back(vertexInputBindingDescription);
@@ -171,23 +244,16 @@ void Sen_07_Texture::createTextureAppPipeline()
 	VkVertexInputAttributeDescription positionVertexInputAttributeDescription;
 	positionVertexInputAttributeDescription.location	= 0;
 	positionVertexInputAttributeDescription.binding		= 0;
-	positionVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
+	positionVertexInputAttributeDescription.format		= VK_FORMAT_R32G32B32_SFLOAT;
 	positionVertexInputAttributeDescription.offset		= 0;
 	vertexInputAttributeDescriptionVector.push_back(positionVertexInputAttributeDescription);
 
 	VkVertexInputAttributeDescription colorVertexInputAttributeDescription;
 	colorVertexInputAttributeDescription.location		= 1;
 	colorVertexInputAttributeDescription.binding		= 0;
-	colorVertexInputAttributeDescription.format			= VK_FORMAT_R32G32B32_SFLOAT;
-	colorVertexInputAttributeDescription.offset			= 2 * sizeof(float);
+	colorVertexInputAttributeDescription.format			= VK_FORMAT_R32G32_SFLOAT;
+	colorVertexInputAttributeDescription.offset			= 3 * sizeof(float);
 	vertexInputAttributeDescriptionVector.push_back(colorVertexInputAttributeDescription);
-
-	VkVertexInputAttributeDescription texCoordVertexInputAttributeDescription;
-	texCoordVertexInputAttributeDescription.location	= 2;
-	texCoordVertexInputAttributeDescription.binding		= 0;
-	texCoordVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
-	texCoordVertexInputAttributeDescription.offset		= 5 * sizeof(float);
-	vertexInputAttributeDescriptionVector.push_back(texCoordVertexInputAttributeDescription);
 
 	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
 	pipelineVertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -226,7 +292,7 @@ void Sen_07_Texture::createTextureAppPipeline()
 	pipelineRasterizationStateCreateInfo.depthClampEnable			= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable	= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.polygonMode				= VK_POLYGON_MODE_FILL;
-	pipelineRasterizationStateCreateInfo.cullMode					= VK_CULL_MODE_NONE;// VK_CULL_MODE_BACK_BIT;
+	pipelineRasterizationStateCreateInfo.cullMode					= VK_CULL_MODE_BACK_BIT; 
 	pipelineRasterizationStateCreateInfo.frontFace					= VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	pipelineRasterizationStateCreateInfo.depthBiasEnable			= VK_FALSE;
 	pipelineRasterizationStateCreateInfo.lineWidth					= 1.0f;
@@ -251,12 +317,22 @@ void Sen_07_Texture::createTextureAppPipeline()
 	pipelineColorBlendStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	pipelineColorBlendStateCreateInfo.logicOpEnable = VK_FALSE;
 	//pipelineColorBlendStateCreateInfo.logicOp						= VK_LOGIC_OP_COPY;
-	pipelineColorBlendStateCreateInfo.attachmentCount = (uint32_t)pipelineColorBlendAttachmentStateVector.size();
-	pipelineColorBlendStateCreateInfo.pAttachments = pipelineColorBlendAttachmentStateVector.data();
+	pipelineColorBlendStateCreateInfo.attachmentCount	= (uint32_t)pipelineColorBlendAttachmentStateVector.size();
+	pipelineColorBlendStateCreateInfo.pAttachments		= pipelineColorBlendAttachmentStateVector.data();
 	pipelineColorBlendStateCreateInfo.blendConstants[0] = 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[1] = 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[2] = 0.0f;
 	pipelineColorBlendStateCreateInfo.blendConstants[3] = 0.0f;
+
+	/*********************************************************************************************/
+	/*********************************************************************************************/
+	VkPipelineDepthStencilStateCreateInfo pipelineDepthStencilStateCreateInfo{};
+	pipelineDepthStencilStateCreateInfo.sType					= VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	pipelineDepthStencilStateCreateInfo.depthTestEnable			= VK_TRUE; // Enabled depth testing in the graphics pipeline
+	pipelineDepthStencilStateCreateInfo.depthWriteEnable		= VK_TRUE; // useful for drawing transparent objects
+	pipelineDepthStencilStateCreateInfo.depthCompareOp			= VK_COMPARE_OP_LESS;
+	pipelineDepthStencilStateCreateInfo.depthBoundsTestEnable	= VK_FALSE;
+	pipelineDepthStencilStateCreateInfo.stencilTestEnable		= VK_FALSE;
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
@@ -281,39 +357,40 @@ void Sen_07_Texture::createTextureAppPipeline()
 	pipelineLayoutCreateInfo.pSetLayouts	= descriptorSetLayoutVector.data();
 
 	SenAbstractGLFW::errorCheck(
-		vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &textureAppPipelineLayout),
+		vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &tinyObjLoaderPipelineLayout),
 		std::string("Failed to to create pipeline layout !!!")
 	);
 
 	/****************************************************************************************************************************/
 	/**********                Create   Pipeline            *********************************************************************/
 	/****************************************************************************************************************************/
-	std::vector<VkGraphicsPipelineCreateInfo> graphicsPipelineCreateInfoVector;
-	VkGraphicsPipelineCreateInfo textureAppPipelineCreateInfo{};
-	textureAppPipelineCreateInfo.sType					= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	textureAppPipelineCreateInfo.stageCount				= (uint32_t)pipelineShaderStagesCreateInfoVector.size();
-	textureAppPipelineCreateInfo.pStages				= pipelineShaderStagesCreateInfoVector.data();
-	textureAppPipelineCreateInfo.pDynamicState			= &pipelineDynamicStateCreateInfo;
-	textureAppPipelineCreateInfo.pVertexInputState		= &pipelineVertexInputStateCreateInfo;
-	textureAppPipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
-	textureAppPipelineCreateInfo.pViewportState			= &pipelineViewportStateCreateInfo;
-	textureAppPipelineCreateInfo.pRasterizationState	= &pipelineRasterizationStateCreateInfo;
-	textureAppPipelineCreateInfo.pMultisampleState		= &pipelineMultisampleStateCreateInfo;
-	textureAppPipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
-	textureAppPipelineCreateInfo.layout					= textureAppPipelineLayout;
-	textureAppPipelineCreateInfo.renderPass				= colorAttachOnlyRenderPass;
-	textureAppPipelineCreateInfo.subpass				= 0; // index of this textureAppPipeline's subpass of the colorAttachOnlyRenderPass
-															//textureAppPipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
+	std::vector<VkGraphicsPipelineCreateInfo> depthTestGraphicsPipelineCreateInfoVector;
+	VkGraphicsPipelineCreateInfo depthTestPipelineCreateInfo{};
+	depthTestPipelineCreateInfo.sType				= VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	depthTestPipelineCreateInfo.stageCount			= (uint32_t)pipelineShaderStagesCreateInfoVector.size();
+	depthTestPipelineCreateInfo.pStages				= pipelineShaderStagesCreateInfoVector.data();
+	depthTestPipelineCreateInfo.pDynamicState		= &pipelineDynamicStateCreateInfo;
+	depthTestPipelineCreateInfo.pVertexInputState	= &pipelineVertexInputStateCreateInfo;
+	depthTestPipelineCreateInfo.pInputAssemblyState	= &pipelineInputAssemblyStateCreateInfo;
+	depthTestPipelineCreateInfo.pViewportState		= &pipelineViewportStateCreateInfo;
+	depthTestPipelineCreateInfo.pRasterizationState	= &pipelineRasterizationStateCreateInfo;
+	depthTestPipelineCreateInfo.pMultisampleState	= &pipelineMultisampleStateCreateInfo;
+	depthTestPipelineCreateInfo.pColorBlendState	= &pipelineColorBlendStateCreateInfo;
+	depthTestPipelineCreateInfo.pDepthStencilState	= &pipelineDepthStencilStateCreateInfo;
+	depthTestPipelineCreateInfo.layout				= tinyObjLoaderPipelineLayout;
+	depthTestPipelineCreateInfo.renderPass			= depthTestRenderPass;
+	depthTestPipelineCreateInfo.subpass				= 0;	// index of this tinyObjLoaderPipeline's subpass of the depthTestRenderPass
+															//depthTestPipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
 
-	graphicsPipelineCreateInfoVector.push_back(textureAppPipelineCreateInfo);
+	depthTestGraphicsPipelineCreateInfoVector.push_back(depthTestPipelineCreateInfo);
 
 	SenAbstractGLFW::errorCheck(
 		vkCreateGraphicsPipelines(
 			device, VK_NULL_HANDLE,
-			(uint32_t)graphicsPipelineCreateInfoVector.size(),
-			graphicsPipelineCreateInfoVector.data(),
+			(uint32_t)depthTestGraphicsPipelineCreateInfoVector.size(),
+			depthTestGraphicsPipelineCreateInfoVector.data(),
 			nullptr,
-			&textureAppPipeline), // could be a pipelineArray
+			&tinyObjLoaderPipeline), // could be a pipelineArray
 		std::string("Failed to create graphics pipeline !!!")
 	);
 
@@ -321,14 +398,103 @@ void Sen_07_Texture::createTextureAppPipeline()
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 }
 
-void Sen_07_Texture::createTextureAppVertexBuffer()
+void Sen_222_TinyObjLoader::createMeshLinkModelndexBuffer()
 {
+	//uint16_t indices[] = {	0, 1, 2, 1, 2, 3, 
+	//						4, 5, 6, 5, 6, 7 };
+
+	uint32_t indices[] = {  // Note that we start from 0!
+		0,	1,	3,	// Front First Triangle
+		1,	2,	3,	// Front Second Triangle
+		4,	5,	7,	// Back First Triangle
+		5,	6,	7,	// Back Second Triangle
+		8,	9,	11,	// Left First Triangle
+		9,	10,	11,	// Left Second Triangle
+		12,	13,	15,	// Right First Triangle
+		13,	14,	15,	// Right Second Triangle
+		16,	17,	19,	// Top First Triangle
+		17,	18,	19,	// Top Second Triangle
+		20,	21,	23,	// Bottom First Triangle
+		21,	22,	23	// Bottom Second Triangle
+	};
+	size_t indicesBufferSize = sizeof(indices);
+
+	/****************************************************************************************************************************************************/
+	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferDeviceMemory;
+	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+	void* data;
+	vkMapMemory(device, stagingBufferDeviceMemory, 0, indicesBufferSize, 0, &data);
+	memcpy(data, indices, indicesBufferSize);
+	//// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
+	//// There are two ways to deal with that problem, and what we use is the first one below:
+	////  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+	////  2. Call vkFlushMappedMemoryRanges to after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
+	vkUnmapMemory(device, stagingBufferDeviceMemory);
+
+	/****************************************************************************************************************************************************/
+	/***************   Transfer from stagingBuffer to Optimal triangleVertexBuffer   ********************************************************************/
+	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		tinyMeshLinkModelIndexBuffer, tinyMeshLinkModelIndexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
+		tinyMeshLinkModelIndexBuffer, indicesBufferSize);
+
+	vkDestroyBuffer(device, stagingBuffer, nullptr);
+	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
+}
+
+void Sen_222_TinyObjLoader::createMeshLinkModeVertexBuffer()
+{
+	//float vertices[] = {
+	//	// Positions			// Colors				// TexCoord
+	//	-0.5f,	-0.5f,	0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
+	//	0.5f,	-0.5f,	0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
+	//	-0.5f,	0.5f,	0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
+	//	0.5f,	0.5f,	0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f,   // Top Left
+
+	//	-0.5f,	-0.5f,	-0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
+	//	0.5f,	-0.5f,	-0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
+	//	-0.5f,	0.5f,	-0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
+	//	0.5f,	0.5f,	-0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f   // Top Left
+	//};
+
 	float vertices[] = {
-		// Positions	// Colors
-		-1.0f,	-1.0f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
-		1.0f,	-1.0f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
-		-1.0f,	1.0f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
-		1.0f,	1.0f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f   // Top Left
+		// Positions           // Texture Coords
+		-0.5f, 0.5f, -0.5f, 1.0f, 0.0f, // Front Top Right
+		-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, // Front Bottom Right
+		0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // Front Bottom Left
+		0.5f, 0.5f, -0.5f, 0.0f, 0.0f, // Front Top Left 
+
+		0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // Back Top Right
+		0.5f, -0.5f, 0.5f, 1.0f, 1.0f, // Back Bottom Right
+		-0.5f, -0.5f, 0.5f, 0.0f, 1.0f, // Back Bottom Left
+		-0.5f, 0.5f, 0.5f, 0.0f, 0.0f,  // Back Top Left 
+
+		-0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // Left Top Right
+		-0.5f, -0.5f, 0.5f, 1.0f, 1.0f, // Left Bottom Right
+		-0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // Left Bottom Left
+		-0.5f, 0.5f, -0.5f, 0.0f, 0.0f, // Left Top Left 
+
+		0.5f, 0.5f, -0.5f, 1.0f, 0.0f, // Right Top Right
+		0.5f, -0.5f, -0.5f, 1.0f, 1.0f, // Right Bottom Right
+		0.5f, -0.5f, 0.5f, 0.0f, 1.0f, // Right Bottom Left
+		0.5f, 0.5f, 0.5f, 0.0f, 0.0f, // Right Top Left 
+
+		0.5f, 0.5f, -0.5f, 1.0f, 0.0f, // Top Top Right
+		0.5f, 0.5f, 0.5f, 1.0f, 1.0f, // Top Bottom Right
+		-0.5f, 0.5f, 0.5f, 0.0f, 1.0f, // Top Bottom Left
+		-0.5f, 0.5f, -0.5f, 0.0f, 0.0f, // Top Top Left 
+
+		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, // Bottom Top Right
+		-0.5f, -0.5f, 0.5f, 1.0f, 1.0f, // Bottom Bottom Right
+		0.5f, -0.5f, 0.5f, 0.0f, 1.0f, // Bottom Bottom Left
+		0.5f, -0.5f, -0.5f, 0.0f, 0.0f // Bottom Top Left 
 	};
 	size_t verticesBufferSize = sizeof(vertices);
 
@@ -350,29 +516,29 @@ void Sen_07_Texture::createTextureAppVertexBuffer()
 	vkUnmapMemory(device, stagingBufferDeviceMemory);
 
 	/****************************************************************************************************************************************************/
-	/***************   Transfer from stagingBuffer to Optimal textureAppVertexBuffer   ********************************************************************/
+	/***************   Transfer from stagingBuffer to Optimal tinyMeshLinkModelVertexBuffer   ********************************************************************/
 	SenAbstractGLFW::createResourceBuffer(device, verticesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
-		textureAppVertexBuffer, textureAppVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+		tinyMeshLinkModelVertexBuffer, tinyMeshLinkModelVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
-		textureAppVertexBuffer, verticesBufferSize);
+		tinyMeshLinkModelVertexBuffer, verticesBufferSize);
 
 	vkDestroyBuffer(device, stagingBuffer, nullptr);
 	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
-void Sen_07_Texture::initBackgroundTextureImage()
+void Sen_222_TinyObjLoader::initTinyObjCompleteTextureImage()
 {
 	SenAbstractGLFW::createDeviceLocalTexture(device, physicalDeviceMemoryProperties
-		, backgroundTextureDiskAddress, VK_IMAGE_TYPE_2D, backgroundTextureWidth, backgroundTextureHeight
-		, backgroundTextureImage, backgroundTextureImageDeviceMemory, backgroundTextureImageView
+		, tinyObjCompleteTextureDiskAddress, VK_IMAGE_TYPE_2D, tinyObjCompleteTextureWidth, tinyObjCompleteTextureHeight
+		, tinyObjCompleteImage, tinyObjCompleteImageDeviceMemory, tinyObjCompleteImageView
 		, VK_SHARING_MODE_EXCLUSIVE, defaultThreadCommandPool, graphicsQueue);
 
 	SenAbstractGLFW::createTextureSampler(device, texture2DSampler);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorPool()
+void Sen_222_TinyObjLoader::createTextureAppDescriptorPool()
 {
 	std::vector<VkDescriptorPoolSize> descriptorPoolSizeVector;
 
@@ -398,7 +564,7 @@ void Sen_07_Texture::createTextureAppDescriptorPool()
 	);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorSetLayout()
+void Sen_222_TinyObjLoader::createTextureAppDescriptorSetLayout()
 {
 	std::vector<VkDescriptorSetLayoutBinding> perspectiveProjectionDSL_BindingVector;
 
@@ -429,7 +595,7 @@ void Sen_07_Texture::createTextureAppDescriptorSetLayout()
 	);
 }
 
-void Sen_07_Texture::createTextureAppDescriptorSet()
+void Sen_222_TinyObjLoader::createTextureAppDescriptorSet()
 {
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
 	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
@@ -462,7 +628,7 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 	/**********************************************************************************************************************/
 	VkDescriptorImageInfo backgroundTextureDescriptorImageInfo{};
 	backgroundTextureDescriptorImageInfo.imageLayout	= VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	backgroundTextureDescriptorImageInfo.imageView		= backgroundTextureImageView;
+	backgroundTextureDescriptorImageInfo.imageView		= tinyObjCompleteImageView;
 	backgroundTextureDescriptorImageInfo.sampler		= texture2DSampler;
 	std::vector<VkDescriptorImageInfo> descriptorImageInfoVector;
 	descriptorImageInfoVector.push_back(backgroundTextureDescriptorImageInfo);
@@ -482,10 +648,10 @@ void Sen_07_Texture::createTextureAppDescriptorSet()
 	vkUpdateDescriptorSets(device, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
 }
 
-void Sen_07_Texture::createTextureAppCommandBuffers()
+void Sen_222_TinyObjLoader::createTinyObjLoaderCommandBuffers()
 {
 	/************************************************************************************************************/
-	/*****************     Destroy old swapchainCommandBufferVector first, if there are      ********************/
+	/*********     Destroy old swapchainCommandBufferVector first for widgetRezie, if there are      ************/
 	/************************************************************************************************************/
 	if (swapchainCommandBufferVector.size() > 0) {
 		vkFreeCommandBuffers(device, defaultThreadCommandPool, (uint32_t)swapchainCommandBufferVector.size(), swapchainCommandBufferVector.data());
@@ -496,9 +662,9 @@ void Sen_07_Texture::createTextureAppCommandBuffers()
 	swapchainCommandBufferVector.resize(swapchainImagesCount);
 
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
-	commandBufferAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	commandBufferAllocateInfo.commandPool = defaultThreadCommandPool;
-	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	commandBufferAllocateInfo.sType			= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	commandBufferAllocateInfo.commandPool	= defaultThreadCommandPool;
+	commandBufferAllocateInfo.level			= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	commandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(swapchainCommandBufferVector.size());
 
 	SenAbstractGLFW::errorCheck(
@@ -514,38 +680,47 @@ void Sen_07_Texture::createTextureAppCommandBuffers()
 		//======================================================================================
 		VkCommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // In case we may already be scheduling the drawing commands for the next frame while the last frame hass not finished yet.
 		vkBeginCommandBuffer(swapchainCommandBufferVector[i], &commandBufferBeginInfo);
 
 		//======================================================================================
 		//======================================================================================
 		VkRenderPassBeginInfo renderPassBeginInfo{};
-		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass = colorAttachOnlyRenderPass;
-		renderPassBeginInfo.framebuffer = swapchainFramebufferVector[i];
-		renderPassBeginInfo.renderArea.offset = { 0, 0 };
-		renderPassBeginInfo.renderArea.extent.width = widgetWidth;
-		renderPassBeginInfo.renderArea.extent.height = widgetHeight;
+		renderPassBeginInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassBeginInfo.renderPass			= depthTestRenderPass;
+		renderPassBeginInfo.framebuffer			= swapchainFramebufferVector[i];
+		renderPassBeginInfo.renderArea.offset	= { 0, 0 };
+		renderPassBeginInfo.renderArea.extent.width		= widgetWidth;
+		renderPassBeginInfo.renderArea.extent.height	= widgetHeight;
 
-		std::vector<VkClearValue> clearValueVector;
-		clearValueVector.push_back(VkClearValue{ 0.2f, 0.3f, 0.3f, 1.0f });
-		renderPassBeginInfo.clearValueCount = (uint32_t)clearValueVector.size();
-		renderPassBeginInfo.pClearValues = clearValueVector.data();
+		// Because we now have both color & depth attachments with VK_ATTACHMENT_LOAD_OP_CLEAR, we also need to specify multiple clear values. 
+		std::array<VkClearValue, 2> clearValueArray{};
+		clearValueArray[0].color		= { 0.2f, 0.3f, 0.3f, 1.0f };
+		clearValueArray[1].depthStencil = { 1.0f, 0 };
+		renderPassBeginInfo.clearValueCount = (uint32_t)clearValueArray.size();
+		renderPassBeginInfo.pClearValues	= clearValueArray.data();
 
 		vkCmdBeginRenderPass(swapchainCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		//======================================================================================
 		//======================================================================================
-		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, textureAppPipeline);
+		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, tinyObjLoaderPipeline);
 		VkDeviceSize offsetDeviceSize = 0;
-		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &textureAppVertexBuffer, &offsetDeviceSize);
-		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], singleRectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, textureAppPipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
+		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &tinyMeshLinkModelVertexBuffer, &offsetDeviceSize);
+		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], tinyMeshLinkModelIndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+			tinyObjLoaderPipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
 
+		//vkCmdDraw(
+		//	swapchainCommandBufferVector[i],
+		//	3, // vertexCount
+		//	1, // instanceCount
+		//	0, // firstVertex
+		//	0  // firstInstance
+		//);
 		vkCmdSetViewport(swapchainCommandBufferVector[i], 0, 1, &resizeViewport);
 		vkCmdSetScissor(swapchainCommandBufferVector[i], 0, 1, &resizeScissorRect2D);
 
-		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6*6, 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(swapchainCommandBufferVector[i]);
 

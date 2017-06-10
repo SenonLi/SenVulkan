@@ -73,6 +73,9 @@
     <ClCompile Include="SenVulkanTutorial\Sen_072_TextureArray.cpp">
       <Filter>Sources\SenVulkanTutorial</Filter>
     </ClCompile>
+    <ClCompile Include="SenVulkanTutorial\Sen_222_TinyObjLoader.cpp">
+      <Filter>Sources\SenVulkanTutorial</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Support\SenAbstractGLFW.h">
@@ -107,6 +110,18 @@
     </ClInclude>
     <ClInclude Include="SenVulkanTutorial\Sen_072_TextureArray.h">
       <Filter>Headers\SenVulkanTutorial</Filter>
+    </ClInclude>
+    <ClInclude Include="SenVulkanTutorial\Sen_222_TinyObjLoader.h">
+      <Filter>Headers\SenVulkanTutorial</Filter>
+    </ClInclude>
+    <ClInclude Include="Support\SenMeshLinkModel.h">
+      <Filter>Suppport</Filter>
+    </ClInclude>
+    <ClInclude Include="Support\SenOpenGLMeshStruct.h">
+      <Filter>Suppport</Filter>
+    </ClInclude>
+    <ClInclude Include="Support\SenVulkanMeshStruct.h">
+      <Filter>Suppport</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
