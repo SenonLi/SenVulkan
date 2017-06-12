@@ -43,31 +43,31 @@ void Sen_222_TinyObjLoader::loadModel() {
 
 	std::unordered_map<VertexStruct, uint32_t> uniqueVertices = {};
 
-	//for (const auto& shape : shapes) {
-	//	for (const auto& index : shape.mesh.indices) {
-	//		VertexStruct vertex = {};
+	for (const auto& shape : shapes) {
+		for (const auto& index : shape.mesh.indices) {
+			VertexStruct vertex = {};
 
-	//		vertex.pos = {
-	//			attrib.vertices[3 * index.vertex_index + 0],
-	//			attrib.vertices[3 * index.vertex_index + 1],
-	//			attrib.vertices[3 * index.vertex_index + 2]
-	//		};
+			vertex.pos = {
+				attrib.vertices[3 * index.vertex_index + 0],
+				attrib.vertices[3 * index.vertex_index + 1],
+				attrib.vertices[3 * index.vertex_index + 2]
+			};
 
-	//		vertex.texCoord = {
-	//			attrib.texcoords[2 * index.texcoord_index + 0],
-	//			1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-	//		};
+			vertex.texCoord = {
+				attrib.texcoords[2 * index.texcoord_index + 0],
+				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
+			};
 
-	//		vertex.color = { 1.0f, 1.0f, 1.0f };
+			vertex.color = { 1.0f, 1.0f, 1.0f };
 
-	//		if (uniqueVertices.count(vertex) == 0) {
-	//			uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-	//			vertices.push_back(vertex);
-	//		}
+			if (uniqueVertices.count(vertex) == 0) {
+				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				vertices.push_back(vertex);
+			}
 
-	//		indices.push_back(uniqueVertices[vertex]);
-	//	}
-	//}
+			indices.push_back(uniqueVertices[vertex]);
+		}
+	}
 }
 
 void Sen_222_TinyObjLoader::initVulkanApplication()
@@ -84,7 +84,10 @@ void Sen_222_TinyObjLoader::initVulkanApplication()
 	createDepthTestAttachment();			// has to be called after createDefaultCommandPool();
 	createDepthTestRenderPass();			// has to be called after createDepthTestAttachment() for depthTestFormat
 	createTinyObjLoaderPipeline();
+
 	createDepthTestSwapchainFramebuffers(); // has to be called after createDepthTestAttachment() for the depthTestImageView
+
+	loadModel();
 	createMeshLinkModeVertexBuffer();
 	createMeshLinkModelndexBuffer();
 	/***************************************/
@@ -209,8 +212,8 @@ void Sen_222_TinyObjLoader::createTinyObjLoaderPipeline()
 	/****************************************************************************************************************************/
 	VkShaderModule vertShaderModule, fragShaderModule;
 
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/SenCube.vert", vertShaderModule);
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/SenCube.frag", fragShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/loadModelObj.vert", vertShaderModule);
+	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/loadModelObj.frag", fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -233,7 +236,7 @@ void Sen_222_TinyObjLoader::createTinyObjLoaderPipeline()
 	/****************************************************************************************************************************/
 	VkVertexInputBindingDescription vertexInputBindingDescription{};
 	vertexInputBindingDescription.binding	= 0;
-	vertexInputBindingDescription.stride	= 5 * sizeof(float);
+	vertexInputBindingDescription.stride	= sizeof(VertexStruct);
 	vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	std::vector<VkVertexInputBindingDescription> vertexInputBindingDescriptionVector;
 	vertexInputBindingDescriptionVector.push_back(vertexInputBindingDescription);
@@ -251,9 +254,16 @@ void Sen_222_TinyObjLoader::createTinyObjLoaderPipeline()
 	VkVertexInputAttributeDescription colorVertexInputAttributeDescription;
 	colorVertexInputAttributeDescription.location		= 1;
 	colorVertexInputAttributeDescription.binding		= 0;
-	colorVertexInputAttributeDescription.format			= VK_FORMAT_R32G32_SFLOAT;
+	colorVertexInputAttributeDescription.format			= VK_FORMAT_R32G32B32_SFLOAT;
 	colorVertexInputAttributeDescription.offset			= 3 * sizeof(float);
 	vertexInputAttributeDescriptionVector.push_back(colorVertexInputAttributeDescription);
+
+	VkVertexInputAttributeDescription texCoordVertexInputAttributeDescription;
+	texCoordVertexInputAttributeDescription.location	= 2;
+	texCoordVertexInputAttributeDescription.binding		= 0;
+	texCoordVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
+	texCoordVertexInputAttributeDescription.offset		= 6 * sizeof(float);
+	vertexInputAttributeDescriptionVector.push_back(texCoordVertexInputAttributeDescription);
 
 	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
 	pipelineVertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -400,24 +410,7 @@ void Sen_222_TinyObjLoader::createTinyObjLoaderPipeline()
 
 void Sen_222_TinyObjLoader::createMeshLinkModelndexBuffer()
 {
-	//uint16_t indices[] = {	0, 1, 2, 1, 2, 3, 
-	//						4, 5, 6, 5, 6, 7 };
-
-	uint32_t indices[] = {  // Note that we start from 0!
-		0,	1,	3,	// Front First Triangle
-		1,	2,	3,	// Front Second Triangle
-		4,	5,	7,	// Back First Triangle
-		5,	6,	7,	// Back Second Triangle
-		8,	9,	11,	// Left First Triangle
-		9,	10,	11,	// Left Second Triangle
-		12,	13,	15,	// Right First Triangle
-		13,	14,	15,	// Right Second Triangle
-		16,	17,	19,	// Top First Triangle
-		17,	18,	19,	// Top Second Triangle
-		20,	21,	23,	// Bottom First Triangle
-		21,	22,	23	// Bottom Second Triangle
-	};
-	size_t indicesBufferSize = sizeof(indices);
+	VkDeviceSize indicesBufferSize = sizeof(indices[0]) * indices.size();
 
 	/****************************************************************************************************************************************************/
 	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
@@ -429,7 +422,7 @@ void Sen_222_TinyObjLoader::createMeshLinkModelndexBuffer()
 
 	void* data;
 	vkMapMemory(device, stagingBufferDeviceMemory, 0, indicesBufferSize, 0, &data);
-	memcpy(data, indices, indicesBufferSize);
+	memcpy(data, indices.data(), indicesBufferSize);
 	//// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
 	//// There are two ways to deal with that problem, and what we use is the first one below:
 	////  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -451,52 +444,7 @@ void Sen_222_TinyObjLoader::createMeshLinkModelndexBuffer()
 
 void Sen_222_TinyObjLoader::createMeshLinkModeVertexBuffer()
 {
-	//float vertices[] = {
-	//	// Positions			// Colors				// TexCoord
-	//	-0.5f,	-0.5f,	0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
-	//	0.5f,	-0.5f,	0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
-	//	-0.5f,	0.5f,	0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
-	//	0.5f,	0.5f,	0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f,   // Top Left
-
-	//	-0.5f,	-0.5f,	-0.5f,	1.0f,	0.0f,	0.0f,	0.0f,	0.0f,	// Bottom Right
-	//	0.5f,	-0.5f,	-0.5f,	0.0f,	0.0f,	1.0f,	1.0f,	0.0f,	// Bottom Left
-	//	-0.5f,	0.5f,	-0.5f,	1.0f,	1.0f,	1.0f,   0.0f,	1.0f,	// Top Right
-	//	0.5f,	0.5f,	-0.5f,	0.0f,	1.0f,	0.0f,	1.0f,	1.0f   // Top Left
-	//};
-
-	float vertices[] = {
-		// Positions           // Texture Coords
-		-0.5f, 0.5f, -0.5f, 1.0f, 0.0f, // Front Top Right
-		-0.5f, -0.5f, -0.5f, 1.0f, 1.0f, // Front Bottom Right
-		0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // Front Bottom Left
-		0.5f, 0.5f, -0.5f, 0.0f, 0.0f, // Front Top Left 
-
-		0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // Back Top Right
-		0.5f, -0.5f, 0.5f, 1.0f, 1.0f, // Back Bottom Right
-		-0.5f, -0.5f, 0.5f, 0.0f, 1.0f, // Back Bottom Left
-		-0.5f, 0.5f, 0.5f, 0.0f, 0.0f,  // Back Top Left 
-
-		-0.5f, 0.5f, 0.5f, 1.0f, 0.0f, // Left Top Right
-		-0.5f, -0.5f, 0.5f, 1.0f, 1.0f, // Left Bottom Right
-		-0.5f, -0.5f, -0.5f, 0.0f, 1.0f, // Left Bottom Left
-		-0.5f, 0.5f, -0.5f, 0.0f, 0.0f, // Left Top Left 
-
-		0.5f, 0.5f, -0.5f, 1.0f, 0.0f, // Right Top Right
-		0.5f, -0.5f, -0.5f, 1.0f, 1.0f, // Right Bottom Right
-		0.5f, -0.5f, 0.5f, 0.0f, 1.0f, // Right Bottom Left
-		0.5f, 0.5f, 0.5f, 0.0f, 0.0f, // Right Top Left 
-
-		0.5f, 0.5f, -0.5f, 1.0f, 0.0f, // Top Top Right
-		0.5f, 0.5f, 0.5f, 1.0f, 1.0f, // Top Bottom Right
-		-0.5f, 0.5f, 0.5f, 0.0f, 1.0f, // Top Bottom Left
-		-0.5f, 0.5f, -0.5f, 0.0f, 0.0f, // Top Top Left 
-
-		-0.5f, -0.5f, -0.5f, 1.0f, 0.0f, // Bottom Top Right
-		-0.5f, -0.5f, 0.5f, 1.0f, 1.0f, // Bottom Bottom Right
-		0.5f, -0.5f, 0.5f, 0.0f, 1.0f, // Bottom Bottom Left
-		0.5f, -0.5f, -0.5f, 0.0f, 0.0f // Bottom Top Left 
-	};
-	size_t verticesBufferSize = sizeof(vertices);
+	VkDeviceSize verticesBufferSize = sizeof(vertices[0]) * vertices.size();
 
 	/****************************************************************************************************************************************************/
 	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
@@ -508,7 +456,7 @@ void Sen_222_TinyObjLoader::createMeshLinkModeVertexBuffer()
 
 	void* data;
 	vkMapMemory(device, stagingBufferDeviceMemory, 0, verticesBufferSize, 0, &data);
-	memcpy(data, vertices, verticesBufferSize);
+	memcpy(data, vertices.data(), verticesBufferSize);
 	// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
 	// There are two ways to deal with that problem, and what we use is the first one below:
 	//  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -720,7 +668,8 @@ void Sen_222_TinyObjLoader::createTinyObjLoaderCommandBuffers()
 		vkCmdSetViewport(swapchainCommandBufferVector[i], 0, 1, &resizeViewport);
 		vkCmdSetScissor(swapchainCommandBufferVector[i], 0, 1, &resizeScissorRect2D);
 
-		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6*6, 1, 0, 0, 0);
+		//vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6*6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(swapchainCommandBufferVector[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(swapchainCommandBufferVector[i]);
 

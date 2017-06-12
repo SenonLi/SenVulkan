@@ -67,6 +67,7 @@ private:
 	int tinyObjCompleteTextureWidth, tinyObjCompleteTextureHeight;
 	const char* tinyObjCompleteTextureDiskAddress;
 	const char* tinyMeshLinkModelDiskAddress;
+
 	std::vector<VertexStruct> vertices;
 	std::vector<uint32_t> indices;
 };

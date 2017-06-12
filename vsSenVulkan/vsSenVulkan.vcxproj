@@ -204,6 +204,8 @@
     <None Include="..\README.md" />
     <None Include="SenVulkanTutorial\Shaders\depthTest.frag" />
     <None Include="SenVulkanTutorial\Shaders\depthTest.vert" />
+    <None Include="SenVulkanTutorial\Shaders\loadModelObj.frag" />
+    <None Include="SenVulkanTutorial\Shaders\loadModelObj.vert" />
     <None Include="SenVulkanTutorial\Shaders\SenCube.frag" />
     <None Include="SenVulkanTutorial\Shaders\SenCube.vert" />
     <None Include="SenVulkanTutorial\Shaders\Texture.frag" />

@@ -162,6 +162,12 @@
     <None Include="SenVulkanTutorial\Shaders\textureArray.vert">
       <Filter>Shaders\SenVulkanTutorial</Filter>
     </None>
+    <None Include="SenVulkanTutorial\Shaders\loadModelObj.frag">
+      <Filter>Shaders\SenVulkanTutorial</Filter>
+    </None>
+    <None Include="SenVulkanTutorial\Shaders\loadModelObj.vert">
+      <Filter>Shaders\SenVulkanTutorial</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Text Include="Support\CMakeLists.txt">
