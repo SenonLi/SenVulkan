@@ -4,23 +4,7 @@
 #define __Sen_222_TinyObjLoader__
 
 #include "../Support/SenAbstractGLFW.h"
-
-//#include "../Support/SenVulkanMeshStruct.h"
-#include <vector>
-#include <unordered_map>
-
-struct VertexStruct {
-	//glm::vec3 position;
-	//glm::vec3 normal;
-	//glm::vec2 texCoords;
-	glm::vec3 pos;
-	glm::vec3 color;
-	glm::vec2 texCoord;
-
-	bool operator==(const VertexStruct& other) const {
-		return pos == other.pos && color == other.color && texCoord == other.texCoord;
-	}
-};
+#include "../Support/SenTinyObjLoader.h"
 
 class Sen_222_TinyObjLoader :	public SenAbstractGLFW
 {
@@ -37,8 +21,6 @@ protected:
 	void updateUniformBuffer();
 
 private:
-	void loadModel();
-
 	void createMeshLinkModelndexBuffer();
 	void createMeshLinkModeVertexBuffer();
 	void createTinyObjLoaderCommandBuffers();
@@ -66,10 +48,10 @@ private:
 
 	int tinyObjCompleteTextureWidth, tinyObjCompleteTextureHeight;
 	const char* tinyObjCompleteTextureDiskAddress;
-	const char* tinyMeshLinkModelDiskAddress;
+	const char* tinyObjectDiskAddress;
 
-	std::vector<VertexStruct> vertices;
-	std::vector<uint32_t> indices;
+	std::vector<VertexStruct>	vertexStructVector;
+	std::vector<uint32_t>		indexVector;
 };
 
 

@@ -1,27 +1,14 @@
 #include "Sen_222_TinyObjLoader.h"
 
-//#include "../Support/SenVulkanMeshStruct.h"
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/gtx/hash.hpp>			// for tinyObjLoader
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
-
-namespace std {
-	template<> struct hash<VertexStruct> {
-		size_t operator()(VertexStruct const& vertex) const {
-			return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
-		}
-	};
-}
-
 Sen_222_TinyObjLoader::Sen_222_TinyObjLoader()
 {
 	std::cout << "Constructor: Sen_222_TinyObjLoader()\n\n";
 	strWindowName = "Sen Vulkan Cube Tutorial";
 
 	tinyObjCompleteTextureDiskAddress	= "../Images/MeshLinkModels/Chalet/chalet.jpg";
-	tinyMeshLinkModelDiskAddress		= "../Images/MeshLinkModels/Chalet/chalet.obj";
+	tinyObjectDiskAddress				= "../Images/MeshLinkModels/Chalet/chalet.obj";
+	//tinyObjCompleteTextureDiskAddress	= "../Images/MeshLinkModels/Duck/duckCM.jpg";
+	//tinyObjectDiskAddress				= "../Images/MeshLinkModels/Duck/duck.3ds";
 }
 
 Sen_222_TinyObjLoader::~Sen_222_TinyObjLoader()
@@ -29,45 +16,6 @@ Sen_222_TinyObjLoader::~Sen_222_TinyObjLoader()
 	finalizeWidget();
 
 	OutputDebugString("\n\t ~Sen_222_TinyObjLoader()\n");
-}
-
-void Sen_222_TinyObjLoader::loadModel() {
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-	std::string err;
-
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, tinyMeshLinkModelDiskAddress)) {
-		throw std::runtime_error(err);
-	}
-
-	std::unordered_map<VertexStruct, uint32_t> uniqueVertices = {};
-
-	for (const auto& shape : shapes) {
-		for (const auto& index : shape.mesh.indices) {
-			VertexStruct vertex = {};
-
-			vertex.pos = {
-				attrib.vertices[3 * index.vertex_index + 0],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2]
-			};
-
-			vertex.texCoord = {
-				attrib.texcoords[2 * index.texcoord_index + 0],
-				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-			};
-
-			vertex.color = { 1.0f, 1.0f, 1.0f };
-
-			if (uniqueVertices.count(vertex) == 0) {
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				vertices.push_back(vertex);
-			}
-
-			indices.push_back(uniqueVertices[vertex]);
-		}
-	}
 }
 
 void Sen_222_TinyObjLoader::initVulkanApplication()
@@ -87,7 +35,8 @@ void Sen_222_TinyObjLoader::initVulkanApplication()
 
 	createDepthTestSwapchainFramebuffers(); // has to be called after createDepthTestAttachment() for the depthTestImageView
 
-	loadModel();
+	stobjl::populateVertexIndexVector(tinyObjectDiskAddress, vertexStructVector, indexVector);
+
 	createMeshLinkModeVertexBuffer();
 	createMeshLinkModelndexBuffer();
 	/***************************************/
@@ -251,18 +200,18 @@ void Sen_222_TinyObjLoader::createTinyObjLoaderPipeline()
 	positionVertexInputAttributeDescription.offset		= 0;
 	vertexInputAttributeDescriptionVector.push_back(positionVertexInputAttributeDescription);
 
-	VkVertexInputAttributeDescription colorVertexInputAttributeDescription;
-	colorVertexInputAttributeDescription.location		= 1;
-	colorVertexInputAttributeDescription.binding		= 0;
-	colorVertexInputAttributeDescription.format			= VK_FORMAT_R32G32B32_SFLOAT;
-	colorVertexInputAttributeDescription.offset			= 3 * sizeof(float);
-	vertexInputAttributeDescriptionVector.push_back(colorVertexInputAttributeDescription);
+	//VkVertexInputAttributeDescription colorVertexInputAttributeDescription;
+	//colorVertexInputAttributeDescription.location		= 1;
+	//colorVertexInputAttributeDescription.binding		= 0;
+	//colorVertexInputAttributeDescription.format			= VK_FORMAT_R32G32B32_SFLOAT;
+	//colorVertexInputAttributeDescription.offset			= 3 * sizeof(float);
+	//vertexInputAttributeDescriptionVector.push_back(colorVertexInputAttributeDescription);
 
 	VkVertexInputAttributeDescription texCoordVertexInputAttributeDescription;
-	texCoordVertexInputAttributeDescription.location	= 2;
+	texCoordVertexInputAttributeDescription.location	= 1;
 	texCoordVertexInputAttributeDescription.binding		= 0;
 	texCoordVertexInputAttributeDescription.format		= VK_FORMAT_R32G32_SFLOAT;
-	texCoordVertexInputAttributeDescription.offset		= 6 * sizeof(float);
+	texCoordVertexInputAttributeDescription.offset		= 3 * sizeof(float);
 	vertexInputAttributeDescriptionVector.push_back(texCoordVertexInputAttributeDescription);
 
 	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo{};
@@ -410,7 +359,7 @@ void Sen_222_TinyObjLoader::createTinyObjLoaderPipeline()
 
 void Sen_222_TinyObjLoader::createMeshLinkModelndexBuffer()
 {
-	VkDeviceSize indicesBufferSize = sizeof(indices[0]) * indices.size();
+	VkDeviceSize indicesBufferSize = sizeof(indexVector[0]) * indexVector.size();
 
 	/****************************************************************************************************************************************************/
 	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
@@ -422,7 +371,7 @@ void Sen_222_TinyObjLoader::createMeshLinkModelndexBuffer()
 
 	void* data;
 	vkMapMemory(device, stagingBufferDeviceMemory, 0, indicesBufferSize, 0, &data);
-	memcpy(data, indices.data(), indicesBufferSize);
+	memcpy(data, indexVector.data(), indicesBufferSize);
 	//// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
 	//// There are two ways to deal with that problem, and what we use is the first one below:
 	////  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -444,7 +393,7 @@ void Sen_222_TinyObjLoader::createMeshLinkModelndexBuffer()
 
 void Sen_222_TinyObjLoader::createMeshLinkModeVertexBuffer()
 {
-	VkDeviceSize verticesBufferSize = sizeof(vertices[0]) * vertices.size();
+	VkDeviceSize verticesBufferSize = sizeof(vertexStructVector[0]) * vertexStructVector.size();
 
 	/****************************************************************************************************************************************************/
 	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
@@ -456,7 +405,7 @@ void Sen_222_TinyObjLoader::createMeshLinkModeVertexBuffer()
 
 	void* data;
 	vkMapMemory(device, stagingBufferDeviceMemory, 0, verticesBufferSize, 0, &data);
-	memcpy(data, vertices.data(), verticesBufferSize);
+	memcpy(data, vertexStructVector.data(), verticesBufferSize);
 	// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
 	// There are two ways to deal with that problem, and what we use is the first one below:
 	//  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
@@ -669,7 +618,7 @@ void Sen_222_TinyObjLoader::createTinyObjLoaderCommandBuffers()
 		vkCmdSetScissor(swapchainCommandBufferVector[i], 0, 1, &resizeScissorRect2D);
 
 		//vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6*6, 1, 0, 0, 0);
-		vkCmdDrawIndexed(swapchainCommandBufferVector[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(swapchainCommandBufferVector[i], static_cast<uint32_t>(indexVector.size()), 1, 0, 0, 0);
 
 		vkCmdEndRenderPass(swapchainCommandBufferVector[i]);
 

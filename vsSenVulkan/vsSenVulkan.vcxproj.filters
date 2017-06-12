@@ -76,6 +76,9 @@
     <ClCompile Include="SenVulkanTutorial\Sen_222_TinyObjLoader.cpp">
       <Filter>Sources\SenVulkanTutorial</Filter>
     </ClCompile>
+    <ClCompile Include="Support\SenTinyObjLoader.cpp">
+      <Filter>Suppport</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Support\SenAbstractGLFW.h">
@@ -120,7 +123,7 @@
     <ClInclude Include="Support\SenOpenGLMeshStruct.h">
       <Filter>Suppport</Filter>
     </ClInclude>
-    <ClInclude Include="Support\SenVulkanMeshStruct.h">
+    <ClInclude Include="Support\SenTinyObjLoader.h">
       <Filter>Suppport</Filter>
     </ClInclude>
   </ItemGroup>

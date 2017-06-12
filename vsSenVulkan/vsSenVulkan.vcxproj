@@ -176,6 +176,7 @@
     <ClCompile Include="SenVulkanTutorial\Sen_222_TinyObjLoader.cpp" />
     <ClCompile Include="SenVulkanTutorial\Sen_22_DepthTest.cpp" />
     <ClCompile Include="Support\SenAbstractGLFW.cpp" />
+    <ClCompile Include="Support\SenTinyObjLoader.cpp" />
     <ClCompile Include="VulkanAPI\SenRenderer.cpp" />
     <ClCompile Include="VulkanAPI\SenVulkanAPI_Widget.cpp" />
     <ClCompile Include="VulkanAPI\SenWindow.cpp" />
@@ -194,7 +195,7 @@
     <ClInclude Include="Support\SenAbstractGLFW.h" />
     <ClInclude Include="Support\SenMeshLinkModel.h" />
     <ClInclude Include="Support\SenOpenGLMeshStruct.h" />
-    <ClInclude Include="Support\SenVulkanMeshStruct.h" />
+    <ClInclude Include="Support\SenTinyObjLoader.h" />
     <ClInclude Include="VulkanAPI\SenRenderer.h" />
     <ClInclude Include="VulkanAPI\SenVulkanAPI_Widget.h" />
     <ClInclude Include="VulkanAPI\SenWindow.h" />

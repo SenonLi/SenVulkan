@@ -209,6 +209,9 @@ VK_NULL_HANDLE should be used to initial a Vulkan object handle instead of nullp
 
 
 To Do:
+0.0. put all tinyOjbLoader into one .h file;
+0.1. find another tiny obj to test;
+0.2 rendering for multiple sampler in one shader Vulkan;
+
 1. add textOverlay;
-2. go through texture;
-3. add camera.
+2. add camera.
