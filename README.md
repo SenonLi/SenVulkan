@@ -1,6 +1,27 @@
-﻿# SenVulkan
-SenBegin with Vulkan 1.042, step by step
+﻿# SenVulkan C++ step by step tutorial for beginners
 
+A comprehensive collection of open source C++ examples for [Vulkan](https://www.khronos.org/vulkan/), the new graphics and compute API from Khronos.  Mainly using Visual Studio for the moment, will add various platform compilations in the near future.
+
+
+# Step by Step Examples
+
+*Examples marked with :speech_balloon: offer additional details with a separate readme.*
+
+## Basics
+
+### [Triangle](triangle/)
+<img src="./screenshots/basic_triangle.png" height="72px" align="right">
+
+Most basic example. Renders a colored triangle using an indexed vertex buffer. Vertex and index data are uploaded to device local memory using so-called "staging buffers". Uses a single pipeline with basic shaders loaded from SPIR-V and and single uniform block for passing matrices that is updated on changing the view.
+
+This example is far more explicit than the other examples and is meant to be a starting point for learning Vulkan from the ground up. Much of the code is boilerplate that you'd usually encapsulate in helper functions and classes (which is what the other examples do).
+
+
+
+
+
+
+----
 * Fixed Release build issue. (cannot ignore MVCT lib)
 * Add Validation Layer (as Instance Layer) check function
 
