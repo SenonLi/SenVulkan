@@ -1,7 +1,7 @@
 #pragma once
 
-#ifndef __SenAbstractGLFW__
-#define __SenAbstractGLFW__
+#ifndef __SLVK_AbstractGLFW__
+#define __SLVK_AbstractGLFW__
 
 #if defined( _WIN32 )		// on Windows OS
 
@@ -136,7 +136,7 @@ protected:
 	int widgetWidth, widgetHeight;
 	VkViewport resizeViewport{};
 	VkRect2D   resizeScissorRect2D{};
-	char* strWindowName;
+	const char* strWindowName;
 	VkInstance						instance					= VK_NULL_HANDLE;
 	/*******************************************************************************************************************************/
 	/********* VkSurfaceKHR object that represents an abstract type of surface to present rendered images to. **********************/

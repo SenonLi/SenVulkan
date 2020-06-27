@@ -1,3 +1,4 @@
+
 #include "Shared.h"
 
 
@@ -66,9 +67,6 @@ void ErrorCheck(VkResult result) {
 			break;
 		case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
 			std::cout << "VK_ERROR_OUT_OF_POOL_MEMORY_KHR" << std::endl;
-			break;
-		case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX:
-			std::cout << "VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX" << std::endl;
 			break;
 		default:
 			break;

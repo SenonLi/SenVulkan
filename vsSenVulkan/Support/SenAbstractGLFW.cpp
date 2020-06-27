@@ -1,3 +1,4 @@
+
 #include "SenAbstractGLFW.h"
 
 // Since stb_image.h header file contains the implementation of functions, only one class source file could include it to make new implementation
@@ -254,10 +255,10 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 		if (tex2DArray.empty()) { throw std::runtime_error("failed to load texture2DArray KTX image!"); }
 		maxTextureWidth		= static_cast<uint32_t>(tex2DArray[0].extent().x);
 		maxTextureHeight	= static_cast<uint32_t>(tex2DArray[0].extent().y);
-		textureArrayLayerCount			= tex2DArray.layers();
+		textureArrayLayerCount			= static_cast<int>(tex2DArray.layers());
 		totalHostVisibleTexDeviceSize	= tex2DArray.size();
 	}else {
-		textureArrayLayerCount = texturesDiskAddressVector.size(); 
+		textureArrayLayerCount = static_cast<int>(texturesDiskAddressVector.size());
 		textureWidthVector.resize(textureArrayLayerCount);
 		textureHeightVector.resize(textureArrayLayerCount);
 		// The pointer ptrBackgroundTexture returned from stbi_load(...) is the first element in an array of pixel values.
@@ -295,7 +296,7 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 		for (int i = 0; i < textureArrayLayerCount; i++) {
 			memcpy(static_cast<char*>(ptrHostVisibleData) + offset, ptrDiskTexToUploadVector[i], static_cast<size_t>(hostVisibleTexDeviceSizeVector[i]));
 			stbi_image_free(ptrDiskTexToUploadVector[i]);
-			offset += hostVisibleTexDeviceSizeVector[i];
+			offset += static_cast<int>(hostVisibleTexDeviceSizeVector[i]);
 		}
 	}
 	vkUnmapMemory(logicalDevice, textureStagingBufferDeviceMemory);
@@ -363,7 +364,7 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 		}else { // not same dimension
 			uint32_t offset = 0;
 			// If dimensions differ, copy layer by layer and pass offsets
-			for (uint32_t layerIndex = 0; layerIndex < textureArrayLayerCount; layerIndex++) {
+			for (int layerIndex = 0; layerIndex < textureArrayLayerCount; layerIndex++) {
 				VkBufferImageCopy bufferImageCopyRegion{};
 				bufferImageCopyRegion.imageSubresource.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
 				bufferImageCopyRegion.imageSubresource.mipLevel			= 0;
@@ -375,14 +376,15 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 				bufferImageCopyRegion.bufferOffset			= offset;
 
 				bufferImageCopyRegionsVector.push_back(bufferImageCopyRegion);
-				offset += hostVisibleTexDeviceSizeVector[layerIndex];
+				offset += static_cast<int>(hostVisibleTexDeviceSizeVector[layerIndex]);
 			}
 		}
 	}
 
 	SenAbstractGLFW::transferResourceBufferToImage(tmpCommandBufferCommandPool, imageMemoryTransferQueue,
-		logicalDevice, textureStagingBuffer, deviceLocalTextureToCreate, maxTextureWidth, maxTextureHeight,
-		textureArrayLayerCount, bufferImageCopyRegionsVector.size(), bufferImageCopyRegionsVector.data());
+		logicalDevice, textureStagingBuffer, deviceLocalTextureToCreate, static_cast<uint32_t>(maxTextureWidth)
+		, static_cast<uint32_t>(maxTextureHeight), static_cast<uint32_t>(textureArrayLayerCount)
+		, static_cast<uint32_t>(bufferImageCopyRegionsVector.size()), bufferImageCopyRegionsVector.data());
 
 	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
@@ -2302,9 +2304,9 @@ void SenAbstractGLFW::errorCheck(VkResult result, std::string msg)
 		case VK_ERROR_OUT_OF_POOL_MEMORY_KHR:
 			errString = "VK_ERROR_OUT_OF_POOL_MEMORY_KHR    \n";
 			break;
-		case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX:
-			errString = "VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX    \n";
-			break;
+		//case VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX:
+		//	errString = "VK_ERROR_INVALID_EXTERNAL_HANDLE_KHX    \n";
+		//	break;
 		default:
 			std::cout << result << std::endl;
 			errString = "\n\n Cannot tell error type, check std::cout!    \n";

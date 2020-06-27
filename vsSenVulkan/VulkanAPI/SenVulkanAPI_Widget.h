@@ -36,7 +36,7 @@ public:
 
 	GLFWwindow* widgetGLFW;
 	int widgetWidth, widgetHeight;
-	char* strWindowName;
+	const char* strWindowName;
 
 
 	void showWidget();
