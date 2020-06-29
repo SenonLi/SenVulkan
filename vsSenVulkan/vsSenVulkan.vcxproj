@@ -141,7 +141,10 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Support\SenAbstractGLFW.cpp">
+    <ClCompile Include="Support\pch.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Support\SLVK_AbstractGLFW.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
@@ -182,7 +185,8 @@
     <ClInclude Include="SenVulkanTutorial\Sen_221_Cube.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_222_TinyObjLoader.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_22_DepthTest.h" />
-    <ClInclude Include="Support\SenAbstractGLFW.h" />
+    <ClInclude Include="Support\pch.h" />
+    <ClInclude Include="Support\SLVK_AbstractGLFW.h" />
     <ClInclude Include="Support\SenMeshLinkModel.h" />
     <ClInclude Include="Support\SenOpenGLMeshStruct.h" />
     <ClInclude Include="Support\SenTinyObjLoader.h" />

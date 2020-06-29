@@ -51,11 +51,11 @@ void Sen_221_Cube::reCreateRenderTarget()
 void Sen_221_Cube::cleanUpDepthStencil()
 {
 	if (VK_NULL_HANDLE != depthTestImage) {
-		vkDestroyImage(device, depthTestImage, nullptr);
+		vkDestroyImage(m_LogicalDevice, depthTestImage, nullptr);
 		if (VK_NULL_HANDLE != depthTestImageView)
-			vkDestroyImageView(device, depthTestImageView, nullptr);
+			vkDestroyImageView(m_LogicalDevice, depthTestImageView, nullptr);
 		if (VK_NULL_HANDLE != depthTestImageDeviceMemory)
-			vkFreeMemory(device, depthTestImageDeviceMemory, nullptr); 	// always try to destroy before free
+			vkFreeMemory(m_LogicalDevice, depthTestImageDeviceMemory, nullptr); 	// always try to destroy before free
 
 		depthTestImage = VK_NULL_HANDLE;
 		depthTestImageView = VK_NULL_HANDLE;
@@ -69,19 +69,19 @@ void Sen_221_Cube::updateUniformBuffer() {
 	float duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 220.0f;
 
 	MvpUniformBufferObject mvpUbo{};
-	mvpUbo.model = glm::rotate(glm::mat4(), duration * glm::radians(15.0f), glm::vec3(-1.0f, 1.0f, 1.0f))
-				* glm::rotate(glm::mat4(), duration * glm::radians(3.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+	mvpUbo.model = glm::rotate(glm::mat4(1.0f), duration * glm::radians(15.0f), glm::vec3(-1.0f, 1.0f, 1.0f))
+				* glm::rotate(glm::mat4(1.0f), duration * glm::radians(3.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
 	mvpUbo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.5f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	mvpUbo.projection = glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 100.0f);
+	mvpUbo.projection = glm::perspective(glm::radians(45.0f), m_WidgetWidth / (float)m_WidgetHeight, 0.1f, 100.0f);
 	mvpUbo.projection[1][1] *= -1;
 
 	void* data;
-	vkMapMemory(device, mvpUniformStagingBufferDeviceMemory, 0, sizeof(mvpUbo), 0, &data);
+	vkMapMemory(m_LogicalDevice, mvpUniformStagingBufferDeviceMemory, 0, sizeof(mvpUbo), 0, &data);
 	memcpy(data, &mvpUbo, sizeof(mvpUbo));
-	vkUnmapMemory(device, mvpUniformStagingBufferDeviceMemory);
+	vkUnmapMemory(m_LogicalDevice, mvpUniformStagingBufferDeviceMemory);
 
-	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, mvpUniformStagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, mvpUniformStagingBuffer,
 		mvpOptimalUniformBuffer, sizeof(mvpUbo));
 }
 
@@ -93,13 +93,13 @@ void Sen_221_Cube::finalizeWidget()
 	/******************           Destroy Memory, ImageView, Image          *************************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != backgroundTextureImage) {
-		vkDestroyImage(device, backgroundTextureImage, nullptr);
+		vkDestroyImage(m_LogicalDevice, backgroundTextureImage, nullptr);
 		if (VK_NULL_HANDLE != backgroundTextureImageView)  
-			vkDestroyImageView(device, backgroundTextureImageView, nullptr);
+			vkDestroyImageView(m_LogicalDevice, backgroundTextureImageView, nullptr);
 		if (VK_NULL_HANDLE != texture2DSampler)  
-			vkDestroySampler(device, texture2DSampler, nullptr);
+			vkDestroySampler(m_LogicalDevice, texture2DSampler, nullptr);
 		if (VK_NULL_HANDLE != backgroundTextureImageDeviceMemory)
-			vkFreeMemory(device, backgroundTextureImageDeviceMemory, nullptr); 	// always try to destroy before free
+			vkFreeMemory(m_LogicalDevice, backgroundTextureImageDeviceMemory, nullptr); 	// always try to destroy before free
 
 		backgroundTextureImage				= VK_NULL_HANDLE;
 		backgroundTextureImageDeviceMemory	= VK_NULL_HANDLE;
@@ -110,9 +110,9 @@ void Sen_221_Cube::finalizeWidget()
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != depthTestPipeline) {
-		vkDestroyPipeline(device, depthTestPipeline, nullptr);
-		vkDestroyPipelineLayout(device, textureAppPipelineLayout, nullptr);
-		vkDestroyRenderPass(device, depthTestRenderPass, nullptr);
+		vkDestroyPipeline(m_LogicalDevice, depthTestPipeline, nullptr);
+		vkDestroyPipelineLayout(m_LogicalDevice, textureAppPipelineLayout, nullptr);
+		vkDestroyRenderPass(m_LogicalDevice, depthTestRenderPass, nullptr);
 
 		depthTestPipeline			= VK_NULL_HANDLE;
 		textureAppPipelineLayout	= VK_NULL_HANDLE;
@@ -122,15 +122,15 @@ void Sen_221_Cube::finalizeWidget()
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != cubeVertexBuffer) {
-		vkDestroyBuffer(device, cubeVertexBuffer, nullptr);
-		vkFreeMemory(device, cubeVertexBufferMemory, nullptr);	// always try to destroy before free
+		vkDestroyBuffer(m_LogicalDevice, cubeVertexBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice, cubeVertexBufferMemory, nullptr);	// always try to destroy before free
 
 		cubeVertexBuffer			= VK_NULL_HANDLE;
 		cubeVertexBufferMemory	= VK_NULL_HANDLE;
 	}
 	if (VK_NULL_HANDLE != cubeIndexBuffer) {
-		vkDestroyBuffer(device, cubeIndexBuffer, nullptr);
-		vkFreeMemory(device, cubeIndexBufferMemory, nullptr);	// always try to destroy before free
+		vkDestroyBuffer(m_LogicalDevice, cubeIndexBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice, cubeIndexBufferMemory, nullptr);	// always try to destroy before free
 
 		cubeIndexBuffer = VK_NULL_HANDLE;
 		cubeIndexBufferMemory = VK_NULL_HANDLE;
@@ -144,8 +144,8 @@ void Sen_221_Cube::createDepthTestPipeline()
 	/*********     Destroy old depthTestPipeline first for widgetRezie, if there are      ***********************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != depthTestPipeline) {
-		vkDestroyPipeline(device, depthTestPipeline, nullptr);
-		vkDestroyPipelineLayout(device, textureAppPipelineLayout, nullptr);
+		vkDestroyPipeline(m_LogicalDevice, depthTestPipeline, nullptr);
+		vkDestroyPipelineLayout(m_LogicalDevice, textureAppPipelineLayout, nullptr);
 
 		depthTestPipeline			= VK_NULL_HANDLE;
 		textureAppPipelineLayout	= VK_NULL_HANDLE;
@@ -153,11 +153,12 @@ void Sen_221_Cube::createDepthTestPipeline()
 
 	/****************************************************************************************************************************/
 	/**********                Reserve pipeline ShaderStage CreateInfos Array           *****************************************/
-	/****************************************************************************************************************************/
+	/********     Different shader or vertex layout    ==>>   entirely Recreate the graphics pipeline.    ***********************/
+	/*--------------------------------------------------------------------------------------------------------------------------*/
 	VkShaderModule vertShaderModule, fragShaderModule;
 
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/SenCube.vert", vertShaderModule);
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/SenCube.frag", fragShaderModule);
+	createVulkanShaderModule(m_LogicalDevice, "SenVulkanTutorial/Shaders/SenCube.vert", vertShaderModule);
+	createVulkanShaderModule(m_LogicalDevice, "SenVulkanTutorial/Shaders/SenCube.frag", fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -224,20 +225,20 @@ void Sen_221_Cube::createDepthTestPipeline()
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
-	resizeViewport.x		= 0.0f;									resizeViewport.y		= 0.0f;
-	resizeViewport.width	= static_cast<float>(widgetWidth);		resizeViewport.height	= static_cast<float>(widgetHeight);
-	resizeViewport.minDepth	= 0.0f;									resizeViewport.maxDepth	= 1.0f;
+	m_SwapchainResize_Viewport.x		= 0.0f;									m_SwapchainResize_Viewport.y		= 0.0f;
+	m_SwapchainResize_Viewport.width	= static_cast<float>(m_WidgetWidth);		m_SwapchainResize_Viewport.height	= static_cast<float>(m_WidgetHeight);
+	m_SwapchainResize_Viewport.minDepth	= 0.0f;									m_SwapchainResize_Viewport.maxDepth	= 1.0f;
 
-	resizeScissorRect2D.offset			= { 0, 0 };
-	resizeScissorRect2D.extent.width	= static_cast<uint32_t>(widgetWidth);
-	resizeScissorRect2D.extent.height	= static_cast<uint32_t>(widgetHeight);
+	m_SwapchainResize_ScissorRect2D.offset			= { 0, 0 };
+	m_SwapchainResize_ScissorRect2D.extent.width	= static_cast<uint32_t>(m_WidgetWidth);
+	m_SwapchainResize_ScissorRect2D.extent.height	= static_cast<uint32_t>(m_WidgetHeight);
 
 	VkPipelineViewportStateCreateInfo pipelineViewportStateCreateInfo{};
 	pipelineViewportStateCreateInfo.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	pipelineViewportStateCreateInfo.viewportCount	= 1;
-	pipelineViewportStateCreateInfo.pViewports		= &resizeViewport;
+	pipelineViewportStateCreateInfo.pViewports		= &m_SwapchainResize_Viewport;
 	pipelineViewportStateCreateInfo.scissorCount	= 1;
-	pipelineViewportStateCreateInfo.pScissors		= &resizeScissorRect2D;
+	pipelineViewportStateCreateInfo.pScissors		= &m_SwapchainResize_ScissorRect2D;
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
@@ -310,8 +311,8 @@ void Sen_221_Cube::createDepthTestPipeline()
 	pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayoutVector.size();
 	pipelineLayoutCreateInfo.pSetLayouts	= descriptorSetLayoutVector.data();
 
-	SenAbstractGLFW::errorCheck(
-		vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &textureAppPipelineLayout),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutCreateInfo, nullptr, &textureAppPipelineLayout),
 		std::string("Failed to to create pipeline layout !!!")
 	);
 
@@ -338,9 +339,9 @@ void Sen_221_Cube::createDepthTestPipeline()
 
 	depthTestGraphicsPipelineCreateInfoVector.push_back(depthTestPipelineCreateInfo);
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateGraphicsPipelines(
-			device, VK_NULL_HANDLE,
+			m_LogicalDevice, VK_NULL_HANDLE,
 			(uint32_t)depthTestGraphicsPipelineCreateInfoVector.size(),
 			depthTestGraphicsPipelineCreateInfoVector.data(),
 			nullptr,
@@ -348,8 +349,8 @@ void Sen_221_Cube::createDepthTestPipeline()
 		std::string("Failed to create graphics pipeline !!!")
 	);
 
-	vkDestroyShaderModule(device, vertShaderModule, nullptr);
-	vkDestroyShaderModule(device, fragShaderModule, nullptr);
+	vkDestroyShaderModule(m_LogicalDevice, vertShaderModule, nullptr);
+	vkDestroyShaderModule(m_LogicalDevice, fragShaderModule, nullptr);
 }
 
 void Sen_221_Cube::createCubeIndexBuffer()
@@ -377,30 +378,30 @@ void Sen_221_Cube::createCubeIndexBuffer()
 	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferDeviceMemory;
-	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, indicesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	void* data;
-	vkMapMemory(device, stagingBufferDeviceMemory, 0, indicesBufferSize, 0, &data);
+	vkMapMemory(m_LogicalDevice, stagingBufferDeviceMemory, 0, indicesBufferSize, 0, &data);
 	memcpy(data, indices, indicesBufferSize);
 	//// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
 	//// There are two ways to deal with that problem, and what we use is the first one below:
 	////  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	////  2. Call vkFlushMappedMemoryRanges to after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
-	vkUnmapMemory(device, stagingBufferDeviceMemory);
+	vkUnmapMemory(m_LogicalDevice, stagingBufferDeviceMemory);
 
 	/****************************************************************************************************************************************************/
 	/***************   Transfer from stagingBuffer to Optimal triangleVertexBuffer   ********************************************************************/
-	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, indicesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		cubeIndexBuffer, cubeIndexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, stagingBuffer,
 		cubeIndexBuffer, indicesBufferSize);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
+	vkDestroyBuffer(m_LogicalDevice, stagingBuffer, nullptr);
+	vkFreeMemory(m_LogicalDevice, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
 void Sen_221_Cube::createCubeVertexBuffer()
@@ -456,40 +457,40 @@ void Sen_221_Cube::createCubeVertexBuffer()
 	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferDeviceMemory;
-	SenAbstractGLFW::createResourceBuffer(device, verticesBufferSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, verticesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	void* data;
-	vkMapMemory(device, stagingBufferDeviceMemory, 0, verticesBufferSize, 0, &data);
+	vkMapMemory(m_LogicalDevice, stagingBufferDeviceMemory, 0, verticesBufferSize, 0, &data);
 	memcpy(data, vertices, verticesBufferSize);
 	// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
 	// There are two ways to deal with that problem, and what we use is the first one below:
 	//  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	//  2. Call vkFlushMappedMemoryRanges to after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
-	vkUnmapMemory(device, stagingBufferDeviceMemory);
+	vkUnmapMemory(m_LogicalDevice, stagingBufferDeviceMemory);
 
 	/****************************************************************************************************************************************************/
 	/***************   Transfer from stagingBuffer to Optimal cubeVertexBuffer   ********************************************************************/
-	SenAbstractGLFW::createResourceBuffer(device, verticesBufferSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, verticesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		cubeVertexBuffer, cubeVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, stagingBuffer,
 		cubeVertexBuffer, verticesBufferSize);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
+	vkDestroyBuffer(m_LogicalDevice, stagingBuffer, nullptr);
+	vkFreeMemory(m_LogicalDevice, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
 void Sen_221_Cube::initBackgroundTextureImage()
 {
-	SenAbstractGLFW::createDeviceLocalTexture(device, physicalDeviceMemoryProperties
+	SLVK_AbstractGLFW::createDeviceLocalTexture(m_LogicalDevice, physicalDeviceMemoryProperties
 		, backgroundTextureDiskAddress, VK_IMAGE_TYPE_2D, backgroundTextureWidth, backgroundTextureHeight
 		, backgroundTextureImage, backgroundTextureImageDeviceMemory, backgroundTextureImageView
-		, VK_SHARING_MODE_EXCLUSIVE, defaultThreadCommandPool, graphicsQueue);
+		, VK_SHARING_MODE_EXCLUSIVE, m_DefaultThreadCommandPool, graphicsQueue);
 
-	SenAbstractGLFW::createTextureSampler(device, texture2DSampler);
+	SLVK_AbstractGLFW::createTextureSampler(m_LogicalDevice, texture2DSampler);
 }
 
 void Sen_221_Cube::createTextureAppDescriptorPool()
@@ -512,8 +513,8 @@ void Sen_221_Cube::createTextureAppDescriptorPool()
 	descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizeVector.data();
 	descriptorPoolCreateInfo.maxSets = 1; // Need a new descriptorSetVector
 
-	SenAbstractGLFW::errorCheck(
-		vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateDescriptorPool(m_LogicalDevice, &descriptorPoolCreateInfo, nullptr, &descriptorPool),
 		std::string("Fail to Create descriptorPool !")
 	);
 }
@@ -543,8 +544,8 @@ void Sen_221_Cube::createTextureAppDescriptorSetLayout()
 	perspectiveProjectionDSL_CreateInfo.bindingCount	= perspectiveProjectionDSL_BindingVector.size();
 	perspectiveProjectionDSL_CreateInfo.pBindings		= perspectiveProjectionDSL_BindingVector.data();
 	
-	SenAbstractGLFW::errorCheck(
-		vkCreateDescriptorSetLayout(device, &perspectiveProjectionDSL_CreateInfo, nullptr, &perspectiveProjection_DSL),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateDescriptorSetLayout(m_LogicalDevice, &perspectiveProjectionDSL_CreateInfo, nullptr, &perspectiveProjection_DSL),
 		std::string("Fail to Create perspectiveProjection_DSL !")
 	);
 }
@@ -559,8 +560,8 @@ void Sen_221_Cube::createTextureAppDescriptorSet()
 	descriptorSetAllocateInfo.descriptorSetCount	= descriptorSetLayoutVector.size();
 	descriptorSetAllocateInfo.pSetLayouts			= descriptorSetLayoutVector.data();
 
-	SenAbstractGLFW::errorCheck(
-		vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &perspectiveProjection_DS),
+	SLVK_AbstractGLFW::errorCheck(
+		vkAllocateDescriptorSets(m_LogicalDevice, &descriptorSetAllocateInfo, &perspectiveProjection_DS),
 		std::string("Fail to Allocate perspectiveProjection_DS !")
 	);
 	/**********************************************************************************************************************/
@@ -599,52 +600,52 @@ void Sen_221_Cube::createTextureAppDescriptorSet()
 	DS_Write_Vector.push_back(uniformBuffer_DS_Write);
 	DS_Write_Vector.push_back(combinedImageSampler_DS_Write);
 
-	vkUpdateDescriptorSets(device, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
+	vkUpdateDescriptorSets(m_LogicalDevice, DS_Write_Vector.size(), DS_Write_Vector.data(), 0, nullptr);
 }
 
 void Sen_221_Cube::createCubeCommandBuffers()
 {
 	/************************************************************************************************************/
-	/*********     Destroy old swapchainCommandBufferVector first for widgetRezie, if there are      ************/
+	/*********     Destroy old m_SwapchainCommandBufferVector first for widgetRezie, if there are      ************/
 	/************************************************************************************************************/
-	if (swapchainCommandBufferVector.size() > 0) {
-		vkFreeCommandBuffers(device, defaultThreadCommandPool, (uint32_t)swapchainCommandBufferVector.size(), swapchainCommandBufferVector.data());
+	if (m_SwapchainCommandBufferVector.size() > 0) {
+		vkFreeCommandBuffers(m_LogicalDevice, m_DefaultThreadCommandPool, (uint32_t)m_SwapchainCommandBufferVector.size(), m_SwapchainCommandBufferVector.data());
 	}
 	/****************************************************************************************************************************/
 	/**********           Allocate Swapchain CommandBuffers         *************************************************************/
 	/****************************************************************************************************************************/
-	swapchainCommandBufferVector.resize(swapchainImagesCount);
+	m_SwapchainCommandBufferVector.resize(m_SwapChain_ImagesCount);
 
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
 	commandBufferAllocateInfo.sType			= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	commandBufferAllocateInfo.commandPool	= defaultThreadCommandPool;
+	commandBufferAllocateInfo.commandPool	= m_DefaultThreadCommandPool;
 	commandBufferAllocateInfo.level			= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	commandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(swapchainCommandBufferVector.size());
+	commandBufferAllocateInfo.commandBufferCount = static_cast<uint32_t>(m_SwapchainCommandBufferVector.size());
 
-	SenAbstractGLFW::errorCheck(
-		vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, swapchainCommandBufferVector.data()),
+	SLVK_AbstractGLFW::errorCheck(
+		vkAllocateCommandBuffers(m_LogicalDevice, &commandBufferAllocateInfo, m_SwapchainCommandBufferVector.data()),
 		std::string("Failed to allocate Swapchain commandBuffers !!!")
 	);
 
 	/****************************************************************************************************************************/
 	/**********           Record Triangle Swapchain CommandBuffers        *******************************************************/
 	/****************************************************************************************************************************/
-	for (size_t i = 0; i < swapchainCommandBufferVector.size(); i++) {
+	for (size_t i = 0; i < m_SwapchainCommandBufferVector.size(); i++) {
 		//======================================================================================
 		//======================================================================================
 		VkCommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		vkBeginCommandBuffer(swapchainCommandBufferVector[i], &commandBufferBeginInfo);
+		vkBeginCommandBuffer(m_SwapchainCommandBufferVector[i], &commandBufferBeginInfo);
 
 		//======================================================================================
 		//======================================================================================
 		VkRenderPassBeginInfo renderPassBeginInfo{};
 		renderPassBeginInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassBeginInfo.renderPass			= depthTestRenderPass;
-		renderPassBeginInfo.framebuffer			= swapchainFramebufferVector[i];
+		renderPassBeginInfo.framebuffer			= m_SwapchainFramebufferVector[i];
 		renderPassBeginInfo.renderArea.offset	= { 0, 0 };
-		renderPassBeginInfo.renderArea.extent.width		= widgetWidth;
-		renderPassBeginInfo.renderArea.extent.height	= widgetHeight;
+		renderPassBeginInfo.renderArea.extent.width		= m_WidgetWidth;
+		renderPassBeginInfo.renderArea.extent.height	= m_WidgetHeight;
 
 		// Because we now have both color & depth attachments with VK_ATTACHMENT_LOAD_OP_CLEAR, we also need to specify multiple clear values. 
 		std::array<VkClearValue, 2> clearValueArray{};
@@ -653,33 +654,33 @@ void Sen_221_Cube::createCubeCommandBuffers()
 		renderPassBeginInfo.clearValueCount = (uint32_t)clearValueArray.size();
 		renderPassBeginInfo.pClearValues	= clearValueArray.data();
 
-		vkCmdBeginRenderPass(swapchainCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(m_SwapchainCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		//======================================================================================
 		//======================================================================================
-		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, depthTestPipeline);
+		vkCmdBindPipeline(m_SwapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, depthTestPipeline);
 		VkDeviceSize offsetDeviceSize = 0;
-		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &cubeVertexBuffer, &offsetDeviceSize);
-		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], cubeIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+		vkCmdBindVertexBuffers(m_SwapchainCommandBufferVector[i], 0, 1, &cubeVertexBuffer, &offsetDeviceSize);
+		vkCmdBindIndexBuffer(m_SwapchainCommandBufferVector[i], cubeIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindDescriptorSets(m_SwapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
 			textureAppPipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
 
 		//vkCmdDraw(
-		//	swapchainCommandBufferVector[i],
+		//	m_SwapchainCommandBufferVector[i],
 		//	3, // vertexCount
 		//	1, // instanceCount
 		//	0, // firstVertex
 		//	0  // firstInstance
 		//);
-		vkCmdSetViewport(swapchainCommandBufferVector[i], 0, 1, &resizeViewport);
-		vkCmdSetScissor(swapchainCommandBufferVector[i], 0, 1, &resizeScissorRect2D);
+		vkCmdSetViewport(m_SwapchainCommandBufferVector[i], 0, 1, &m_SwapchainResize_Viewport);
+		vkCmdSetScissor(m_SwapchainCommandBufferVector[i], 0, 1, &m_SwapchainResize_ScissorRect2D);
 
-		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6*6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(m_SwapchainCommandBufferVector[i], 6*6, 1, 0, 0, 0);
 
-		vkCmdEndRenderPass(swapchainCommandBufferVector[i]);
+		vkCmdEndRenderPass(m_SwapchainCommandBufferVector[i]);
 
-		SenAbstractGLFW::errorCheck(
-			vkEndCommandBuffer(swapchainCommandBufferVector[i]),
+		SLVK_AbstractGLFW::errorCheck(
+			vkEndCommandBuffer(m_SwapchainCommandBufferVector[i]),
 			std::string("Failed to end record of Triangle Swapchain commandBuffers !!!")
 		);
 	}

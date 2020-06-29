@@ -6,6 +6,7 @@
 #include <vector>
 #include <unordered_map>
 
+#define GLM_FORCE_SWIZZLE // Have to add this for new glm version without default structure initialization 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 

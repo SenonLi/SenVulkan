@@ -12,7 +12,7 @@ A comprehensive collection of open source C++ examples for [Vulkan](https://www.
 ### [Triangle](triangle/)
 <img src="./screenshots/basic_triangle.png" height="72px" align="right">
 
-Most basic example. Renders a colored triangle using an indexed vertex buffer. Vertex and index data are uploaded to device local memory using so-called "staging buffers". Uses a single pipeline with basic shaders loaded from SPIR-V and and single uniform block for passing matrices that is updated on changing the view.
+Most basic example. Renders a colored triangle using an indexed vertex buffer. Vertex and index data are uploaded to m_LogicalDevice local memory using so-called "staging buffers". Uses a single pipeline with basic shaders loaded from SPIR-V and and single uniform block for passing matrices that is updated on changing the view.
 
 This example is far more explicit than the other examples and is meant to be a starting point for learning Vulkan from the ground up. Much of the code is boilerplate that you'd usually encapsulate in helper functions and classes (which is what the other examples do).
 
@@ -69,8 +69,8 @@ Vulkan is a layered architecture, made up of (The Vulkan Application, The Vulkan
 ### Vulkan
 * 1. Extensions are to support vulkan applications, and layers are for runtime debugging that may even cover the extensions debugging at runtime;
 in other words, each of the layers means to support some extensions, which means the supportable extentions could be found enumerated based on the layerName.
-* 2. Physical device will be implicitly destroyed when the VkInstance is destroyed, so we don't need to, and there is no command to destroy a phisicalDevice.
-* 3. Queues are automatically created when a logical device object is created; 
+* 2. Physical m_LogicalDevice will be implicitly destroyed when the VkInstance is destroyed, so we don't need to, and there is no command to destroy a phisicalDevice.
+* 3. Queues are automatically created when a logical m_LogicalDevice object is created; 
 * 4. Vulkan lets you VkDeviceQueueCreateInfo.pQueuePriorities to queues to influence the scheduling of command buffer execution using floating point numbers between 0.0 and 1.0. This is required even if there is only a single queue.
 * 5. For an image object, a subresource means a combined view from a single texture with a desired mipmap lever;
 						  its format basically means how many channels to represent color (RGBA)
@@ -79,9 +79,9 @@ in other words, each of the layers means to support some extensions, which means
 * 6. Presentation capability is a per-queueFamily feature ( One Physical Device has several QueueFamilies );
 	presentation capability is a feature of physicalDevice;
 	surface survives even longer, and depends only on instance and platform;
-* 7. VkSwapchainKHR is a child of the device and is affected by the lost state (Hardware Problem); it must be destroyed before destroying the VkDevice.
-	 Based on the API function vkCreateSharedSwapchainsKHR(), one logical device could own multiple SwapChains;
-	 However, VkSurfaceKHR is not a child of any VkDevice and is not otherwise affected by the lost device.
+* 7. VkSwapchainKHR is a child of the m_LogicalDevice and is affected by the lost state (Hardware Problem); it must be destroyed before destroying the VkDevice.
+	 Based on the API function vkCreateSharedSwapchainsKHR(), one logical m_LogicalDevice could own multiple SwapChains;
+	 However, VkSurfaceKHR is not a child of any VkDevice and is not otherwise affected by the lost m_LogicalDevice.
 	 After successfully recreating a VkDevice, the same VkSurfaceKHR can be used to create a new VkSwapchainKHR, provided the previous one was destroyed；
 * 8. Multiple Queues with same QueueFamilyIndex can only be created using one deviceQueueCreateInfo;
 	 Different QueueFamilyIndex's Queues need to be created using a vector of DeviceQueueCreateInfos;

@@ -9,8 +9,6 @@
 //}
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-#include "pch.h"
-
 #include "SenVulkanTutorial/Sen_06_Triangle.h"
 #include "SenVulkanTutorial/Sen_07_Texture.h"
 #include "SenVulkanTutorial/Sen_072_TextureArray.h"
@@ -19,9 +17,9 @@
 #include "SenVulkanTutorial/Sen_222_TinyObjLoader.h"
 //#include <functional>
 
-SenAbstractGLFW* widget;
+SLVK_AbstractGLFW* widget;
 int main() {
-	widget = new Sen_222_TinyObjLoader();
+	widget = new Sen_221_Cube();
 	try {
 		widget->showWidget();
 	}

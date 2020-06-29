@@ -3,9 +3,9 @@
 #ifndef __Sen_06_Triangle__
 #define __Sen_06_Triangle__
 
-#include "../Support/SenAbstractGLFW.h"
+#include "../Support/SLVK_AbstractGLFW.h"
 
-class Sen_06_Triangle : public SenAbstractGLFW
+class Sen_06_Triangle : public SLVK_AbstractGLFW
 {
 public:
 	Sen_06_Triangle();

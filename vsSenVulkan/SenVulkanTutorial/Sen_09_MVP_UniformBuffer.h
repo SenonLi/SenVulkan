@@ -3,9 +3,9 @@
 #ifndef __Sen_09_MVP_UniformBuffer__
 #define __Sen_09_MVP_UniformBuffer__
 
-#include "../Support/SenAbstractGLFW.h"
+#include "../Support/SLVK_AbstractGLFW.h"
 
-class Sen_09_MVP_UniformBuffer : public SenAbstractGLFW
+class Sen_09_MVP_UniformBuffer : public SLVK_AbstractGLFW
 {
 public:
 	Sen_09_MVP_UniformBuffer();

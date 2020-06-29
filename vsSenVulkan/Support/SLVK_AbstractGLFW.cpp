@@ -1,5 +1,5 @@
-
-#include "SenAbstractGLFW.h"
+#include "pch.h"
+#include "SLVK_AbstractGLFW.h"
 
 // Since stb_image.h header file contains the implementation of functions, only one class source file could include it to make new implementation
 // all stb_image realated functions have to be implemented in this class
@@ -7,25 +7,25 @@
 #include <stb/stb_image.h>
 #include <gli/gli.hpp> // to load KTX image file
 
-SenAbstractGLFW::SenAbstractGLFW()
+SLVK_AbstractGLFW::SLVK_AbstractGLFW()
 {
-	std::cout << "\nConstructor: SenAbstractGLFW()\n";
+	std::cout << "\nConstructor: SLVK_AbstractGLFW()\n";
 	//showAllSupportedInstanceExtensions(); // Not Useful Functions
 	//showAllSupportedInstanceLayers(); // Not Useful Functions
 	//showAllSupportedExtensionsEachUnderInstanceLayer(); // Not Useful Functions
 
-	widgetWidth = DEFAULT_widgetWidth;
-	widgetHeight = DEFAULT_widgetHeight;
+	m_WidgetWidth = DEFAULT_widgetWidth;
+	m_WidgetHeight = DEFAULT_widgetHeight;
 
-	strWindowName = "Sen GLFW Vulkan Application";
+	strWindowName = "SL GLFW Vulkan Application";
 }
 
-SenAbstractGLFW::~SenAbstractGLFW()
+SLVK_AbstractGLFW::~SLVK_AbstractGLFW()
 {
-	OutputDebugString("\n\t ~SenAbstractGLFW()\n");
+	OutputDebugString("\n\t ~SLVK_AbstractGLFW()\n");
 }
 
-const std::vector<VkFormat> SenAbstractGLFW::depthStencilSupportCheckFormatsVector = {
+const std::vector<VkFormat> SLVK_AbstractGLFW::depthStencilSupportCheckFormatsVector = {
 	VK_FORMAT_D16_UNORM,
 	VK_FORMAT_D32_SFLOAT,
 	VK_FORMAT_X8_D24_UNORM_PACK32,
@@ -35,14 +35,14 @@ const std::vector<VkFormat> SenAbstractGLFW::depthStencilSupportCheckFormatsVect
 	VK_FORMAT_D32_SFLOAT_S8_UINT
 };
 
-bool SenAbstractGLFW::hasStencilComponent(VkFormat formatToCheck)	{
+bool SLVK_AbstractGLFW::hasStencilComponent(VkFormat formatToCheck)	{
 	return	formatToCheck == VK_FORMAT_D32_SFLOAT_S8_UINT ||
 		formatToCheck == VK_FORMAT_D24_UNORM_S8_UINT ||
 		formatToCheck == VK_FORMAT_D16_UNORM_S8_UINT ||
 		formatToCheck == VK_FORMAT_S8_UINT;
 }
 
-void SenAbstractGLFW::createTextureSampler(const VkDevice& logicalDevice, VkSampler& textureSamplerToCreate) {
+void SLVK_AbstractGLFW::createTextureSampler(const VkDevice& logicalDevice, VkSampler& textureSamplerToCreate) {
 	VkSamplerCreateInfo textureSamplerCreateInfo{};
 	textureSamplerCreateInfo.sType						= VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	textureSamplerCreateInfo.magFilter					= VK_FILTER_LINEAR; // oversampling
@@ -58,13 +58,13 @@ void SenAbstractGLFW::createTextureSampler(const VkDevice& logicalDevice, VkSamp
 	textureSamplerCreateInfo.borderColor				= VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	textureSamplerCreateInfo.unnormalizedCoordinates	= VK_FALSE;
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateSampler(logicalDevice, &textureSamplerCreateInfo, nullptr, &textureSamplerToCreate),
 		std::string("Failed to create texture sampler !!!")
 	);
 }
 
-void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const uint32_t& imageWidth, const uint32_t& imageHeight
+void SLVK_AbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const uint32_t& imageWidth, const uint32_t& imageHeight
 	,const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
 	,VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
 	,const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties, const uint32_t& layerCount = 1)
@@ -72,7 +72,7 @@ void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const ui
 	/***********************************************************************************************************************************************/
 	/*************    VK_IMAGE_TILING_LINEAR  have further restrictions on their limits and capabilities    ****************************************/
 	if (imageTiling == VK_IMAGE_TILING_LINEAR) {
-		for (auto posibleDepthStencilFormat : SenAbstractGLFW::depthStencilSupportCheckFormatsVector) {
+		for (auto posibleDepthStencilFormat : SLVK_AbstractGLFW::depthStencilSupportCheckFormatsVector) {
 			if (imageFormat == posibleDepthStencilFormat) {
 				throw std::runtime_error("Illegal imageFormat to create VK_IMAGE_TILING_LINEAR ResourceImage  !!!");
 				break;
@@ -102,7 +102,7 @@ void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const ui
 	imageCreateInfo.samples			= VK_SAMPLE_COUNT_1_BIT;	// Need to fix this if using multisampling
 	imageCreateInfo.sharingMode		= imageSharingMode;			// When being attachments and multiple QueueFamilies require
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateImage(logicalDevice, &imageCreateInfo, nullptr, &imageToCreate),
 		std::string("Failed to create resource image !!!")
 	);
@@ -114,9 +114,9 @@ void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const ui
 	imageMemoryAllocateInfo.sType			= VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	imageMemoryAllocateInfo.allocationSize	= imageMemoryRequirements.size;
 	imageMemoryAllocateInfo.memoryTypeIndex
-		= SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(gpuMemoryProperties, imageMemoryRequirements, requiredMemoryPropertyFlags);
+		= SLVK_AbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(gpuMemoryProperties, imageMemoryRequirements, requiredMemoryPropertyFlags);
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkAllocateMemory(logicalDevice, &imageMemoryAllocateInfo, nullptr, &imageDeviceMemoryToAllocate),
 		std::string("Failed to allocate reource image memory !!!")
 	);
@@ -125,7 +125,7 @@ void SenAbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const ui
 }
 
 
-void SenAbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
+void SLVK_AbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
 	,const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout, const VkFormat& imageFormat
 	,const VkDevice& logicalDevice ,const VkCommandPool& transitionImageLayoutCommandPool  ,const VkQueue& imageMemoryTransferQueue) {
 	
@@ -162,7 +162,7 @@ void SenAbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransi
 	}
 
 	VkCommandBuffer transitionImageLayoutCommandBuffer = VK_NULL_HANDLE;
-	SenAbstractGLFW::beginSingleTimeCommandBuffer(transitionImageLayoutCommandPool, logicalDevice, transitionImageLayoutCommandBuffer);
+	SLVK_AbstractGLFW::beginSingleTimeCommandBuffer(transitionImageLayoutCommandPool, logicalDevice, transitionImageLayoutCommandBuffer);
 	vkCmdPipelineBarrier(
 		transitionImageLayoutCommandBuffer,
 		VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,		// srcStageMask
@@ -172,16 +172,16 @@ void SenAbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransi
 		1,						// imageMemoryBarrierCount
 		&imageMemoryBarrier		// pImageMemoryBarriers
 	);
-	SenAbstractGLFW::endSingleTimeCommandBuffer(transitionImageLayoutCommandPool, logicalDevice, imageMemoryTransferQueue, transitionImageLayoutCommandBuffer);
+	SLVK_AbstractGLFW::endSingleTimeCommandBuffer(transitionImageLayoutCommandPool, logicalDevice, imageMemoryTransferQueue, transitionImageLayoutCommandBuffer);
 	transitionImageLayoutCommandBuffer = VK_NULL_HANDLE;
 }
 
-void SenAbstractGLFW::transferResourceBufferToImage(const VkCommandPool& bufferToImageCommandPool, const VkQueue& bufferToImageTransferQueue
+void SLVK_AbstractGLFW::transferResourceBufferToImage(const VkCommandPool& bufferToImageCommandPool, const VkQueue& bufferToImageTransferQueue
 	, const VkDevice& logicalDevice, const VkBuffer& srcBuffer, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight
 	, const uint32_t& layerCount = 1, const uint32_t& regionCount = 1, const VkBufferImageCopy* ptrBufferImageCopyRegionVec = nullptr) {
 
 	VkCommandBuffer bufferToImageCommandBuffer = VK_NULL_HANDLE;
-	SenAbstractGLFW::beginSingleTimeCommandBuffer(bufferToImageCommandPool, logicalDevice, bufferToImageCommandBuffer);
+	SLVK_AbstractGLFW::beginSingleTimeCommandBuffer(bufferToImageCommandPool, logicalDevice, bufferToImageCommandBuffer);
 	if (layerCount == 1) {
 		VkBufferImageCopy bufferImageCopyRegion{};
 		bufferImageCopyRegion.bufferRowLength = 0; // Means no padding bytes between rows of the image.
@@ -197,15 +197,15 @@ void SenAbstractGLFW::transferResourceBufferToImage(const VkCommandPool& bufferT
 		vkCmdCopyBufferToImage(bufferToImageCommandBuffer, srcBuffer, dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
 			regionCount, ptrBufferImageCopyRegionVec);
 
-	SenAbstractGLFW::endSingleTimeCommandBuffer(bufferToImageCommandPool, logicalDevice, bufferToImageTransferQueue, bufferToImageCommandBuffer);
+	SLVK_AbstractGLFW::endSingleTimeCommandBuffer(bufferToImageCommandPool, logicalDevice, bufferToImageTransferQueue, bufferToImageCommandBuffer);
 	bufferToImageCommandBuffer = VK_NULL_HANDLE;
 }
 
-void SenAbstractGLFW::transferResourceImage(const VkCommandPool& imageTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& imageTransferQueue,
+void SLVK_AbstractGLFW::transferResourceImage(const VkCommandPool& imageTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& imageTransferQueue,
 	const VkImage& srcImage, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight) {
 
 	VkCommandBuffer imageCopyCommandBuffer = VK_NULL_HANDLE;
-	SenAbstractGLFW::beginSingleTimeCommandBuffer(imageTransferCommandPool, logicalDevice, imageCopyCommandBuffer);
+	SLVK_AbstractGLFW::beginSingleTimeCommandBuffer(imageTransferCommandPool, logicalDevice, imageCopyCommandBuffer);
 
 	VkImageSubresourceLayers imageSubresourceLayers{};
 	imageSubresourceLayers.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
@@ -229,11 +229,11 @@ void SenAbstractGLFW::transferResourceImage(const VkCommandPool& imageTransferCo
 		1, &imageCopyRegion
 	);
 
-	SenAbstractGLFW::endSingleTimeCommandBuffer(imageTransferCommandPool, logicalDevice, imageTransferQueue, imageCopyCommandBuffer);
+	SLVK_AbstractGLFW::endSingleTimeCommandBuffer(imageTransferCommandPool, logicalDevice, imageTransferQueue, imageCopyCommandBuffer);
 	imageCopyCommandBuffer = VK_NULL_HANDLE;
 }
 
-void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+void SLVK_AbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
 	, const std::vector<std::string> & texturesDiskAddressVector, const VkImageType& imageType
 	, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
 	, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue)
@@ -282,7 +282,7 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 	VkBuffer textureStagingBuffer;
 	VkDeviceMemory textureStagingBufferDeviceMemory;
 
-	SenAbstractGLFW::createResourceBuffer(logicalDevice, totalHostVisibleTexDeviceSize, // 4 for RGBA
+	SLVK_AbstractGLFW::createResourceBuffer(logicalDevice, totalHostVisibleTexDeviceSize, // 4 for RGBA
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, gpuMemoryProperties,
 		textureStagingBuffer, textureStagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -327,7 +327,7 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 	}
 	else	textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
-	SenAbstractGLFW::createResourceImage(logicalDevice, maxTextureWidth, maxTextureHeight, imageType,
+	SLVK_AbstractGLFW::createResourceImage(logicalDevice, maxTextureWidth, maxTextureHeight, imageType,
 		textureFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, deviceLocalTextureToCreate
 		, textureDeviceMemoryToAllocate, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageSharingMode, gpuMemoryProperties, textureArrayLayerCount);
 
@@ -338,7 +338,7 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 	textureImageSubresourceRange.baseArrayLayer = 0;	// first arrayLayer to start
 	textureImageSubresourceRange.layerCount		= textureArrayLayerCount;
 
-	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+	SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 
 	/******************************************************************************************************/
@@ -381,12 +381,12 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 		}
 	}
 
-	SenAbstractGLFW::transferResourceBufferToImage(tmpCommandBufferCommandPool, imageMemoryTransferQueue,
+	SLVK_AbstractGLFW::transferResourceBufferToImage(tmpCommandBufferCommandPool, imageMemoryTransferQueue,
 		logicalDevice, textureStagingBuffer, deviceLocalTextureToCreate, static_cast<uint32_t>(maxTextureWidth)
 		, static_cast<uint32_t>(maxTextureHeight), static_cast<uint32_t>(textureArrayLayerCount)
 		, static_cast<uint32_t>(bufferImageCopyRegionsVector.size()), bufferImageCopyRegionsVector.data());
 
-	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 
 	/***********************************************************************************************************************************************/
@@ -409,13 +409,13 @@ void SenAbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDevic
 	textureImageViewCreateInfo.format = textureFormat;
 	textureImageViewCreateInfo.subresourceRange = textureImageSubresourceRange;
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateImageView(logicalDevice, &textureImageViewCreateInfo, nullptr, &textureImageViewToCreate),
 		std::string("Failed to create Resource Image View !!!")
 	);
 }
 
-void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+void SLVK_AbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
 	,const char*& textureDiskAddress, const VkImageType& imageType,  int& textureWidth, int& textureHeight
 	,VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
 	,const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue)
@@ -444,7 +444,7 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	/*************   Obsoleted   ( First:   Upload/MapMemory texture image file as linear stagingImage )      **************************************/
 	//VkImage linearStagingImage;
 	//VkDeviceMemory linearStagingImageDeviceMemory;
-	//SenAbstractGLFW::createResourceImage(logicalDevice, textureWidth, textureHeight, imageType,
+	//SLVK_AbstractGLFW::createResourceImage(logicalDevice, textureWidth, textureHeight, imageType,
 	//	VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_TRANSFER_SRC_BIT, linearStagingImage, linearStagingImageDeviceMemory,
 	//	VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, imageSharingMode, gpuMemoryProperties);
 
@@ -479,7 +479,7 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	//stbi_image_free(ptrDiskTextureToUpload);
 	/***********************************************************************************************************************************************/
 	/**********     Obsoleted     ( Second: Transfer stagingImage to deviceLocalTextureImage with correct textureImageLayout )     *****************/
-	//SenAbstractGLFW::createResourceImage(logicalDevice, textureWidth, textureHeight, imageType,
+	//SLVK_AbstractGLFW::createResourceImage(logicalDevice, textureWidth, textureHeight, imageType,
 	//	VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, deviceLocalTextureToCreate
 	//	, textureDeviceMemoryToAllocate, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageSharingMode, gpuMemoryProperties);
 	//
@@ -490,14 +490,14 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	//textureImageSubresourceRange.baseArrayLayer	= 0;	// first arrayLayer to start
 	//textureImageSubresourceRange.layerCount		= 1;
 
-	//SenAbstractGLFW::transitionResourceImageLayout(linearStagingImage, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+	//SLVK_AbstractGLFW::transitionResourceImageLayout(linearStagingImage, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
 	//	VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
-	//SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+	//SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
 	//	VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 
-	//SenAbstractGLFW::transferResourceImage(tmpCommandBufferCommandPool, logicalDevice, imageMemoryTransferQueue,
+	//SLVK_AbstractGLFW::transferResourceImage(tmpCommandBufferCommandPool, logicalDevice, imageMemoryTransferQueue,
 	//	linearStagingImage, deviceLocalTextureToCreate, textureWidth, textureHeight);
-	//SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	//SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 	//	VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_FORMAT_R8G8B8A8_UNORM, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 	/***********************************************************************************************************************************************/
 	/**********     Obsoleted    ( Third:  clean the staging Image, DeviceMemory )         *********************************************************/
@@ -515,7 +515,7 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 			hostVisibleTextureDeviceSize = tex2D.size();
 	else	hostVisibleTextureDeviceSize = textureWidth * textureHeight * 4;
 
-	SenAbstractGLFW::createResourceBuffer(logicalDevice, hostVisibleTextureDeviceSize, // 4 for RGBA
+	SLVK_AbstractGLFW::createResourceBuffer(logicalDevice, hostVisibleTextureDeviceSize, // 4 for RGBA
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, gpuMemoryProperties,
 		textureStagingBuffer, textureStagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
@@ -557,7 +557,7 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	}
 	else	textureFormat = VK_FORMAT_R8G8B8A8_UNORM;
 
-	SenAbstractGLFW::createResourceImage(logicalDevice, textureWidth, textureHeight, imageType,
+	SLVK_AbstractGLFW::createResourceImage(logicalDevice, textureWidth, textureHeight, imageType,
 		textureFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, deviceLocalTextureToCreate
 		, textureDeviceMemoryToAllocate, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, imageSharingMode, gpuMemoryProperties);
 
@@ -568,11 +568,11 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	textureImageSubresourceRange.baseArrayLayer	= 0;	// first arrayLayer to start
 	textureImageSubresourceRange.layerCount		= 1;
 
-	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+	SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
 		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
-	SenAbstractGLFW::transferResourceBufferToImage(tmpCommandBufferCommandPool, imageMemoryTransferQueue,
+	SLVK_AbstractGLFW::transferResourceBufferToImage(tmpCommandBufferCommandPool, imageMemoryTransferQueue,
 		logicalDevice, textureStagingBuffer, deviceLocalTextureToCreate, textureWidth, textureHeight);
-	SenAbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+	SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
 		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 
 	/***********************************************************************************************************************************************/
@@ -595,39 +595,39 @@ void SenAbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, co
 	textureImageViewCreateInfo.format	= textureFormat;
 	textureImageViewCreateInfo.subresourceRange = textureImageSubresourceRange;
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateImageView(logicalDevice, &textureImageViewCreateInfo, nullptr, &textureImageViewToCreate),
 		std::string("Failed to create Resource Image View !!!")
 	);
 }
 
-void SenAbstractGLFW::createSynchronizationPrimitives() {
+void SLVK_AbstractGLFW::createSynchronizationPrimitives() {
 	VkSemaphoreCreateInfo semaphoreCreateInfo{};
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	SenAbstractGLFW::errorCheck(
-		vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &swapchainImageAcquiredSemaphore),
-		std::string("Failed to create swapchainImageAcquiredSemaphore !!!")
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateSemaphore(m_LogicalDevice, &semaphoreCreateInfo, nullptr, &m_SC_ImageAcquiredSemaphore),
+		std::string("Failed to create m_SC_ImageAcquiredSemaphore !!!")
 	);
-	SenAbstractGLFW::errorCheck(
-		vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &paintReadyToPresentSemaphore),
-		std::string("Failed to create paintReadyToPresentSemaphore !!!")
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateSemaphore(m_LogicalDevice, &semaphoreCreateInfo, nullptr, &m_SC_PaintReadyToPresentSemaphore),
+		std::string("Failed to create m_SC_PaintReadyToPresentSemaphore !!!")
 	);
 
 	VkFenceCreateInfo fenceCreateInfo{};
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;	// Signaled state, no wait for the first render of each command buffer
-	waitCommandBufferCompleteFencesVector.resize(swapchainImagesCount);
-	for (auto& fence : waitCommandBufferCompleteFencesVector)
+	m_SC_WaitCommandBufferCompleteFencesVector.resize(m_SwapChain_ImagesCount);
+	for (auto& fence : m_SC_WaitCommandBufferCompleteFencesVector)
 	{
-		SenAbstractGLFW::errorCheck(
-			vkCreateFence(device, &fenceCreateInfo, nullptr, &fence),
+		SLVK_AbstractGLFW::errorCheck(
+			vkCreateFence(m_LogicalDevice, &fenceCreateInfo, nullptr, &fence),
 			std::string("Failed to create waitCommandBufferCompleteFences !!!")
 		);
 	}
 }
 
-void SenAbstractGLFW::initGlfwVulkanDebugWSI()
+void SLVK_AbstractGLFW::initGlfwVulkanDebugWSI()
 {
 	// Init GLFW
 	glfwInit();
@@ -636,7 +636,7 @@ void SenAbstractGLFW::initGlfwVulkanDebugWSI()
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
 	// Create a GLFWwindow object that we can use for GLFW's functions
-	widgetGLFW = glfwCreateWindow(widgetWidth, widgetHeight, strWindowName, nullptr, nullptr);
+	widgetGLFW = glfwCreateWindow(m_WidgetWidth, m_WidgetHeight, strWindowName, nullptr, nullptr);
 	glfwSetWindowPos(widgetGLFW, 400, 240);
 	glfwMakeContextCurrent(widgetGLFW);
 
@@ -645,37 +645,35 @@ void SenAbstractGLFW::initGlfwVulkanDebugWSI()
 	// We can then proceed to call recreateSwapChain, but only if the size of the window is non - zero;
 	//   This case occurs when the window is minimized and it will cause swap chain creation to fail.
 	glfwSetWindowUserPointer(widgetGLFW, this);
-	glfwSetWindowSizeCallback(widgetGLFW, SenAbstractGLFW::onWidgetResized);
-	glfwSetKeyCallback(widgetGLFW, SenAbstractGLFW::onKeyboardDetected);
+	glfwSetWindowSizeCallback(widgetGLFW, SLVK_AbstractGLFW::onWidgetResized);
+	glfwSetKeyCallback(widgetGLFW, SLVK_AbstractGLFW::onKeyboardDetected);
 
 	/*****************************************************************************************************************************/
 	// Set the required callback functions
-	//keyboardRegister();
-
-	if (layersEnabled) {
+	if (DEBUG_LAYERS_ENABLED) {
 		initDebugLayers();
 	}
 	initExtensions();
 	createInstance();
-	if (layersEnabled) {
+	if (DEBUG_LAYERS_ENABLED) {
 		initDebugReportCallback(); // Need created Instance
 	}
 
 	/*******************************************************************************************************************************/
 	/********* The window surface needs to be created right after the instance creation, *******************************************/
-	/********* because the check of "surface" support will influence the physical device selection.     ****************************/
-	createSurface(); // surface == default framebuffer to draw
+	/********* because the check of "surface" support will influence the physical m_LogicalDevice selection.     ****************************/
+	createSurface(); // m_Surface == default framebuffer to draw
 	pickPhysicalDevice();
 	//showPhysicalDeviceSupportedLayersAndExtensions(physicalDevice);// only show physicalDevice after pickPhysicalDevice()
 	createDefaultLogicalDevice();
 	collectSwapchainFeatures();
 	createSwapchain();
-	createSynchronizationPrimitives(); // has to be after createSwapchain() for the correct swapchainImagesCount
+	createSynchronizationPrimitives(); // has to be after createSwapchain() for the correct m_SwapChain_ImagesCount
 
-	std::cout << "\n Finish  SenAbstractGLFW::initGlfwVulkanDebugWSI()\n";
+	std::cout << "\n Finish  SLVK_AbstractGLFW::initGlfwVulkanDebugWSI()\n";
 }
 
-void SenAbstractGLFW::showWidget()
+void SLVK_AbstractGLFW::showWidget()
 {
 	initGlfwVulkanDebugWSI();
 	initVulkanApplication();
@@ -692,7 +690,7 @@ void SenAbstractGLFW::showWidget()
 
 	// All of the operations in drawFrame are asynchronous, which means that when we exit the loop in mainLoop,
 	//  drawing and presentation operations may still be going on, and cleaning up resources while that is happening is a bad idea;
-	vkDeviceWaitIdle(device);
+	vkDeviceWaitIdle(m_LogicalDevice);
 	// must finalize all objects after corresponding deviceWaitIdle
 	finalizeWidget();
 	finalizeAbstractGLFW();
@@ -701,34 +699,34 @@ void SenAbstractGLFW::showWidget()
 	glfwTerminate();
 }
 
-void SenAbstractGLFW::createMvpUniformBuffers() {
+void SLVK_AbstractGLFW::createMvpUniformBuffers() {
 	VkDeviceSize mvpUboUniformBufferDeviceSize = sizeof(MvpUniformBufferObject);
 
-	SenAbstractGLFW::createResourceBuffer(device, mvpUboUniformBufferDeviceSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, mvpUboUniformBufferDeviceSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		mvpUniformStagingBuffer, mvpUniformStagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-	SenAbstractGLFW::createResourceBuffer(device, mvpUboUniformBufferDeviceSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, mvpUboUniformBufferDeviceSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		mvpOptimalUniformBuffer, mvpOptimalUniformBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 }
 
-void SenAbstractGLFW::collectSwapchainFeatures()
+void SLVK_AbstractGLFW::collectSwapchainFeatures()
 {
 	/****************************************************************************************************************************/
 	/********** Getting Surface Capabilities first to support SwapChain. ********************************************************/
 	/*********** Could not do this right after surface creation, because GPU had not been seleted at that time ******************/
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &m_SurfaceCapabilities);
 
 	// Do the check & assignment below because what we surface size we got may not equal to what we set
 	// Make sure the size of swapchain match the size of surface
-	if (surfaceCapabilities.currentExtent.width < UINT32_MAX) {
-		widgetWidth = surfaceCapabilities.currentExtent.width;
-		widgetHeight = surfaceCapabilities.currentExtent.height;
+	if (m_SurfaceCapabilities.currentExtent.width < UINT32_MAX) {
+		m_WidgetWidth = m_SurfaceCapabilities.currentExtent.width;
+		m_WidgetHeight = m_SurfaceCapabilities.currentExtent.height;
 	}else {
-		widgetWidth = (std::max)(surfaceCapabilities.minImageExtent.width, (std::min)(surfaceCapabilities.maxImageExtent.width, static_cast<uint32_t>(widgetWidth)));
-		widgetHeight = (std::max)(surfaceCapabilities.minImageExtent.height, (std::min)(surfaceCapabilities.maxImageExtent.height, static_cast<uint32_t>(widgetHeight)));
+		m_WidgetWidth = (std::max)(m_SurfaceCapabilities.minImageExtent.width, (std::min)(m_SurfaceCapabilities.maxImageExtent.width, static_cast<uint32_t>(m_WidgetWidth)));
+		m_WidgetHeight = (std::max)(m_SurfaceCapabilities.minImageExtent.height, (std::min)(m_SurfaceCapabilities.maxImageExtent.height, static_cast<uint32_t>(m_WidgetHeight)));
 	}
 
 	/****************************************************************************************************************************/
@@ -737,36 +735,36 @@ void SenAbstractGLFW::collectSwapchainFeatures()
 	// For best performance, possibly at the price of some latency, the minImageCount should be set to at least 3 if supported;
 	// maxImageCount can actually be zero in which case the amount of swapchain images do not have an upper limit other than available memory. 
 	// It's also possible that the swapchain image amount is locked to a certain value on certain systems. The code below takes into consideration both of these possibilities.
-	if (swapchainImagesCount < surfaceCapabilities.minImageCount + 1) swapchainImagesCount = surfaceCapabilities.minImageCount + 1;
-	if (surfaceCapabilities.maxImageCount > 0) {
-		if (swapchainImagesCount > surfaceCapabilities.maxImageCount) swapchainImagesCount = surfaceCapabilities.maxImageCount;
+	if (m_SwapChain_ImagesCount < m_SurfaceCapabilities.minImageCount + 1) m_SwapChain_ImagesCount = m_SurfaceCapabilities.minImageCount + 1;
+	if (m_SurfaceCapabilities.maxImageCount > 0) {
+		if (m_SwapChain_ImagesCount > m_SurfaceCapabilities.maxImageCount) m_SwapChain_ImagesCount = m_SurfaceCapabilities.maxImageCount;
 	}
 
 	/****************************************************************************************************************************/
 	/********** Reserve swapchain imageFormat and imageColorSpace ***************************************************************/
 	uint32_t formatCount = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, nullptr);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, nullptr);
 	if (formatCount == 0) {
 		throw std::runtime_error("No SurfaceFormat found, not a suitable GPU!");
 	}
-	surfaceFormatVector.clear();
+	std::vector<VkSurfaceFormatKHR> surfaceFormatVector;
 	surfaceFormatVector.resize(formatCount);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, surfaceFormatVector.data());
+	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, surfaceFormatVector.data());
 	if (surfaceFormatVector[0].format == VK_FORMAT_UNDEFINED) { // the prasentation layer (WSI) doesnot care about the format
-		surfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
-		surfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+		m_SurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
+		m_SurfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
 	}
 	else {
-		surfaceFormat = surfaceFormatVector[0];
+		m_SurfaceFormat = surfaceFormatVector[0];
 	}
 
 	/****************************************************************************************************************************/
 	/**********                Reserve presentMode                ***************************************************************/
 	/****************************************************************************************************************************/
 	uint32_t presentModeCount = 0;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, nullptr);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, nullptr);
 	std::vector<VkPresentModeKHR> presentModeVector(presentModeCount);
-	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModeVector.data());
+	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, presentModeVector.data());
 	for (auto m : presentModeVector) {
 		// VK_PRESENT_MODE_MAILBOX_KHR is good for gaming, but can only get full advantage of MailBox PresentMode with more than 2 buffers,
 		// which means triple-buffering
@@ -777,15 +775,15 @@ void SenAbstractGLFW::collectSwapchainFeatures()
 	}
 }
 
-void SenAbstractGLFW::createSwapchain() {
+void SLVK_AbstractGLFW::createSwapchain() {
 	VkSwapchainCreateInfoKHR swapchainCreateInfo{};
 	swapchainCreateInfo.sType				= VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-	swapchainCreateInfo.surface				= surface;
-	swapchainCreateInfo.minImageCount		= swapchainImagesCount; // This is only to set the min value, instead of the actual imageCount after swapchain creation
-	swapchainCreateInfo.imageFormat			= surfaceFormat.format;
-	swapchainCreateInfo.imageColorSpace		= surfaceFormat.colorSpace;
-	swapchainCreateInfo.imageExtent.width	= widgetWidth;
-	swapchainCreateInfo.imageExtent.height	= widgetHeight;
+	swapchainCreateInfo.surface				= m_Surface;
+	swapchainCreateInfo.minImageCount		= m_SwapChain_ImagesCount; // This is only to set the min value, instead of the actual imageCount after swapchain creation
+	swapchainCreateInfo.imageFormat			= m_SurfaceFormat.format;
+	swapchainCreateInfo.imageColorSpace		= m_SurfaceFormat.colorSpace;
+	swapchainCreateInfo.imageExtent.width	= m_WidgetWidth;
+	swapchainCreateInfo.imageExtent.height	= m_WidgetHeight;
 	swapchainCreateInfo.imageArrayLayers	= 1;
 	swapchainCreateInfo.imageUsage			= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
@@ -801,39 +799,40 @@ void SenAbstractGLFW::createSwapchain() {
 		swapchainCreateInfo.pQueueFamilyIndices		= nullptr;
 	}
 
-	swapchainCreateInfo.preTransform	= surfaceCapabilities.currentTransform; // Rotate of Mirror before presentation (VkSurfaceTransformFlagBitsKHR)
+	swapchainCreateInfo.preTransform	= m_SurfaceCapabilities.currentTransform; // Rotate of Mirror before presentation (VkSurfaceTransformFlagBitsKHR)
 	swapchainCreateInfo.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;  // 
 	swapchainCreateInfo.presentMode		= presentMode;
 	swapchainCreateInfo.clipped			= VK_TRUE;	// Typically always set this true, such that Vulkan never render the invisible (out of visible range) image 
 
-	swapchainCreateInfo.oldSwapchain	= swapChain;// resize window
+	swapchainCreateInfo.oldSwapchain	= m_SwapChain;// resize window
 	VkSwapchainKHR newSwapChain;
-	SenAbstractGLFW::errorCheck(
-		vkCreateSwapchainKHR(device, &swapchainCreateInfo, nullptr, &newSwapChain),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateSwapchainKHR(m_LogicalDevice, &swapchainCreateInfo, nullptr, &newSwapChain),
 		std::string("Fail to Create SwapChain !")
 	);
-	swapChain = newSwapChain;
+	m_SwapChain = newSwapChain;
 
 	// Get actual amount/count of swapchain images
-	vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, nullptr);
+	vkGetSwapchainImagesKHR(m_LogicalDevice, m_SwapChain, &m_SwapChain_ImagesCount, nullptr);
 
-	swapchainImagesVector.resize(swapchainImagesCount);
-	swapchainImageViewsVector.resize(swapchainImagesCount);
 	// Get swapChainImages, instead of asking for real count.
-	SenAbstractGLFW::errorCheck(
-		vkGetSwapchainImagesKHR(device, swapChain, &swapchainImagesCount, swapchainImagesVector.data()),
+	std::vector<VkImage>			swapchainImagesVector;
+	swapchainImagesVector.resize(m_SwapChain_ImagesCount);
+	m_SwapchainImageViewsVector.resize(m_SwapChain_ImagesCount);
+	SLVK_AbstractGLFW::errorCheck(
+		vkGetSwapchainImagesKHR(m_LogicalDevice, m_SwapChain, &m_SwapChain_ImagesCount, swapchainImagesVector.data()),
 		std::string("Failed to get SwapChain Images")
 	);
 
 	/**************************************************************************************************************************/
-	/****************       Create corresponding swapchainImageViewVector       ***********************************************/
+	/****************       Create corresponding m_SwapchainImageViewsVector       ***********************************************/
 	/**************************************************************************************************************************/
-	for (uint32_t i = 0; i < swapchainImagesCount; ++i) {
+	for (uint32_t i = 0; i < m_SwapChain_ImagesCount; ++i) {
 		VkImageViewCreateInfo swapchainImageViewCreateInfo{};
 		swapchainImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		swapchainImageViewCreateInfo.image = swapchainImagesVector[i];
 		swapchainImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; // handling 2D image
-		swapchainImageViewCreateInfo.format = surfaceFormat.format;
+		swapchainImageViewCreateInfo.format = m_SurfaceFormat.format;
 		swapchainImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
 		swapchainImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
 		swapchainImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -844,24 +843,29 @@ void SenAbstractGLFW::createSwapchain() {
 		swapchainImageViewCreateInfo.subresourceRange.baseArrayLayer = 0; // first array layer accessible to the view
 		swapchainImageViewCreateInfo.subresourceRange.layerCount = 1; // if larger than 1, .viewType needs to be array
 
-		SenAbstractGLFW::errorCheck(
-			vkCreateImageView(device, &swapchainImageViewCreateInfo, nullptr, &swapchainImageViewsVector[i]),
+		SLVK_AbstractGLFW::errorCheck(
+			vkCreateImageView(m_LogicalDevice, &swapchainImageViewCreateInfo, nullptr, &m_SwapchainImageViewsVector[i]),
 			std::string("Failed to create SwapChan ImageViews !!")
 		);
 	}
 }
 
-void SenAbstractGLFW::swapSwapchain()
+/* Draw frames by acquiring images, submitting the right draw command buffer and returning the images back to the swap chain.
+	1. vkAcquireNextImageKHR:	Acquire an image from the SwapChain;
+	2. vkQueueSubmit:			Select the appropriate command buffer for that image and execute it;
+	3. vkQueuePresentKHR:		Return the image to the swap chain for presentation to the screen.
+*/
+void SLVK_AbstractGLFW::swapSwapchain()
 {
 	/*******************************************************************************************************************************/
-	/*********         Acquire an image from the swap chain                              *******************************************/
-	/*******************************************************************************************************************************/
+	/*********         1. vkAcquireNextImageKHR:	Acquire an image from the SwapChain;     ***************************************/
+	/*-----------------------------------------------------------------------------------------------------------------------------*/
 	// Use of a presentable image must occur only after the image is returned by vkAcquireNextImageKHR, and before it is presented by vkQueuePresentKHR.
 	// This includes transitioning the image layout and rendering commands.
 	uint32_t swapchainImageIndex;
-	VkResult result = vkAcquireNextImageKHR(device, swapChain,
+	VkResult result = vkAcquireNextImageKHR(m_LogicalDevice, m_SwapChain,
 		UINT64_MAX,							// timeout for this Image Acquire command, i.e., (std::numeric_limits<uint64_t>::max)(),
-		swapchainImageAcquiredSemaphore,	// semaphore to signal
+		m_SC_ImageAcquiredSemaphore,	// semaphore to signal
 		VK_NULL_HANDLE,						// fence to signal
 		&swapchainImageIndex
 	);
@@ -872,21 +876,21 @@ void SenAbstractGLFW::swapSwapchain()
 		throw std::runtime_error("Failed to acquire swap chain image !!!!");
 	}
 
-	// Use a fence to wait until the swapchainCommandBufferVector[swapchainImageIndex] has finished last execution before using it again
-	SenAbstractGLFW::errorCheck(
-		vkWaitForFences(device, 1, &waitCommandBufferCompleteFencesVector[swapchainImageIndex], VK_TRUE, UINT64_MAX),
-		std::string("Failed to vkWaitForFences waitCommandBufferCompleteFencesVector[swapchainImageIndex] !!")
+	// Use a fence to wait until the m_SwapchainCommandBufferVector[swapchainImageIndex] has finished last execution before using it again
+	SLVK_AbstractGLFW::errorCheck(
+		vkWaitForFences(m_LogicalDevice, 1, &m_SC_WaitCommandBufferCompleteFencesVector[swapchainImageIndex], VK_TRUE, UINT64_MAX),
+		std::string("Failed to vkWaitForFences m_SC_WaitCommandBufferCompleteFencesVector[swapchainImageIndex] !!")
 	); 
-	vkResetFences(device, 1, &waitCommandBufferCompleteFencesVector[swapchainImageIndex]);
+	vkResetFences(m_LogicalDevice, 1, &m_SC_WaitCommandBufferCompleteFencesVector[swapchainImageIndex]);
 
 	/*******************************************************************************************************************************/
-	/*********       Execute the command buffer with that image as attachment in the framebuffer           *************************/
-	/*******************************************************************************************************************************/
+	/*********       2. vkQueueSubmit:			Select the appropriate command buffer for that image and execute it    *************/
+	/*-----------------------------------------------------------------------------------------------------------------------------*/
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 	std::vector<VkSemaphore> submitInfoWaitSemaphoresVecotr;
-	submitInfoWaitSemaphoresVecotr.push_back(swapchainImageAcquiredSemaphore);
+	submitInfoWaitSemaphoresVecotr.push_back(m_SC_ImageAcquiredSemaphore);
 	// Commands before this submitInfoWaitDstStageMaskArray stage could be executed before semaphore signaled
 	VkPipelineStageFlags submitInfoWaitDstStageMaskArray[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.waitSemaphoreCount	= (uint32_t)submitInfoWaitSemaphoresVecotr.size();
@@ -894,29 +898,29 @@ void SenAbstractGLFW::swapSwapchain()
 	submitInfo.pWaitDstStageMask	= submitInfoWaitDstStageMaskArray;
 
 	submitInfo.commandBufferCount	= 1;	// wait for submitInfoCommandBuffersVecotr to be created
-	submitInfo.pCommandBuffers		= &swapchainCommandBufferVector[swapchainImageIndex];
+	submitInfo.pCommandBuffers		= &m_SwapchainCommandBufferVector[swapchainImageIndex];
 
 	std::vector<VkSemaphore> submitInfoSignalSemaphoresVector;
-	submitInfoSignalSemaphoresVector.push_back(paintReadyToPresentSemaphore);
+	submitInfoSignalSemaphoresVector.push_back(m_SC_PaintReadyToPresentSemaphore);
 	submitInfo.signalSemaphoreCount = (uint32_t)submitInfoSignalSemaphoresVector.size();
 	submitInfo.pSignalSemaphores	= submitInfoSignalSemaphoresVector.data();
 
-	SenAbstractGLFW::errorCheck(
-		vkQueueSubmit(graphicsQueue, 1, &submitInfo, waitCommandBufferCompleteFencesVector[swapchainImageIndex]),
+	SLVK_AbstractGLFW::errorCheck(
+		vkQueueSubmit(graphicsQueue, 1, &submitInfo, m_SC_WaitCommandBufferCompleteFencesVector[swapchainImageIndex]),
 		std::string("Failed to submit draw command buffer !!!")
 	);
 
 	/*******************************************************************************************************************************/
-	/*********             Return the image to the swap chain for presentation                **************************************/
-	/*******************************************************************************************************************************/
+	/*********  3. vkQueuePresentKHR:		Return the image to the swap chain for presentation to the screen.      ****************/
+	/*-----------------------------------------------------------------------------------------------------------------------------*/
 	std::vector<VkSemaphore> presentInfoWaitSemaphoresVector;
-	presentInfoWaitSemaphoresVector.push_back(paintReadyToPresentSemaphore);
+	presentInfoWaitSemaphoresVector.push_back(m_SC_PaintReadyToPresentSemaphore);
 	VkPresentInfoKHR presentInfo{};
 	presentInfo.sType				= VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount	= (uint32_t)presentInfoWaitSemaphoresVector.size();
 	presentInfo.pWaitSemaphores		= presentInfoWaitSemaphoresVector.data();
 
-	VkSwapchainKHR swapChainsArray[] = { swapChain };
+	VkSwapchainKHR swapChainsArray[] = { m_SwapChain };
 	presentInfo.swapchainCount	= 1;
 	presentInfo.pSwapchains		= swapChainsArray;
 	presentInfo.pImageIndices	= &swapchainImageIndex;
@@ -929,58 +933,57 @@ void SenAbstractGLFW::swapSwapchain()
 	}
 }
 
-void SenAbstractGLFW::cleanUpSwapChain() {
+void SLVK_AbstractGLFW::cleanUpSwapChain() {
 	cleanUpDepthStencil();
 
-	if (VK_NULL_HANDLE != swapChain) {
-		vkDestroySwapchainKHR(device, swapChain, nullptr);
+	if (VK_NULL_HANDLE != m_SwapChain) {
+		vkDestroySwapchainKHR(m_LogicalDevice, m_SwapChain, nullptr);
 		// swapChainImages will be handled by the destroy of swapchain
 		// But swapchainImageViews need to be dstroyed first, before the destroy of swapchain.
-		for (auto swapchainImageView : swapchainImageViewsVector) {
-			vkDestroyImageView(device, swapchainImageView, nullptr);
+		for (auto swapchainImageView : m_SwapchainImageViewsVector) {
+			vkDestroyImageView(m_LogicalDevice, swapchainImageView, nullptr);
 		}
-		swapchainImageViewsVector.clear();
+		m_SwapchainImageViewsVector.clear();
 
-		swapChain = VK_NULL_HANDLE;
-		swapchainImagesVector.clear();
-		// The memory of swapChain images is not managed by programmer (No allocation, nor free)
+		m_SwapChain = VK_NULL_HANDLE;
+		// The memory of m_SwapChain images is not managed by programmer (No allocation, nor free)
 		// It may not be freed until the window is destroyed, or another swapchain is created for the window.
 		/************************************************************************************************************/
-		/*********************           Destroy swapchainFramebuffer         ***************************************/
+		/*********************           Destroy m_SwapchainFramebufferVector         ***************************************/
 		/************************************************************************************************************/
-		for (auto swapchainFramebuffer : swapchainFramebufferVector) {
-			vkDestroyFramebuffer(device, swapchainFramebuffer, nullptr);
+		for (auto swapchainFramebuffer : m_SwapchainFramebufferVector) {
+			vkDestroyFramebuffer(m_LogicalDevice, swapchainFramebuffer, nullptr);
 		}
-		swapchainFramebufferVector.clear();
+		m_SwapchainFramebufferVector.clear();
 	}
 }
 
-void SenAbstractGLFW::reInitPresentation()
+void SLVK_AbstractGLFW::reInitPresentation()
 {
 	// Call vkDeviceWaitIdle() here, because we shouldn't touch resources that may still be in use. 
-	vkDeviceWaitIdle(device);
+	vkDeviceWaitIdle(m_LogicalDevice);
 
 	// Have to use this 3 commands to get currentExtent
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfaceCapabilities);
-	if (surfaceCapabilities.currentExtent.width < UINT32_MAX) {
-		widgetWidth = surfaceCapabilities.currentExtent.width;
-		widgetHeight = surfaceCapabilities.currentExtent.height;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &m_SurfaceCapabilities);
+	if (m_SurfaceCapabilities.currentExtent.width < UINT32_MAX) {
+		m_WidgetWidth = m_SurfaceCapabilities.currentExtent.width;
+		m_WidgetHeight = m_SurfaceCapabilities.currentExtent.height;
 	}
 	else {
-		glfwGetWindowSize(widgetGLFW, &widgetWidth, &widgetHeight);
+		glfwGetWindowSize(widgetGLFW, &m_WidgetWidth, &m_WidgetHeight);
 	}
 	
-	resizeViewport.width				= static_cast<float>(widgetWidth);		
-	resizeViewport.height				= static_cast<float>(widgetHeight);
-	resizeScissorRect2D.extent.width	= static_cast<uint32_t>(widgetWidth);
-	resizeScissorRect2D.extent.height	= static_cast<uint32_t>(widgetHeight);
+	m_SwapchainResize_Viewport.width				= static_cast<float>(m_WidgetWidth);		
+	m_SwapchainResize_Viewport.height				= static_cast<float>(m_WidgetHeight);
+	m_SwapchainResize_ScissorRect2D.extent.width	= static_cast<uint32_t>(m_WidgetWidth);
+	m_SwapchainResize_ScissorRect2D.extent.height	= static_cast<uint32_t>(m_WidgetHeight);
 	
 	cleanUpSwapChain();
 	createSwapchain();
 }
 
 
-void SenAbstractGLFW::createDepthTestAttachment()
+void SLVK_AbstractGLFW::createDepthTestAttachment()
 {
 	/********************************************************************************************************************/
 	/******    If first time (not resize):  Check depthTestImage Format,  Initial depthTestImageSubresourceRange     ****/
@@ -990,7 +993,7 @@ void SenAbstractGLFW::createDepthTestAttachment()
 		if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
 			depthTestFormat = VK_FORMAT_D32_SFLOAT; // VK_FORMAT_D32_SFLOAT is extremely common for depthTest
 		else {
-			for (auto f : SenAbstractGLFW::depthStencilSupportCheckFormatsVector) {
+			for (auto f : SLVK_AbstractGLFW::depthStencilSupportCheckFormatsVector) {
 				VkFormatProperties formatProperties{};
 				vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
 				if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
@@ -1000,9 +1003,8 @@ void SenAbstractGLFW::createDepthTestAttachment()
 			}
 			if (depthTestFormat == VK_FORMAT_UNDEFINED) {
 				throw std::runtime_error("Depth stencil format not selected.");
-				std::exit(-1);
 			}
-			hasStencil = SenAbstractGLFW::hasStencilComponent(depthTestFormat);
+			hasStencil = SLVK_AbstractGLFW::hasStencilComponent(depthTestFormat);
 		}
 
 		depthTestImageSubresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | (hasStencil ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
@@ -1013,7 +1015,7 @@ void SenAbstractGLFW::createDepthTestAttachment()
 	}
 	/********************************************************************************************************************/
 	/***************************     Create depthTest Image     *********************************************************/
-	SenAbstractGLFW::createResourceImage(device, widgetWidth, widgetHeight, VK_IMAGE_TYPE_2D,  // depthTestImage is also a 2D image
+	SLVK_AbstractGLFW::createResourceImage(m_LogicalDevice, m_WidgetWidth, m_WidgetHeight, VK_IMAGE_TYPE_2D,  // depthTestImage is also a 2D image
 		depthTestFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthTestImage
 		, depthTestImageDeviceMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties);
 
@@ -1026,21 +1028,21 @@ void SenAbstractGLFW::createDepthTestAttachment()
 	depthTestImageViewCreateInfo.format				= depthTestFormat;
 	depthTestImageViewCreateInfo.subresourceRange	= depthTestImageSubresourceRange;
 
-	vkCreateImageView(device, &depthTestImageViewCreateInfo, nullptr, &depthTestImageView);
+	vkCreateImageView(m_LogicalDevice, &depthTestImageViewCreateInfo, nullptr, &depthTestImageView);
 	/********************************************************************************************************************/
 	/******************************     Transition depthTest ImageLayout     ********************************************/
-	SenAbstractGLFW::transitionResourceImageLayout(depthTestImage, depthTestImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, depthTestFormat, device, defaultThreadCommandPool, graphicsQueue);
+	SLVK_AbstractGLFW::transitionResourceImageLayout(depthTestImage, depthTestImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, depthTestFormat, m_LogicalDevice, m_DefaultThreadCommandPool, graphicsQueue);
 }
 
 
-void SenAbstractGLFW::createDepthTestRenderPass()
+void SLVK_AbstractGLFW::createDepthTestRenderPass()
 {
 	/********************************************************************************************************************/
 	/************    Setting AttachmentDescription:  colorAttachment + depthTestAttachment      *************************/
 	/********************************************************************************************************************/
 	VkAttachmentDescription colorAttachmentDescription{};
-	colorAttachmentDescription.format			= surfaceFormat.format;// swapChainImageFormat;
+	colorAttachmentDescription.format			= m_SurfaceFormat.format;// swapChainImageFormat;
 	colorAttachmentDescription.samples			= VK_SAMPLE_COUNT_1_BIT; // Not using multi-sampling
 	colorAttachmentDescription.loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachmentDescription.storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
@@ -1110,26 +1112,26 @@ void SenAbstractGLFW::createDepthTestRenderPass()
 	depthTestRenderPassCreateInfo.dependencyCount	= (uint32_t)subpassDependencyVector.size();
 	depthTestRenderPassCreateInfo.pDependencies		= subpassDependencyVector.data();
 
-	SenAbstractGLFW::errorCheck(
-		vkCreateRenderPass(device, &depthTestRenderPassCreateInfo, nullptr, &depthTestRenderPass),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateRenderPass(m_LogicalDevice, &depthTestRenderPassCreateInfo, nullptr, &depthTestRenderPass),
 		std::string("Failed to create render pass !!")
 	);
 }
 
-void SenAbstractGLFW::createDepthTestSwapchainFramebuffers()
+void SLVK_AbstractGLFW::createDepthTestSwapchainFramebuffers()
 {
 	/************************************************************************************************************/
 	/*********     Destroy old swapchainFramebuffers first for widgetRezie, if there are      *******************/
 	/************************************************************************************************************/
-	for (auto swapchainFramebuffer : swapchainFramebufferVector) {
-		vkDestroyFramebuffer(device, swapchainFramebuffer, nullptr);
+	for (auto swapchainFramebuffer : m_SwapchainFramebufferVector) {
+		vkDestroyFramebuffer(m_LogicalDevice, swapchainFramebuffer, nullptr);
 	}
-	swapchainFramebufferVector.clear();
-	swapchainFramebufferVector.resize(swapchainImagesCount);
+	m_SwapchainFramebufferVector.clear();
+	m_SwapchainFramebufferVector.resize(m_SwapChain_ImagesCount);
 
-	for (size_t i = 0; i < swapchainImagesCount; i++) {
+	for (size_t i = 0; i < m_SwapChain_ImagesCount; i++) {
 		std::array<VkImageView, 2> imageViewAttachmentArray = {
-			swapchainImageViewsVector[i],
+			m_SwapchainImageViewsVector[i],
 			// The same depth image can be used by all of them,
 			// because only a single subpass is running at the same time in this example due to the semaphores.
 			depthTestImageView
@@ -1140,128 +1142,23 @@ void SenAbstractGLFW::createDepthTestSwapchainFramebuffers()
 		framebufferCreateInfo.renderPass		= depthTestRenderPass;
 		framebufferCreateInfo.attachmentCount	= (uint32_t)imageViewAttachmentArray.size();
 		framebufferCreateInfo.pAttachments		= imageViewAttachmentArray.data();
-		framebufferCreateInfo.width				= widgetWidth;
-		framebufferCreateInfo.height			= widgetHeight;
+		framebufferCreateInfo.width				= m_WidgetWidth;
+		framebufferCreateInfo.height			= m_WidgetHeight;
 		framebufferCreateInfo.layers			= 1;
 
-		SenAbstractGLFW::errorCheck(
-			vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &swapchainFramebufferVector[i]),
+		SLVK_AbstractGLFW::errorCheck(
+			vkCreateFramebuffer(m_LogicalDevice, &framebufferCreateInfo, nullptr, &m_SwapchainFramebufferVector[i]),
 			std::string("Failed to create framebuffer !!!")
 		);
 	}
 }
 
-void SenAbstractGLFW::createDepthStencilAttachment()
-{
-	/********************************************************************************************************************/
-	/******************************  Check Image Format *****************************************************************/
-	for (auto f : SenAbstractGLFW::depthStencilSupportCheckFormatsVector) {
-		VkFormatProperties formatProperties{};
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
-		if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
-			depthStencilFormat = f;
-			break;
-		}
-	}
-	if (depthStencilFormat == VK_FORMAT_UNDEFINED) {
-		throw std::runtime_error("Depth stencil format not selected.");
-		std::exit(-1);
-	}
-	if ((depthStencilFormat == VK_FORMAT_D32_SFLOAT_S8_UINT) ||
-		(depthStencilFormat == VK_FORMAT_D24_UNORM_S8_UINT) ||
-		(depthStencilFormat == VK_FORMAT_D16_UNORM_S8_UINT) ||
-		(depthStencilFormat == VK_FORMAT_S8_UINT)) {
-		stencilAvailable = true;
-	}
-	else std::cout << "The seleted depthStencilFormat is not in the stencil list !!!!! \n \t Take a check !!!!\n";
-
-	/******************************************************************************************************************************************************/
-	/******************************  Create depthStencil Image ********************************************************************************************/
-	VkImageCreateInfo depthStencilImageCreateInfo{};
-	depthStencilImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	depthStencilImageCreateInfo.flags = 0;
-	depthStencilImageCreateInfo.imageType = VK_IMAGE_TYPE_2D; // 2D image
-	depthStencilImageCreateInfo.format = depthStencilFormat;
-	depthStencilImageCreateInfo.extent.width = widgetWidth;
-	depthStencilImageCreateInfo.extent.height = widgetHeight;
-	depthStencilImageCreateInfo.extent.depth = 1; // 2D image, has to be 1
-	depthStencilImageCreateInfo.mipLevels = 1;
-	depthStencilImageCreateInfo.arrayLayers = 1;
-	depthStencilImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT; // multi-sampling
-	depthStencilImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	depthStencilImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;// for depth stencil image
-	depthStencilImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // no share with anther QueueFamily
-	depthStencilImageCreateInfo.queueFamilyIndexCount = 0;
-	depthStencilImageCreateInfo.pQueueFamilyIndices = nullptr;
-	depthStencilImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // will overwrite this with a command later
-
-	vkCreateImage(device, &depthStencilImageCreateInfo, nullptr, &depthStencilImage);
-
-	/******************************************************************************************************************************************************/
-	/***************************  Allocate & Bind memory for depthStencil Image using the created handle *********************************************************/
-	VkMemoryRequirements imageMemoryRequirements{};
-	vkGetImageMemoryRequirements(device, depthStencilImage, &imageMemoryRequirements);
-
-	uint32_t gpuMemoryTypeIndex = SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
-		physicalDeviceMemoryProperties,
-		imageMemoryRequirements,
-		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT  // Set the resource to reside on GPU itself
-	);
-
-	VkMemoryAllocateInfo depthStencilImageMemoryAllocateInfo{};
-	depthStencilImageMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	depthStencilImageMemoryAllocateInfo.allocationSize = imageMemoryRequirements.size;
-	depthStencilImageMemoryAllocateInfo.memoryTypeIndex = gpuMemoryTypeIndex;
-
-	vkAllocateMemory(device, &depthStencilImageMemoryAllocateInfo, nullptr, &depthStencilImageDeviceMemory);
-	vkBindImageMemory(device, depthStencilImage, depthStencilImageDeviceMemory, 0);
-
-	/******************************************************************************************************************************************************/
-	/******************************  Create depthStencil Image View ***************************************************************************************/
-	VkImageViewCreateInfo depthStencilImageViewCreateInfo{};
-	depthStencilImageViewCreateInfo.sType		= VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	depthStencilImageViewCreateInfo.image		= depthStencilImage;
-	depthStencilImageViewCreateInfo.viewType	= VK_IMAGE_VIEW_TYPE_2D;
-	depthStencilImageViewCreateInfo.format		= depthStencilFormat;
-	depthStencilImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-	depthStencilImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-	depthStencilImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-	depthStencilImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-	depthStencilImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | (stencilAvailable ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
-	depthStencilImageViewCreateInfo.subresourceRange.baseMipLevel	= 0;
-	depthStencilImageViewCreateInfo.subresourceRange.levelCount		= 1;
-	depthStencilImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-	depthStencilImageViewCreateInfo.subresourceRange.layerCount		= 1;
-
-	vkCreateImageView(device, &depthStencilImageViewCreateInfo, nullptr, &depthStencilImageView);
-
-
-	//// Use command buffer to create the depth image. This includes -
-	//// Command buffer allocation, recording with begin/end scope and submission.
-	//CommandBufferMgr::allocCommandBuffer(&deviceObj->device, cmdPool, &cmdDepthImageCommandBuffer);
-	//CommandBufferMgr::beginCommandBuffer(cmdDepthImageCommandBuffer);
-	//{
-	//	// Set the image layout to depth stencil optimal
-	//	setImageLayout(FormatImageMemoryViewDepthStruct.image,
-	//		depthImageViewCreateInfo.subresourceRange.aspectMask,
-	//		VK_IMAGE_LAYOUT_UNDEFINED,
-	//		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, (VkAccessFlagBits)0, cmdDepthImageCommandBuffer);
-	//}
-	//CommandBufferMgr::endCommandBuffer(cmdDepthImageCommandBuffer);
-	//CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdDepthImageCommandBuffer);
-
-	//// Create the image view and allow the application to use the images.
-	//depthImageViewCreateInfo.image = FormatImageMemoryViewDepthStruct.image;
-	//result = vkCreateImageView(deviceObj->device, &depthImageViewCreateInfo, NULL, &FormatImageMemoryViewDepthStruct.view);
-	//assert(result == VK_SUCCESS);
-}
-
-void SenAbstractGLFW::createColorAttachOnlyRenderPass() {
+void SLVK_AbstractGLFW::createColorAttachOnlyRenderPass() {
 	/********************************************************************************************************************/
 	/************    Setting AttachmentDescription:  Only colorAttachment is needed for Triangle      *******************/
 	/********************************************************************************************************************/
 	std::array<VkAttachmentDescription, 1> attachmentDescriptionArray{};
-	attachmentDescriptionArray[0].format			= surfaceFormat.format;// swapChainImageFormat;
+	attachmentDescriptionArray[0].format			= m_SurfaceFormat.format;// swapChainImageFormat;
 	attachmentDescriptionArray[0].samples			= VK_SAMPLE_COUNT_1_BIT; // Not using multi-sampling
 	attachmentDescriptionArray[0].loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachmentDescriptionArray[0].storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
@@ -1302,102 +1199,50 @@ void SenAbstractGLFW::createColorAttachOnlyRenderPass() {
 	subpassDependencyVector.push_back(headSubpassDependency);
 
 	/********************************************************************************************************************/
-	/*********************    Create RenderPass for rendering triangle      *********************************************/
+	/*********************    Create RenderPass for rendering       *****************************************************/
 	/********************************************************************************************************************/
-	VkRenderPassCreateInfo triangleRenderPassCreateInfo{};
-	triangleRenderPassCreateInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	triangleRenderPassCreateInfo.attachmentCount	= (uint32_t)attachmentDescriptionArray.size();
-	triangleRenderPassCreateInfo.pAttachments		= attachmentDescriptionArray.data();
-	triangleRenderPassCreateInfo.subpassCount		= (uint32_t)subpassDescriptionArray.size();
-	triangleRenderPassCreateInfo.pSubpasses			= subpassDescriptionArray.data();
-	triangleRenderPassCreateInfo.dependencyCount	= (uint32_t)subpassDependencyVector.size();
-	triangleRenderPassCreateInfo.pDependencies		= subpassDependencyVector.data();
+	VkRenderPassCreateInfo colorAttachOnlyRenderPassCreateInfo{};
+	colorAttachOnlyRenderPassCreateInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	colorAttachOnlyRenderPassCreateInfo.attachmentCount	= (uint32_t)attachmentDescriptionArray.size();
+	colorAttachOnlyRenderPassCreateInfo.pAttachments		= attachmentDescriptionArray.data();
+	colorAttachOnlyRenderPassCreateInfo.subpassCount		= (uint32_t)subpassDescriptionArray.size();
+	colorAttachOnlyRenderPassCreateInfo.pSubpasses			= subpassDescriptionArray.data();
+	colorAttachOnlyRenderPassCreateInfo.dependencyCount	= (uint32_t)subpassDependencyVector.size();
+	colorAttachOnlyRenderPassCreateInfo.pDependencies		= subpassDependencyVector.data();
 
-	SenAbstractGLFW::errorCheck(
-		vkCreateRenderPass(device, &triangleRenderPassCreateInfo, nullptr, &colorAttachOnlyRenderPass),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateRenderPass(m_LogicalDevice, &colorAttachOnlyRenderPassCreateInfo, nullptr, &m_ColorAttachOnlyRenderPass),
 		std::string("Failed to create render pass !!")
 	);
 }
 
-void SenAbstractGLFW::createDepthStencilRenderPass()
-{
-	std::array<VkAttachmentDescription, 2> attachmentDescriptionsArray{}; // for both of color and depthStencil
-	attachmentDescriptionsArray[0].flags			= 0;
-	attachmentDescriptionsArray[0].format			= depthStencilFormat;
-	attachmentDescriptionsArray[0].samples			= VK_SAMPLE_COUNT_1_BIT;
-	attachmentDescriptionsArray[0].loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDescriptionsArray[0].storeOp			= VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachmentDescriptionsArray[0].stencilLoadOp	= VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachmentDescriptionsArray[0].stencilStoreOp	= VK_ATTACHMENT_STORE_OP_STORE;
-	attachmentDescriptionsArray[0].initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentDescriptionsArray[0].finalLayout		= VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	attachmentDescriptionsArray[1].flags			= 0;
-	attachmentDescriptionsArray[1].format			= surfaceFormat.format;
-	attachmentDescriptionsArray[1].samples			= VK_SAMPLE_COUNT_1_BIT;
-	attachmentDescriptionsArray[1].loadOp			= VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDescriptionsArray[1].storeOp			= VK_ATTACHMENT_STORE_OP_STORE;
-	attachmentDescriptionsArray[1].initialLayout	= VK_IMAGE_LAYOUT_UNDEFINED;
-	attachmentDescriptionsArray[1].finalLayout		= VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	VkAttachmentReference depthStencilAttachmentReference{};
-	depthStencilAttachmentReference.attachment = 0;
-	depthStencilAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	std::array<VkAttachmentReference, 1> colorAttachmentReferenceArray{};
-	colorAttachmentReferenceArray[0].attachment = 1;
-	colorAttachmentReferenceArray[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	std::array<VkSubpassDescription, 1> subpassDescriptionArray{};
-	subpassDescriptionArray[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpassDescriptionArray[0].colorAttachmentCount = (uint32_t)colorAttachmentReferenceArray.size();
-	subpassDescriptionArray[0].pColorAttachments = colorAttachmentReferenceArray.data();		// layout(location=0) out vec4 FinalColor;
-	subpassDescriptionArray[0].pDepthStencilAttachment = &depthStencilAttachmentReference;
-
-
-	VkRenderPassCreateInfo renderPassCreateInfo{};
-	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	renderPassCreateInfo.attachmentCount = (uint32_t)attachmentDescriptionsArray.size();
-	renderPassCreateInfo.pAttachments = attachmentDescriptionsArray.data();
-	renderPassCreateInfo.subpassCount = (uint32_t)subpassDescriptionArray.size();
-	renderPassCreateInfo.pSubpasses = subpassDescriptionArray.data();
-
-	SenAbstractGLFW::errorCheck(
-		vkCreateRenderPass(device, &renderPassCreateInfo, nullptr, &depthTestRenderPass),
-		std::string("Failed to create colorDepthStencil render pass !!")
-	);
-}
-
-void SenAbstractGLFW::createDepthStencilGraphicsPipeline()
-{
-}
-
-void SenAbstractGLFW::createShaderModuleFromSPIRV(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule & targetShaderModule)
+void SLVK_AbstractGLFW::createShaderModuleFromSPIRV(const VkDevice& logicalDevice, const std::vector<char>& SPIRV_Vector, VkShaderModule & targetShaderModule)
 {
 	VkShaderModuleCreateInfo shaderModuleCreateInfo{};
 	shaderModuleCreateInfo.sType	= VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	shaderModuleCreateInfo.codeSize = SPIRV_Vector.size();
 	shaderModuleCreateInfo.pCode	= (uint32_t*)SPIRV_Vector.data();
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateShaderModule(logicalDevice, &shaderModuleCreateInfo, nullptr, &targetShaderModule),
 		std::string("Failed to create the shader module !!")
 	);
 }
 
-void SenAbstractGLFW::createVulkanShaderModule(const VkDevice& logicalDevice, const std::string& diskFileAddress, VkShaderModule& shaderModule) {
+void SLVK_AbstractGLFW::createVulkanShaderModule(const VkDevice& logicalDevice, const std::string& diskFileAddress, VkShaderModule& shaderModule) {
 	std::vector<char> spirvCharVector;// (spirv32Vector.size() * sizeof(uint32_t) / sizeof(char));
 
 	if (diskFileAddress.substr(diskFileAddress.length() - 4, 4).compare(".spv") == 0)
-		spirvCharVector = SenAbstractGLFW::readFileStream(diskFileAddress, true);
+		spirvCharVector = SLVK_AbstractGLFW::readFileStream(diskFileAddress, true);
 	else {
 		std::string shaderTypeString = diskFileAddress.substr(diskFileAddress.length() - 5, 5);
 		shaderc_shader_kind shadercType;
 		if		(shaderTypeString.compare(".vert") == 0)		shadercType = shaderc_glsl_vertex_shader;
 		else if (shaderTypeString.compare(".frag") == 0)		shadercType = shaderc_glsl_fragment_shader;
 		else if (shaderTypeString.compare(".geom") == 0)		shadercType = shaderc_glsl_geometry_shader;
+		else assert(false);
 		// Android system Attension:   sourceString size for shadercToSPIRV() below may change.
-		std::vector<uint32_t> spirv32Vector = SenAbstractGLFW::shadercToSPIRV("glShaderSrc", shadercType, SenAbstractGLFW::readFileStream(diskFileAddress).data());
+		std::vector<uint32_t> spirv32Vector = SLVK_AbstractGLFW::shadercToSPIRV("glShaderSrc", shadercType, SLVK_AbstractGLFW::readFileStream(diskFileAddress).data());
 		spirvCharVector.resize(spirv32Vector.size() * sizeof(uint32_t) / sizeof(char));
 		memcpy(spirvCharVector.data(), spirv32Vector.data(), spirvCharVector.size());
 	}
@@ -1405,52 +1250,52 @@ void SenAbstractGLFW::createVulkanShaderModule(const VkDevice& logicalDevice, co
 	createShaderModuleFromSPIRV(logicalDevice, spirvCharVector, shaderModule);
 }
 
-void SenAbstractGLFW::createColorAttachOnlySwapchainFramebuffers() {
+void SLVK_AbstractGLFW::createColorAttachOnlySwapchainFramebuffers() {
 	/************************************************************************************************************/
 	/*****************     Destroy old swapchainFramebuffers first, if there are      ***************************/
 	/************************************************************************************************************/
-	for (auto swapchainFramebuffer : swapchainFramebufferVector) {
-		vkDestroyFramebuffer(device, swapchainFramebuffer, nullptr);
+	for (auto swapchainFramebuffer : m_SwapchainFramebufferVector) {
+		vkDestroyFramebuffer(m_LogicalDevice, swapchainFramebuffer, nullptr);
 	}
-	swapchainFramebufferVector.clear();
-	swapchainFramebufferVector.resize(swapchainImagesCount);
+	m_SwapchainFramebufferVector.clear();
+	m_SwapchainFramebufferVector.resize(m_SwapChain_ImagesCount);
 
-	for (size_t i = 0; i < swapchainImagesCount; i++) {
+	for (size_t i = 0; i < m_SwapChain_ImagesCount; i++) {
 
 		std::array<VkImageView, 1> imageViewAttachmentArray{};
-		imageViewAttachmentArray[0] = swapchainImageViewsVector[i];
+		imageViewAttachmentArray[0] = m_SwapchainImageViewsVector[i];
 
 		VkFramebufferCreateInfo framebufferCreateInfo{};
 		framebufferCreateInfo.sType				= VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferCreateInfo.renderPass		= colorAttachOnlyRenderPass;
+		framebufferCreateInfo.renderPass		= m_ColorAttachOnlyRenderPass;
 		framebufferCreateInfo.attachmentCount	= (uint32_t)imageViewAttachmentArray.size();
 		framebufferCreateInfo.pAttachments		= imageViewAttachmentArray.data();
-		framebufferCreateInfo.width				= widgetWidth;
-		framebufferCreateInfo.height			= widgetHeight;
+		framebufferCreateInfo.width				= m_WidgetWidth;
+		framebufferCreateInfo.height			= m_WidgetHeight;
 		framebufferCreateInfo.layers			= 1;
 
-		SenAbstractGLFW::errorCheck(
-			vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &swapchainFramebufferVector[i]),
+		SLVK_AbstractGLFW::errorCheck(
+			vkCreateFramebuffer(m_LogicalDevice, &framebufferCreateInfo, nullptr, &m_SwapchainFramebufferVector[i]),
 			std::string("Failed to create framebuffer !!!")
 		);
 	}
 }
 
-void SenAbstractGLFW::createDefaultCommandPool() {
+void SLVK_AbstractGLFW::createDefaultCommandPool() {
 
 	VkCommandPoolCreateInfo commandPoolCreateInfo{};
 	commandPoolCreateInfo.sType				= VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	commandPoolCreateInfo.flags				= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow commandBuffer to be individually reset
 	commandPoolCreateInfo.queueFamilyIndex	= graphicsQueueFamilyIndex;
 
-	SenAbstractGLFW::errorCheck(
-		vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &defaultThreadCommandPool),
-		std::string("Failed to create defaultThreadCommandPool !!!")
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateCommandPool(m_LogicalDevice, &commandPoolCreateInfo, nullptr, &m_DefaultThreadCommandPool),
+		std::string("Failed to create m_DefaultThreadCommandPool !!!")
 	);
 
 }
 
-void SenAbstractGLFW::createResourceBuffer(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
+void SLVK_AbstractGLFW::createResourceBuffer(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
 	const VkBufferUsageFlags& bufferUsageFlags, const VkSharingMode& bufferSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 	VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags) {
 	/*****************************************************************************************************************************************************/
@@ -1460,7 +1305,7 @@ void SenAbstractGLFW::createResourceBuffer(const VkDevice& logicalDevice, const 
 	bufferCreateInfo.usage = bufferUsageFlags;
 	bufferCreateInfo.sharingMode = bufferSharingMode;
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, &bufferToCreate),
 		std::string("Failed to create a Buffer Resource !!!")
 	);
@@ -1472,17 +1317,17 @@ void SenAbstractGLFW::createResourceBuffer(const VkDevice& logicalDevice, const 
 	bufferMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	bufferMemoryAllocateInfo.allocationSize = bufferMemoryRequirements.size;
 	bufferMemoryAllocateInfo.memoryTypeIndex
-		= SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(gpuMemoryProperties, bufferMemoryRequirements, requiredMemoryPropertyFlags);
+		= SLVK_AbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(gpuMemoryProperties, bufferMemoryRequirements, requiredMemoryPropertyFlags);
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkAllocateMemory(logicalDevice, &bufferMemoryAllocateInfo, nullptr, &bufferDeviceMemoryToAllocate),
-		std::string("Failed to allocate triangleVertexBufferMemory !!!")
+		std::string("Failed to allocate m_TriangleVertexBufferMemory !!!")
 	);
 
 	vkBindBufferMemory(logicalDevice, bufferToCreate, bufferDeviceMemoryToAllocate, 0);
 }
 
-void SenAbstractGLFW::beginSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice, 
+void SLVK_AbstractGLFW::beginSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice, 
 												VkCommandBuffer& tempCommandBufferToBegin) {
 	// You may wish to create a separate command pool for these kinds of short - lived buffers, 
 	// because the implementation may be able to apply memory allocation optimizations.
@@ -1502,7 +1347,7 @@ void SenAbstractGLFW::beginSingleTimeCommandBuffer(const VkCommandPool& tmpComma
 	vkBeginCommandBuffer(tempCommandBufferToBegin, &tmpCommandBufferBeginInfo);
 }
 
-void SenAbstractGLFW::endSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice
+void SLVK_AbstractGLFW::endSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice
 											, const VkQueue& tmpCommandBufferQueue, const VkCommandBuffer& tmpCommandBufferToEnd) {
 	// You may wish to create a separate command pool for these kinds of short - lived buffers, 
 	// because the implementation may be able to apply memory allocation optimizations.
@@ -1523,21 +1368,21 @@ void SenAbstractGLFW::endSingleTimeCommandBuffer(const VkCommandPool& tmpCommand
 	vkFreeCommandBuffers(logicalDevice, tmpCommandBufferCommandPool, 1, &tmpCommandBufferToEnd);
 }
 
-void SenAbstractGLFW::transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferMemoryTransferQueue,
+void SLVK_AbstractGLFW::transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferMemoryTransferQueue,
 	const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize) {
 
 	VkCommandBuffer bufferCopyCommandBuffer = VK_NULL_HANDLE;
-	SenAbstractGLFW::beginSingleTimeCommandBuffer(bufferTransferCommandPool, logicalDevice,	bufferCopyCommandBuffer);
+	SLVK_AbstractGLFW::beginSingleTimeCommandBuffer(bufferTransferCommandPool, logicalDevice,	bufferCopyCommandBuffer);
 
 	VkBufferCopy bufferCopyRegion{};
 	bufferCopyRegion.size = resourceBufferSize;
 	vkCmdCopyBuffer(bufferCopyCommandBuffer, srcBuffer, dstBuffer, 1, &bufferCopyRegion);
 
-	SenAbstractGLFW::endSingleTimeCommandBuffer(bufferTransferCommandPool, logicalDevice, bufferMemoryTransferQueue, bufferCopyCommandBuffer);
+	SLVK_AbstractGLFW::endSingleTimeCommandBuffer(bufferTransferCommandPool, logicalDevice, bufferMemoryTransferQueue, bufferCopyCommandBuffer);
 	bufferCopyCommandBuffer = VK_NULL_HANDLE;
 }
 
-void SenAbstractGLFW::createSingleRectIndexBuffer()
+void SLVK_AbstractGLFW::createSingleRectIndexBuffer()
 {
 	uint16_t indices[] = { 0, 1, 2, 1, 2, 3 };
 	size_t indicesBufferSize = sizeof(indices);
@@ -1546,36 +1391,36 @@ void SenAbstractGLFW::createSingleRectIndexBuffer()
 	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferDeviceMemory;
-	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, indicesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	void* data;
-	vkMapMemory(device, stagingBufferDeviceMemory, 0, indicesBufferSize, 0, &data);
+	vkMapMemory(m_LogicalDevice, stagingBufferDeviceMemory, 0, indicesBufferSize, 0, &data);
 	memcpy(data, indices, indicesBufferSize);
 	//// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
 	//// There are two ways to deal with that problem, and what we use is the first one below:
 	////  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	////  2. Call vkFlushMappedMemoryRanges to after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
-	vkUnmapMemory(device, stagingBufferDeviceMemory);
+	vkUnmapMemory(m_LogicalDevice, stagingBufferDeviceMemory);
 
 	/****************************************************************************************************************************************************/
-	/***************   Transfer from stagingBuffer to Optimal triangleVertexBuffer   ********************************************************************/
-	SenAbstractGLFW::createResourceBuffer(device, indicesBufferSize,
+	/***************   Transfer from stagingBuffer to Optimal m_TriangleVertexBuffer   ********************************************************************/
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, indicesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		singleRectIndexBuffer, singleRectIndexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, stagingBuffer,
 		singleRectIndexBuffer, indicesBufferSize);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
+	vkDestroyBuffer(m_LogicalDevice, stagingBuffer, nullptr);
+	vkFreeMemory(m_LogicalDevice, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
 /****************************************************************************************************************************/
-VKAPI_ATTR VkBool32 VKAPI_CALL SenAbstractGLFW::pfnDebugCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL SLVK_AbstractGLFW::pfnDebugCallback(
 	VkFlags msgFlags,
 	VkDebugReportObjectTypeEXT objType,
 	uint64_t srcObject,
@@ -1607,7 +1452,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL SenAbstractGLFW::pfnDebugCallback(
 * 1. Call initDebugLayers() before createInstance() to track the instance creation procedure.
 * Sum:
 *********************************************************************/
-void SenAbstractGLFW::initDebugLayers()
+void SLVK_AbstractGLFW::initDebugLayers()
 {
 	// choose layers
 	debugInstanceLayersVector.push_back("VK_LAYER_LUNARG_standard_validation");
@@ -1631,7 +1476,7 @@ void SenAbstractGLFW::initDebugLayers()
 }
 
 
-void SenAbstractGLFW::initExtensions()
+void SLVK_AbstractGLFW::initExtensions()
 {
 	/*****************************************************************************************************************************/
 	/*************  For Instance Extensions  *************************************************************************************/
@@ -1646,7 +1491,7 @@ void SenAbstractGLFW::initExtensions()
 		//std::string strExtension = std::to_string(i) + ". " + std::string(glfwInstanceExtensions[i]) + "\n";
 		//std::cout << strExtension;
 	}
-	if (layersEnabled) {
+	if (DEBUG_LAYERS_ENABLED) {
 		debugInstanceExtensionsVector.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 	}
 
@@ -1658,14 +1503,14 @@ void SenAbstractGLFW::initExtensions()
 
 /*******************************************************************
 * 1. vkCreateInstance requires VkInstanceCreateInfo
-* 2. VkInstanceCreateInfo requires VkApplicationInfo, setup of extensions (instance and device) and layers
+* 2. VkInstanceCreateInfo requires VkApplicationInfo, setup of extensions (instance and m_LogicalDevice) and layers
 * Sum: createInstance requires basic appInfo, InstanceExtensionInfo, DeviceExtensionInfo and LayerInfo
 *********************************************************************/
-void SenAbstractGLFW::createInstance()
+void SLVK_AbstractGLFW::createInstance()
 {
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "Sen Triangle";
+	appInfo.pApplicationName = "SL Triangle";
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.pEngineName = "No Engine";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
@@ -1678,35 +1523,34 @@ void SenAbstractGLFW::createInstance()
 	instanceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(debugInstanceExtensionsVector.size());
 	instanceCreateInfo.ppEnabledExtensionNames = debugInstanceExtensionsVector.data();
 
-	if (layersEnabled) {
+	if (DEBUG_LAYERS_ENABLED) {
 		instanceCreateInfo.enabledLayerCount = static_cast<uint32_t>(debugInstanceLayersVector.size());
 		instanceCreateInfo.ppEnabledLayerNames = debugInstanceLayersVector.data();
 		instanceCreateInfo.pNext = &debugReportCallbackCreateInfo;
 	}
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateInstance(&instanceCreateInfo, nullptr, &instance),
 		std::string("Failed to create instance! \t Error:\t")
 	);
 }
 
-void SenAbstractGLFW::initDebugReportCallback()
+void SLVK_AbstractGLFW::initDebugReportCallback()
 {
 	fetch_vkCreateDebugReportCallbackEXT = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT"));
 	fetch_vkDestroyDebugReportCallbackEXT = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"));
 
 	if (nullptr == fetch_vkCreateDebugReportCallbackEXT || nullptr == fetch_vkDestroyDebugReportCallbackEXT) {
 		throw std::runtime_error("Vulkan Error: Can't fetch debug function pointers.");
-		std::exit(-1);
 	}
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		fetch_vkCreateDebugReportCallbackEXT(instance, &debugReportCallbackCreateInfo, nullptr, &debugReportCallback),
 		std::string("Create debugReportCallback Error!")
 	);
 }
 
-void SenAbstractGLFW::pickPhysicalDevice()
+void SLVK_AbstractGLFW::pickPhysicalDevice()
 {
 	uint32_t physicalDevicesCount = 0;
 	vkEnumeratePhysicalDevices(instance, &physicalDevicesCount, nullptr);
@@ -1758,15 +1602,15 @@ void SenAbstractGLFW::pickPhysicalDevice()
 	std::cout << std::endl;
 }
 
-void SenAbstractGLFW::createSurface()
+void SLVK_AbstractGLFW::createSurface()
 {
-	SenAbstractGLFW::errorCheck(
-		glfwCreateWindowSurface(instance, widgetGLFW, nullptr, &surface),
-		std::string("Failed to create window surface!")
+	SLVK_AbstractGLFW::errorCheck(
+		glfwCreateWindowSurface(instance, widgetGLFW, nullptr, &m_Surface),
+		std::string("Failed to create window m_Surface!")
 	);
 }
 
-void SenAbstractGLFW::showPhysicalDeviceInfo(const VkPhysicalDevice & gpuToCheck)
+void SLVK_AbstractGLFW::showPhysicalDeviceInfo(const VkPhysicalDevice & gpuToCheck)
 {
 	if (VK_NULL_HANDLE == gpuToCheck) 		throw std::runtime_error("Wrong GPU!");
 
@@ -1786,7 +1630,7 @@ void SenAbstractGLFW::showPhysicalDeviceInfo(const VkPhysicalDevice & gpuToCheck
 	std::cout << stream.str();
 }
 
-bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex)
+bool SLVK_AbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex)
 {
 	graphicsQueueIndex = -1; presentQueueIndex = -1;
 	if (VK_NULL_HANDLE == gpuToCheck) return VK_FALSE;
@@ -1814,7 +1658,7 @@ bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToChec
 
 		if (presentQueueIndex < 0 && gpuQueueFamiliesPropertiesVector[i].queueCount > 0) {
 			VkBool32 presentSupport = VK_FALSE;// WSI_supported, or surface support
-			vkGetPhysicalDeviceSurfaceSupportKHR(gpuToCheck, i, surface, &presentSupport);
+			vkGetPhysicalDeviceSurfaceSupportKHR(gpuToCheck, i, m_Surface, &presentSupport);
 			if (presentSupport) {
 				presentQueueIndex = i;
 			}
@@ -1827,7 +1671,7 @@ bool SenAbstractGLFW::isPhysicalDeviceSuitable(const VkPhysicalDevice& gpuToChec
 	return graphicsQueueIndex >= 0 && presentQueueIndex >= 0;
 }
 
-int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex)
+int SLVK_AbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int32_t& graphicsQueueIndex, int32_t& presentQueueIndex)
 {
 	graphicsQueueIndex = -1; presentQueueIndex = -1;
 	if (VK_NULL_HANDLE == gpuToCheck) return 0;
@@ -1840,9 +1684,9 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int
 	std::vector<VkQueueFamilyProperties> gpuQueueFamiliesPropertiesVector(gpuQueueFamiliesCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamiliesPropertiesVector.data());
 
-	//	1. Get the number of Queues supported by the Physical device
+	//	1. Get the number of Queues supported by the Physical m_LogicalDevice
 	//	2. Get the properties each Queue type or Queue Family
-	//			There could be 4 Queue type or Queue families supported by physical device - 
+	//			There could be 4 Queue type or Queue families supported by physical m_LogicalDevice - 
 	//			Graphics Queue	- VK_QUEUE_GRAPHICS_BIT 
 	//			Compute Queue	- VK_QUEUE_COMPUTE_BIT
 	//			DMA				- VK_QUEUE_TRANSFER_BIT
@@ -1857,7 +1701,7 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int
 
 		if (presentQueueIndex < 0 && gpuQueueFamiliesPropertiesVector[i].queueCount > 0) {
 			VkBool32 presentSupport = VK_FALSE;// WSI_supported, or surface support
-			vkGetPhysicalDeviceSurfaceSupportKHR(gpuToCheck, i, surface, &presentSupport);
+			vkGetPhysicalDeviceSurfaceSupportKHR(gpuToCheck, i, m_Surface, &presentSupport);
 			if (presentSupport) {
 				presentQueueIndex = i;
 			}
@@ -1889,7 +1733,7 @@ int SenAbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, int
 	return score;
 }
 
-void SenAbstractGLFW::createDefaultLogicalDevice()
+void SLVK_AbstractGLFW::createDefaultLogicalDevice()
 {
 	std::vector<VkDeviceQueueCreateInfo> deviceQueuesCreateInfosVector;
 	/*******************************************************************************************************************************/
@@ -1914,31 +1758,31 @@ void SenAbstractGLFW::createDefaultLogicalDevice()
 	deviceCreateInfo.pQueueCreateInfos = deviceQueuesCreateInfosVector.data();
 	deviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
 
-	if (layersEnabled) {
+	if (DEBUG_LAYERS_ENABLED) {
 		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(debugDeviceLayersVector.size());   				// depricated
 		deviceCreateInfo.ppEnabledLayerNames = debugDeviceLayersVector.data();				// depricated
 	}
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(debugDeviceExtensionsVector.size());
 	deviceCreateInfo.ppEnabledExtensionNames = debugDeviceExtensionsVector.data();
 
-	SenAbstractGLFW::errorCheck(
-		vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &device),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &m_LogicalDevice),
 		std::string("Fail at Create Logical Device!")
 	);
 
 	// Retrieve queue handles for each queue family
-	vkGetDeviceQueue(device, graphicsQueueFamilyIndex, 0, &graphicsQueue);
-	vkGetDeviceQueue(device, presentQueueFamilyIndex, 0, &presentQueue); // We only need 1 queue, so the third parameter (index) we give is 0.
+	vkGetDeviceQueue(m_LogicalDevice, graphicsQueueFamilyIndex, 0, &graphicsQueue);
+	vkGetDeviceQueue(m_LogicalDevice, presentQueueFamilyIndex, 0, &presentQueue); // We only need 1 queue, so the third parameter (index) we give is 0.
 }
 
-void SenAbstractGLFW::finalizeAbstractGLFW() {
+void SLVK_AbstractGLFW::finalizeAbstractGLFW() {
 	/************************************************************************************************************/
 	/******************     Destroy depthStencil Memory, ImageView, Image     ***********************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != depthStencilImage) {
-		vkDestroyImage(device, depthStencilImage, nullptr);
-		vkDestroyImageView(device, depthStencilImageView, nullptr);
-		vkFreeMemory(device, depthStencilImageDeviceMemory, nullptr); 	// always try to destroy before free
+		vkDestroyImage(m_LogicalDevice, depthStencilImage, nullptr);
+		vkDestroyImageView(m_LogicalDevice, depthStencilImageView, nullptr);
+		vkFreeMemory(m_LogicalDevice, depthStencilImageDeviceMemory, nullptr); 	// always try to destroy before free
 
 		depthStencilImage = VK_NULL_HANDLE;
 		depthStencilImageDeviceMemory = VK_NULL_HANDLE;
@@ -1947,26 +1791,26 @@ void SenAbstractGLFW::finalizeAbstractGLFW() {
 	/************************************************************************************************************/
 	/*********************           Destroy common RenderPass if not VK_NULL_HANDLE        *********************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != colorAttachOnlyRenderPass) {
-		vkDestroyRenderPass(device, colorAttachOnlyRenderPass, nullptr);
-		colorAttachOnlyRenderPass = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != m_ColorAttachOnlyRenderPass) {
+		vkDestroyRenderPass(m_LogicalDevice, m_ColorAttachOnlyRenderPass, nullptr);
+		m_ColorAttachOnlyRenderPass = VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
-	/*********************           Destroy defaultThreadCommandPool         ***********************************/
+	/*********************           Destroy m_DefaultThreadCommandPool         ***********************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != defaultThreadCommandPool) {
-		vkDestroyCommandPool(device, defaultThreadCommandPool, nullptr);
-		defaultThreadCommandPool = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != m_DefaultThreadCommandPool) {
+		vkDestroyCommandPool(m_LogicalDevice, m_DefaultThreadCommandPool, nullptr);
+		m_DefaultThreadCommandPool = VK_NULL_HANDLE;
 		
-		swapchainCommandBufferVector.clear();
+		m_SwapchainCommandBufferVector.clear();
 	}
 	/************************************************************************************************************/
 	/*************      Destroy descriptorPool,  perspectiveProjection_DSL, perspectiveProjection_DS      ************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != descriptorPool) {
-		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+		vkDestroyDescriptorPool(m_LogicalDevice, descriptorPool, nullptr);
 		// When a DescriptorPool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid
-		vkDestroyDescriptorSetLayout(device, perspectiveProjection_DSL, nullptr);
+		vkDestroyDescriptorSetLayout(m_LogicalDevice, perspectiveProjection_DSL, nullptr);
 
 		perspectiveProjection_DSL	= VK_NULL_HANDLE;
 		descriptorPool				= VK_NULL_HANDLE;
@@ -1976,22 +1820,22 @@ void SenAbstractGLFW::finalizeAbstractGLFW() {
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != singleRectIndexBuffer) {
-		vkDestroyBuffer(device, singleRectIndexBuffer, nullptr);
-		vkFreeMemory(device, singleRectIndexBufferMemory, nullptr);	// always try to destroy before free
+		vkDestroyBuffer(m_LogicalDevice, singleRectIndexBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice, singleRectIndexBufferMemory, nullptr);	// always try to destroy before free
 
 		singleRectIndexBuffer		= VK_NULL_HANDLE;
 		singleRectIndexBufferMemory	= VK_NULL_HANDLE;
 	}
 	if (VK_NULL_HANDLE != mvpUniformStagingBuffer) {
-		vkDestroyBuffer(device, mvpUniformStagingBuffer, nullptr);
-		vkFreeMemory(device, mvpUniformStagingBufferDeviceMemory, nullptr);	// always try to destroy before free
+		vkDestroyBuffer(m_LogicalDevice, mvpUniformStagingBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice, mvpUniformStagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 
 		mvpUniformStagingBuffer				= VK_NULL_HANDLE;
 		mvpUniformStagingBufferDeviceMemory = VK_NULL_HANDLE;
 	}
 	if (VK_NULL_HANDLE != mvpOptimalUniformBuffer) {
-		vkDestroyBuffer(device, mvpOptimalUniformBuffer, nullptr);
-		vkFreeMemory(device, mvpOptimalUniformBufferMemory, nullptr);	// always try to destroy before free
+		vkDestroyBuffer(m_LogicalDevice, mvpOptimalUniformBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice, mvpOptimalUniformBufferMemory, nullptr);	// always try to destroy before free
 
 		mvpOptimalUniformBuffer			= VK_NULL_HANDLE;
 		mvpOptimalUniformBufferMemory	= VK_NULL_HANDLE;
@@ -2004,36 +1848,36 @@ void SenAbstractGLFW::finalizeAbstractGLFW() {
 	/************************************************************************************************************/
 	/*********************           Destroy Synchronization Items             **********************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != swapchainImageAcquiredSemaphore) {
-		vkDestroySemaphore(device, swapchainImageAcquiredSemaphore, nullptr);
-		swapchainImageAcquiredSemaphore = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != m_SC_ImageAcquiredSemaphore) {
+		vkDestroySemaphore(m_LogicalDevice, m_SC_ImageAcquiredSemaphore, nullptr);
+		m_SC_ImageAcquiredSemaphore = VK_NULL_HANDLE;
 	}
-	if (VK_NULL_HANDLE != paintReadyToPresentSemaphore) {
-		vkDestroySemaphore(device, paintReadyToPresentSemaphore, nullptr);
-		paintReadyToPresentSemaphore = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != m_SC_PaintReadyToPresentSemaphore) {
+		vkDestroySemaphore(m_LogicalDevice, m_SC_PaintReadyToPresentSemaphore, nullptr);
+		m_SC_PaintReadyToPresentSemaphore = VK_NULL_HANDLE;
 	}
-	for (auto& fence : waitCommandBufferCompleteFencesVector)	{
-		vkDestroyFence(device, fence, nullptr);
+	for (auto& fence : m_SC_WaitCommandBufferCompleteFencesVector)	{
+		vkDestroyFence(m_LogicalDevice, fence, nullptr);
 	}
-	waitCommandBufferCompleteFencesVector.clear();
+	m_SC_WaitCommandBufferCompleteFencesVector.clear();
 
 	/************************************************************************************************************/
-	/*********************           Destroy logical device                **************************************/
+	/*********************           Destroy logical m_LogicalDevice                **************************************/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != device) {
-		vkDestroyDevice(device, VK_NULL_HANDLE);
+	if (VK_NULL_HANDLE != m_LogicalDevice) {
+		vkDestroyDevice(m_LogicalDevice, VK_NULL_HANDLE);
 
-		// Device queues are implicitly cleaned up when the device is destroyed
+		// Device queues are implicitly cleaned up when the m_LogicalDevice is destroyed
 		if (VK_NULL_HANDLE != graphicsQueue) { graphicsQueue = VK_NULL_HANDLE; }
 		if (VK_NULL_HANDLE != presentQueue) { presentQueue = VK_NULL_HANDLE; }
 
-		device = VK_NULL_HANDLE;
+		m_LogicalDevice = VK_NULL_HANDLE;
 	}
 
 	/************************************************************************************************************/
 	/*********************  Must destroy debugReportCallback before destroy instance   **************************/
 	/************************************************************************************************************/
-	if (layersEnabled) {
+	if (DEBUG_LAYERS_ENABLED) {
 		if (VK_NULL_HANDLE != debugReportCallback) {
 			fetch_vkDestroyDebugReportCallbackEXT(instance, debugReportCallback, VK_NULL_HANDLE);
 			debugReportCallback = VK_NULL_HANDLE;
@@ -2042,11 +1886,11 @@ void SenAbstractGLFW::finalizeAbstractGLFW() {
 
 	/************************************************************************************************************/
 	/*************  Destroy window surface, Note that this is a native Vulkan API function  *********************/
-	/*****  Surface survives longer than device than swapchain, and depends only on Instance, or platform  ******/
+	/*****  Surface survives longer than m_LogicalDevice than swapchain, and depends only on Instance, or platform  ******/
 	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != surface) {
-		vkDestroySurfaceKHR(instance, surface, nullptr);	//  surface was created with GLFW function
-		surface = VK_NULL_HANDLE;
+	if (VK_NULL_HANDLE != m_Surface) {
+		vkDestroySurfaceKHR(instance, m_Surface, nullptr);	//  m_Surface was created with GLFW function
+		m_Surface = VK_NULL_HANDLE;
 	}
 
 	/************************************************************************************************************/
@@ -2056,10 +1900,10 @@ void SenAbstractGLFW::finalizeAbstractGLFW() {
 		vkDestroyInstance(instance, VK_NULL_HANDLE); 	instance = VK_NULL_HANDLE;
 	}
 
-	OutputDebugString("\n\tFinish  SenAbstractGLFW::finalizeAbstractGLFW()\n");
+	OutputDebugString("\n\tFinish  SLVK_AbstractGLFW::finalizeAbstractGLFW()\n");
 }
 
-uint32_t SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
+uint32_t SLVK_AbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
 	const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 	const VkMemoryRequirements& memoryRequirements,
 	const VkMemoryPropertyFlags& requiredMemoryPropertyFlags)
@@ -2075,7 +1919,7 @@ uint32_t SenAbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
 	return UINT32_MAX;
 }
 
-bool SenAbstractGLFW::checkInstanceLayersSupport(std::vector<const char*> layersVector) {
+bool SLVK_AbstractGLFW::checkInstanceLayersSupport(std::vector<const char*> layersVector) {
 	uint32_t layersCount;
 	vkEnumerateInstanceLayerProperties(&layersCount, nullptr);
 
@@ -2100,27 +1944,27 @@ bool SenAbstractGLFW::checkInstanceLayersSupport(std::vector<const char*> layers
 	return true;
 }
 
-void SenAbstractGLFW::onWidgetResized(GLFWwindow* widget, int width, int height) {
+void SLVK_AbstractGLFW::onWidgetResized(GLFWwindow* widget, int width, int height) {
 	if (width == 0 || height == 0) return;
 
-	SenAbstractGLFW* ptrAbstractWidget = reinterpret_cast<SenAbstractGLFW*>(glfwGetWindowUserPointer(widget));
+	SLVK_AbstractGLFW* ptrAbstractWidget = reinterpret_cast<SLVK_AbstractGLFW*>(glfwGetWindowUserPointer(widget));
 	ptrAbstractWidget->reInitPresentation();
 	ptrAbstractWidget->reCreateRenderTarget();
 }
 
-void SenAbstractGLFW::onKeyboardReaction(GLFWwindow* widget, int key, int scancode, int action, int mode)
+void SLVK_AbstractGLFW::onKeyboardReaction(GLFWwindow* widget, int key, int scancode, int action, int mode)
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(widget, VK_TRUE);
 }
 
-void SenAbstractGLFW::onKeyboardDetected(GLFWwindow* widget, int key, int scancode, int action, int mode)
+void SLVK_AbstractGLFW::onKeyboardDetected(GLFWwindow* widget, int key, int scancode, int action, int mode)
 {
-	SenAbstractGLFW* ptrAbstractWidget = reinterpret_cast<SenAbstractGLFW*>(glfwGetWindowUserPointer(widget));
+	SLVK_AbstractGLFW* ptrAbstractWidget = reinterpret_cast<SLVK_AbstractGLFW*>(glfwGetWindowUserPointer(widget));
 	ptrAbstractWidget->onKeyboardReaction(widget, key, scancode, action, mode);
 }
 
-std::vector<char> SenAbstractGLFW::readFileStream(const std::string& diskFileAddress, bool binary) {
+std::vector<char> SLVK_AbstractGLFW::readFileStream(const std::string& diskFileAddress, bool binary) {
 	std::ifstream file(diskFileAddress, binary ? std::ios::ate | std::ios::binary : std::ios::ate);
 
 	if (!file.is_open()) {
@@ -2139,7 +1983,7 @@ std::vector<char> SenAbstractGLFW::readFileStream(const std::string& diskFileAdd
 }
 
 // Compiles a shader to a SPIR-V binary. Returns the binary as a vector of 32-bit words.
-std::vector<uint32_t> SenAbstractGLFW::shadercToSPIRV(const std::string& source_name,
+std::vector<uint32_t> SLVK_AbstractGLFW::shadercToSPIRV(const std::string& source_name,
 	shaderc_shader_kind kind, const std::string& source, bool optimize) {
 	shaderc::Compiler compiler;
 	shaderc::CompileOptions options;
@@ -2159,69 +2003,7 @@ std::vector<uint32_t> SenAbstractGLFW::shadercToSPIRV(const std::string& source_
 	return{ module.cbegin(), module.cend() };
 }
 
-/************************************************************************************************************************************************************************************************************/
-/***********     This is a helper function that records memory barrirers using the vkCmdPipelineBarrier() command      **************************************************************************************/
-/************************************************************************************************************************************************************************************************************/
-void SenAbstractGLFW::setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
-	, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
-	, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer)
-{
-	// Dependency on imageLayoutTransitionCommandBuffer
-	if (VK_NULL_HANDLE == imageLayoutTransitionCommandBuffer) {
-		throw std::runtime_error("failed to open file!");
-	}
-
-	VkImageMemoryBarrier imgMemoryBarrier{};
-	imgMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	imgMemoryBarrier.pNext = NULL;
-	imgMemoryBarrier.srcAccessMask = srcAccessFlagBits;
-	imgMemoryBarrier.dstAccessMask = 0;
-	imgMemoryBarrier.oldLayout = oldImageLayout;
-	imgMemoryBarrier.newLayout = newImageLayout;
-	imgMemoryBarrier.image = image;
-	imgMemoryBarrier.subresourceRange.aspectMask = imageAspectFlags;
-	imgMemoryBarrier.subresourceRange.baseMipLevel = 0;
-	imgMemoryBarrier.subresourceRange.levelCount = 1;
-	imgMemoryBarrier.subresourceRange.layerCount = 1;
-
-	if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
-		imgMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	}
-
-	switch (newImageLayout)
-	{
-		// Ensure that anything that was copying from this image has completed
-		// An image in this layout can only be used as the destination operand of the commands
-		case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
-		case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
-			imgMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			break;
-
-		// Ensure any Copy or CPU writes to image are flushed
-		// An image in this layout can only be used as a read-only shader resource
-		case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-			imgMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-			imgMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-			break;
-
-		// An image in this layout can only be used as a framebuffer color attachment
-		case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-			imgMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-			break;
-
-		// An image in this layout can only be used as a framebuffer depth/stencil attachment
-		case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
-			imgMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-			break;
-	}
-
-	VkPipelineStageFlags srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	VkPipelineStageFlags destStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-	vkCmdPipelineBarrier(imageLayoutTransitionCommandBuffer, srcStages, destStages, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
-}
-
-void SenAbstractGLFW::errorCheck(VkResult result, std::string msg)
+void SLVK_AbstractGLFW::errorCheck(VkResult result, std::string msg)
 {
 	if (result != VK_SUCCESS) {
 
@@ -2317,13 +2099,10 @@ void SenAbstractGLFW::errorCheck(VkResult result, std::string msg)
 	}
 }
 
-
-//*************************************************/
-//*************                       *************/
-//*************  Not Useful Functions *************/
-//*************       Below           *************/
-//*************************************************/
-void SenAbstractGLFW::showAllSupportedInstanceExtensions()
+/***********************************************************************************************************************************/
+/*************************************             Not Useful Functions  Below     *************************************************/
+/*---------------------------------------------------------------------------------------------------------------------------------*/
+void SLVK_AbstractGLFW::showAllSupportedInstanceExtensions()
 {
 	uint32_t extensionsCount = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &extensionsCount, nullptr);
@@ -2339,7 +2118,7 @@ void SenAbstractGLFW::showAllSupportedInstanceExtensions()
 	std::cout << stream.str();
 }
 
-void SenAbstractGLFW::showAllSupportedInstanceLayers()
+void SLVK_AbstractGLFW::showAllSupportedInstanceLayers()
 {
 	uint32_t layersCount = 0;
 	vkEnumerateInstanceLayerProperties(&layersCount, nullptr);
@@ -2355,7 +2134,7 @@ void SenAbstractGLFW::showAllSupportedInstanceLayers()
 	std::cout << stream.str();
 }
 
-void SenAbstractGLFW::showAllSupportedExtensionsEachUnderInstanceLayer()
+void SLVK_AbstractGLFW::showAllSupportedExtensionsEachUnderInstanceLayer()
 {
 	uint32_t layersCount = 0;
 	vkEnumerateInstanceLayerProperties(&layersCount, nullptr);
@@ -2369,9 +2148,9 @@ void SenAbstractGLFW::showAllSupportedExtensionsEachUnderInstanceLayer()
 		stream << "\t" << i + 1 << ". " << instanceLayersVector[i].description << "\t\t\t\t [\t" << instanceLayersVector[i].layerName << "\t]\n";
 
 		uint32_t extensionsCount = 0;
-		SenAbstractGLFW::errorCheck(vkEnumerateInstanceExtensionProperties(instanceLayersVector[i].layerName, &extensionsCount, NULL), std::string("Extension Count under Layer Error!"));
+		SLVK_AbstractGLFW::errorCheck(vkEnumerateInstanceExtensionProperties(instanceLayersVector[i].layerName, &extensionsCount, NULL), std::string("Extension Count under Layer Error!"));
 		std::vector<VkExtensionProperties> extensionsPropVec(extensionsCount);
-		SenAbstractGLFW::errorCheck(vkEnumerateInstanceExtensionProperties(instanceLayersVector[i].layerName, &extensionsCount, extensionsPropVec.data()), std::string("Extension Data() under Layer Error!"));
+		SLVK_AbstractGLFW::errorCheck(vkEnumerateInstanceExtensionProperties(instanceLayersVector[i].layerName, &extensionsCount, extensionsPropVec.data()), std::string("Extension Data() under Layer Error!"));
 
 		if (extensionsPropVec.size()) {
 			for (int j = 0; j < extensionsPropVec.size(); j++) {
@@ -2386,7 +2165,7 @@ void SenAbstractGLFW::showAllSupportedExtensionsEachUnderInstanceLayer()
 	std::cout << stream.str();
 }
 
-void SenAbstractGLFW::showPhysicalDeviceSupportedLayersAndExtensions(const VkPhysicalDevice & gpuToCheck)
+void SLVK_AbstractGLFW::showPhysicalDeviceSupportedLayersAndExtensions(const VkPhysicalDevice & gpuToCheck)
 {
 	/************************************************************************************************************/
 	/******* Check PhysicalDevice Layers with each supported Extensions under Layer******************************/
@@ -2394,9 +2173,9 @@ void SenAbstractGLFW::showPhysicalDeviceSupportedLayersAndExtensions(const VkPhy
 	std::ostringstream stream;
 	stream << "\nAll Supported PysicalDevice Extensions: \n----------------------------------------------------\n";
 	uint32_t gpuExtensionsCount = 0;
-	SenAbstractGLFW::errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, nullptr, &gpuExtensionsCount, nullptr), std::string("GPU Extension Count under Layer Error!"));
+	SLVK_AbstractGLFW::errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, nullptr, &gpuExtensionsCount, nullptr), std::string("GPU Extension Count under Layer Error!"));
 	std::vector<VkExtensionProperties> gpuExtensionsPropVec(gpuExtensionsCount);
-	SenAbstractGLFW::errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, nullptr, &gpuExtensionsCount, gpuExtensionsPropVec.data()), std::string("GPU Extension Data() under Layer Error!"));
+	SLVK_AbstractGLFW::errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, nullptr, &gpuExtensionsCount, gpuExtensionsPropVec.data()), std::string("GPU Extension Data() under Layer Error!"));
 	if (gpuExtensionsPropVec.size()) {
 		for (int j = 0; j < gpuExtensionsPropVec.size(); j++) {
 			stream << "\t\t\t    [ " << j + 1 << " ] . " << gpuExtensionsPropVec[j].extensionName << "\n";
@@ -2418,9 +2197,9 @@ void SenAbstractGLFW::showPhysicalDeviceSupportedLayersAndExtensions(const VkPhy
 		stream << "\t" << i + 1 << ". " << physicalDeviceLayersVector[i].description << "\t\t\t\t [\t" << physicalDeviceLayersVector[i].layerName << "\t]\n";
 
 		uint32_t gpuExtensionsCount = 0;
-		SenAbstractGLFW::errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, physicalDeviceLayersVector[i].layerName, &gpuExtensionsCount, NULL), std::string("GPU Extension Count under Layer Error!"));
+		SLVK_AbstractGLFW::errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, physicalDeviceLayersVector[i].layerName, &gpuExtensionsCount, NULL), std::string("GPU Extension Count under Layer Error!"));
 		std::vector<VkExtensionProperties> gpuExtensionsPropVec(gpuExtensionsCount);
-		SenAbstractGLFW::errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, physicalDeviceLayersVector[i].layerName, &gpuExtensionsCount, gpuExtensionsPropVec.data()), std::string("GPU Extension Data() under Layer Error!"));
+		SLVK_AbstractGLFW::errorCheck(vkEnumerateDeviceExtensionProperties(gpuToCheck, physicalDeviceLayersVector[i].layerName, &gpuExtensionsCount, gpuExtensionsPropVec.data()), std::string("GPU Extension Data() under Layer Error!"));
 
 		if (gpuExtensionsPropVec.size()) {
 			for (int j = 0; j < gpuExtensionsPropVec.size(); j++) {
@@ -2439,24 +2218,226 @@ void SenAbstractGLFW::showPhysicalDeviceSupportedLayersAndExtensions(const VkPhy
 
 
 
-//SenAbstractGLFW* currentInstance;
-//
-//extern "C" void _KeyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode)
-//{
-//	currentInstance->_protectedKeyDetection(widget, key, scancode, action, mode);
-//}
-//
-//void SenAbstractGLFW::keyboardRegister()
-//{
-//	::currentInstance = this;
-//	::glfwSetKeyCallback(widgetGLFW, _KeyDetection);
-//
-//}
-//
-//void SenAbstractGLFW::keyDetection(GLFWwindow* widget, int key, int scancode, int action, int mode)
-//{
-//	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-//		glfwSetWindowShouldClose(widget, GL_TRUE);
-//}
-//
-//
+
+
+/*****************************************************************************************************************/
+/*****************************************************************************************************************/
+/*-----------             Depth Stencil FrameBuffer related, Not Applicable Yet    ------------------------------*/
+/*---------------------------------------------------------------------------------------------------------------*/
+
+/* A helper function that records memory barrirers using the vkCmdPipelineBarrier() command */
+void SLVK_AbstractGLFW::setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
+	, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
+	, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer)
+{
+	// Dependency on imageLayoutTransitionCommandBuffer
+	if (VK_NULL_HANDLE == imageLayoutTransitionCommandBuffer) {
+		throw std::runtime_error("failed to open file!");
+	}
+
+	VkImageMemoryBarrier imgMemoryBarrier{};
+	imgMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+	imgMemoryBarrier.pNext = NULL;
+	imgMemoryBarrier.srcAccessMask = srcAccessFlagBits;
+	imgMemoryBarrier.dstAccessMask = 0;
+	imgMemoryBarrier.oldLayout = oldImageLayout;
+	imgMemoryBarrier.newLayout = newImageLayout;
+	imgMemoryBarrier.image = image;
+	imgMemoryBarrier.subresourceRange.aspectMask = imageAspectFlags;
+	imgMemoryBarrier.subresourceRange.baseMipLevel = 0;
+	imgMemoryBarrier.subresourceRange.levelCount = 1;
+	imgMemoryBarrier.subresourceRange.layerCount = 1;
+
+	if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) {
+		imgMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	}
+
+	switch (newImageLayout)
+	{
+		// Ensure that anything that was copying from this image has completed
+		// An image in this layout can only be used as the destination operand of the commands
+	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL:
+	case VK_IMAGE_LAYOUT_PRESENT_SRC_KHR:
+		imgMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		break;
+
+		// Ensure any Copy or CPU writes to image are flushed
+		// An image in this layout can only be used as a read-only shader resource
+	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+		imgMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imgMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		break;
+
+		// An image in this layout can only be used as a framebuffer color attachment
+	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+		imgMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+		break;
+
+		// An image in this layout can only be used as a framebuffer depth/stencil attachment
+	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+		imgMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+		break;
+	}
+
+	VkPipelineStageFlags srcStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	VkPipelineStageFlags destStages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+	vkCmdPipelineBarrier(imageLayoutTransitionCommandBuffer, srcStages, destStages, 0, 0, NULL, 0, NULL, 1, &imgMemoryBarrier);
+}
+
+void SLVK_AbstractGLFW::createDepthStencilAttachment()
+{
+	/********************************************************************************************************************/
+	/******************************  Check Image Format *****************************************************************/
+	for (auto f : SLVK_AbstractGLFW::depthStencilSupportCheckFormatsVector) {
+		VkFormatProperties formatProperties{};
+		vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
+		if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+			depthStencilFormat = f;
+			break;
+		}
+	}
+	if (depthStencilFormat == VK_FORMAT_UNDEFINED) {
+		throw std::runtime_error("Depth stencil format not selected.");
+	}
+	if ((depthStencilFormat == VK_FORMAT_D32_SFLOAT_S8_UINT) ||
+		(depthStencilFormat == VK_FORMAT_D24_UNORM_S8_UINT) ||
+		(depthStencilFormat == VK_FORMAT_D16_UNORM_S8_UINT) ||
+		(depthStencilFormat == VK_FORMAT_S8_UINT)) {
+		stencilAvailable = true;
+	}
+	else std::cout << "The seleted depthStencilFormat is not in the stencil list !!!!! \n \t Take a check !!!!\n";
+
+	/******************************************************************************************************************************************************/
+	/******************************  Create depthStencil Image ********************************************************************************************/
+	VkImageCreateInfo depthStencilImageCreateInfo{};
+	depthStencilImageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	depthStencilImageCreateInfo.flags = 0;
+	depthStencilImageCreateInfo.imageType = VK_IMAGE_TYPE_2D; // 2D image
+	depthStencilImageCreateInfo.format = depthStencilFormat;
+	depthStencilImageCreateInfo.extent.width = m_WidgetWidth;
+	depthStencilImageCreateInfo.extent.height = m_WidgetHeight;
+	depthStencilImageCreateInfo.extent.depth = 1; // 2D image, has to be 1
+	depthStencilImageCreateInfo.mipLevels = 1;
+	depthStencilImageCreateInfo.arrayLayers = 1;
+	depthStencilImageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT; // multi-sampling
+	depthStencilImageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	depthStencilImageCreateInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;// for depth stencil image
+	depthStencilImageCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; // no share with anther QueueFamily
+	depthStencilImageCreateInfo.queueFamilyIndexCount = 0;
+	depthStencilImageCreateInfo.pQueueFamilyIndices = nullptr;
+	depthStencilImageCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // will overwrite this with a command later
+
+	vkCreateImage(m_LogicalDevice, &depthStencilImageCreateInfo, nullptr, &depthStencilImage);
+
+	/******************************************************************************************************************************************************/
+	/***************************  Allocate & Bind memory for depthStencil Image using the created handle *********************************************************/
+	VkMemoryRequirements imageMemoryRequirements{};
+	vkGetImageMemoryRequirements(m_LogicalDevice, depthStencilImage, &imageMemoryRequirements);
+
+	uint32_t gpuMemoryTypeIndex = SLVK_AbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
+		physicalDeviceMemoryProperties,
+		imageMemoryRequirements,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT  // Set the resource to reside on GPU itself
+	);
+
+	VkMemoryAllocateInfo depthStencilImageMemoryAllocateInfo{};
+	depthStencilImageMemoryAllocateInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	depthStencilImageMemoryAllocateInfo.allocationSize = imageMemoryRequirements.size;
+	depthStencilImageMemoryAllocateInfo.memoryTypeIndex = gpuMemoryTypeIndex;
+
+	vkAllocateMemory(m_LogicalDevice, &depthStencilImageMemoryAllocateInfo, nullptr, &depthStencilImageDeviceMemory);
+	vkBindImageMemory(m_LogicalDevice, depthStencilImage, depthStencilImageDeviceMemory, 0);
+
+	/******************************************************************************************************************************************************/
+	/******************************  Create depthStencil Image View ***************************************************************************************/
+	VkImageViewCreateInfo depthStencilImageViewCreateInfo{};
+	depthStencilImageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	depthStencilImageViewCreateInfo.image = depthStencilImage;
+	depthStencilImageViewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	depthStencilImageViewCreateInfo.format = depthStencilFormat;
+	depthStencilImageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+	depthStencilImageViewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT | (stencilAvailable ? VK_IMAGE_ASPECT_STENCIL_BIT : 0);
+	depthStencilImageViewCreateInfo.subresourceRange.baseMipLevel = 0;
+	depthStencilImageViewCreateInfo.subresourceRange.levelCount = 1;
+	depthStencilImageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	depthStencilImageViewCreateInfo.subresourceRange.layerCount = 1;
+
+	vkCreateImageView(m_LogicalDevice, &depthStencilImageViewCreateInfo, nullptr, &depthStencilImageView);
+
+
+	//// Use command buffer to create the depth image. This includes -
+	//// Command buffer allocation, recording with begin/end scope and submission.
+	//CommandBufferMgr::allocCommandBuffer(&deviceObj->m_LogicalDevice, cmdPool, &cmdDepthImageCommandBuffer);
+	//CommandBufferMgr::beginCommandBuffer(cmdDepthImageCommandBuffer);
+	//{
+	//	// Set the image layout to depth stencil optimal
+	//	setImageLayout(FormatImageMemoryViewDepthStruct.image,
+	//		depthImageViewCreateInfo.subresourceRange.aspectMask,
+	//		VK_IMAGE_LAYOUT_UNDEFINED,
+	//		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, (VkAccessFlagBits)0, cmdDepthImageCommandBuffer);
+	//}
+	//CommandBufferMgr::endCommandBuffer(cmdDepthImageCommandBuffer);
+	//CommandBufferMgr::submitCommandBuffer(deviceObj->queue, &cmdDepthImageCommandBuffer);
+
+	//// Create the image view and allow the application to use the images.
+	//depthImageViewCreateInfo.image = FormatImageMemoryViewDepthStruct.image;
+	//result = vkCreateImageView(deviceObj->m_LogicalDevice, &depthImageViewCreateInfo, NULL, &FormatImageMemoryViewDepthStruct.view);
+	//assert(result == VK_SUCCESS);
+}
+
+void SLVK_AbstractGLFW::createDepthStencilRenderPass()
+{
+	std::array<VkAttachmentDescription, 2> attachmentDescriptionsArray{}; // for both of color and depthStencil
+	attachmentDescriptionsArray[0].flags = 0;
+	attachmentDescriptionsArray[0].format = depthStencilFormat;
+	attachmentDescriptionsArray[0].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDescriptionsArray[0].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDescriptionsArray[0].storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachmentDescriptionsArray[0].stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDescriptionsArray[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDescriptionsArray[0].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDescriptionsArray[0].finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	attachmentDescriptionsArray[1].flags = 0;
+	attachmentDescriptionsArray[1].format = m_SurfaceFormat.format;
+	attachmentDescriptionsArray[1].samples = VK_SAMPLE_COUNT_1_BIT;
+	attachmentDescriptionsArray[1].loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDescriptionsArray[1].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachmentDescriptionsArray[1].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	attachmentDescriptionsArray[1].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	VkAttachmentReference depthStencilAttachmentReference{};
+	depthStencilAttachmentReference.attachment = 0;
+	depthStencilAttachmentReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	std::array<VkAttachmentReference, 1> colorAttachmentReferenceArray{};
+	colorAttachmentReferenceArray[0].attachment = 1;
+	colorAttachmentReferenceArray[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	std::array<VkSubpassDescription, 1> subpassDescriptionArray{};
+	subpassDescriptionArray[0].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDescriptionArray[0].colorAttachmentCount = (uint32_t)colorAttachmentReferenceArray.size();
+	subpassDescriptionArray[0].pColorAttachments = colorAttachmentReferenceArray.data();		// layout(location=0) out vec4 FinalColor;
+	subpassDescriptionArray[0].pDepthStencilAttachment = &depthStencilAttachmentReference;
+
+
+	VkRenderPassCreateInfo renderPassCreateInfo{};
+	renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassCreateInfo.attachmentCount = (uint32_t)attachmentDescriptionsArray.size();
+	renderPassCreateInfo.pAttachments = attachmentDescriptionsArray.data();
+	renderPassCreateInfo.subpassCount = (uint32_t)subpassDescriptionArray.size();
+	renderPassCreateInfo.pSubpasses = subpassDescriptionArray.data();
+
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateRenderPass(m_LogicalDevice, &renderPassCreateInfo, nullptr, &depthTestRenderPass),
+		std::string("Failed to create colorDepthStencil render pass !!")
+	);
+}
+
+void SLVK_AbstractGLFW::createDepthStencilGraphicsPipeline()
+{
+}

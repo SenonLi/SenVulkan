@@ -25,7 +25,7 @@ public:
 	virtual ~SenVulkanAPI_Widget();
 
 	SenRenderer renderer;
-	VkDevice device;
+	VkDevice m_LogicalDevice;
 	VkQueue queue;
 
 	VkFence fence;
@@ -35,7 +35,7 @@ public:
 
 
 	GLFWwindow* widgetGLFW;
-	int widgetWidth, widgetHeight;
+	int m_WidgetWidth, m_WidgetHeight;
 	const char* strWindowName;
 
 

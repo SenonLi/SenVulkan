@@ -12,6 +12,7 @@
 using namespace std;
 // GL Includes
 #include <GL/glew.h> // Contains all the necessery OpenGL includes
+#define GLM_FORCE_SWIZZLE // Have to add this for new glm version without default structure initialization 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 

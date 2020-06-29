@@ -3,9 +3,9 @@
 #ifndef __Sen_07_Texture__
 #define __Sen_07_Texture__
 
-#include "../Support/SenAbstractGLFW.h"
+#include "../Support/SLVK_AbstractGLFW.h"
 
-class Sen_07_Texture :	public SenAbstractGLFW
+class Sen_07_Texture :	public SLVK_AbstractGLFW
 {
 public:
 	Sen_07_Texture();

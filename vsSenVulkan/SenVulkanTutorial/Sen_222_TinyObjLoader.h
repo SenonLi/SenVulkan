@@ -3,10 +3,10 @@
 #ifndef __Sen_222_TinyObjLoader__
 #define __Sen_222_TinyObjLoader__
 
-#include "../Support/SenAbstractGLFW.h"
+#include "../Support/SLVK_AbstractGLFW.h"
 #include "../Support/SenTinyObjLoader.h"
 
-class Sen_222_TinyObjLoader :	public SenAbstractGLFW
+class Sen_222_TinyObjLoader :	public SLVK_AbstractGLFW
 {
 public:
 	Sen_222_TinyObjLoader();

@@ -33,9 +33,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Support\SenAbstractGLFW.cpp">
-      <Filter>Suppport</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp" />
     <ClCompile Include="VulkanAPI\SenRenderer.cpp">
       <Filter>Sources\VulkanAPI</Filter>
@@ -79,11 +76,14 @@
     <ClCompile Include="Support\SenTinyObjLoader.cpp">
       <Filter>Suppport</Filter>
     </ClCompile>
+    <ClCompile Include="Support\SLVK_AbstractGLFW.cpp">
+      <Filter>Suppport</Filter>
+    </ClCompile>
+    <ClCompile Include="Support\pch.cpp">
+      <Filter>Suppport</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Support\SenAbstractGLFW.h">
-      <Filter>Suppport</Filter>
-    </ClInclude>
     <ClInclude Include="VulkanAPI\SenRenderer.h">
       <Filter>Headers\VulkanAPI</Filter>
     </ClInclude>
@@ -124,6 +124,12 @@
       <Filter>Suppport</Filter>
     </ClInclude>
     <ClInclude Include="Support\SenTinyObjLoader.h">
+      <Filter>Suppport</Filter>
+    </ClInclude>
+    <ClInclude Include="Support\SLVK_AbstractGLFW.h">
+      <Filter>Suppport</Filter>
+    </ClInclude>
+    <ClInclude Include="Support\pch.h">
       <Filter>Suppport</Filter>
     </ClInclude>
   </ItemGroup>

@@ -3,9 +3,9 @@
 #ifndef __Sen_22_DepthTest__
 #define __Sen_22_DepthTest__
 
-#include "../Support/SenAbstractGLFW.h"
+#include "../Support/SLVK_AbstractGLFW.h"
 
-class Sen_22_DepthTest :	public SenAbstractGLFW
+class Sen_22_DepthTest :	public SLVK_AbstractGLFW
 {
 public:
 	Sen_22_DepthTest();

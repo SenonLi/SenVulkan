@@ -23,22 +23,22 @@ void SenVulkanAPI_Widget::initGlfwVulkanDebugWSI()
 
 void SenVulkanAPI_Widget::initCommandBuffers()
 {
-	device = renderer._device;
+	m_LogicalDevice = renderer._device;
 	queue = renderer._queue;
 
 	VkFenceCreateInfo fenceCreateInfo{};
 	fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	vkCreateFence(device, &fenceCreateInfo, nullptr, &fence);
+	vkCreateFence(m_LogicalDevice, &fenceCreateInfo, nullptr, &fence);
 
 	VkSemaphoreCreateInfo semaphoreCreateInfo{};
 	semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphore);
+	vkCreateSemaphore(m_LogicalDevice, &semaphoreCreateInfo, nullptr, &semaphore);
 
 	VkCommandPoolCreateInfo commandPoolCreateInfo{};
 	commandPoolCreateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	commandPoolCreateInfo.queueFamilyIndex = renderer._graphicsFamilyIndex;
 	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	vkCreateCommandPool(device, &commandPoolCreateInfo, nullptr, &commandPool);
+	vkCreateCommandPool(m_LogicalDevice, &commandPoolCreateInfo, nullptr, &commandPool);
 
 	VkCommandBuffer commandBuffer[2];
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
@@ -46,7 +46,7 @@ void SenVulkanAPI_Widget::initCommandBuffers()
 	commandBufferAllocateInfo.commandPool = commandPool;
 	commandBufferAllocateInfo.commandBufferCount = 2;
 	commandBufferAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	ErrorCheck(vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, commandBuffer));
+	ErrorCheck(vkAllocateCommandBuffers(m_LogicalDevice, &commandBufferAllocateInfo, commandBuffer));
 
 	{
 		VkCommandBufferBeginInfo commandBufferBeginInfo{};
@@ -109,7 +109,7 @@ void SenVulkanAPI_Widget::initCommandBuffers()
 		submitInfo.pWaitDstStageMask = flags;
 		vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
 	}
-	//auto ret = vkWaitForFences( device, 1, &fence, VK_TRUE, UINT64_MAX );
+	//auto ret = vkWaitForFences( m_LogicalDevice, 1, &fence, VK_TRUE, UINT64_MAX );
 	vkQueueWaitIdle(queue);// For Synchronization 
 }
 
@@ -226,30 +226,30 @@ void SenVulkanAPI_Widget::finalize()
 	renderer.closeSenWindow();
 
 	if (VK_NULL_HANDLE != commandPool) {
-		vkDestroyCommandPool(device, commandPool, nullptr);
+		vkDestroyCommandPool(m_LogicalDevice, commandPool, nullptr);
 		commandPool = VK_NULL_HANDLE;
 	}
 	if (VK_NULL_HANDLE != fence) {
-		vkDestroyFence(device, fence, nullptr);
+		vkDestroyFence(m_LogicalDevice, fence, nullptr);
 		fence = VK_NULL_HANDLE;
 	}
 	if (VK_NULL_HANDLE != semaphore) {
-		vkDestroySemaphore(device, semaphore, nullptr);
+		vkDestroySemaphore(m_LogicalDevice, semaphore, nullptr);
 		semaphore = VK_NULL_HANDLE;
 	}
 
 	renderer.finalize();
-	// Destroy logical device
-	if (VK_NULL_HANDLE != device) {
-		// device command should be destroyed by Render
+	// Destroy logical m_LogicalDevice
+	if (VK_NULL_HANDLE != m_LogicalDevice) {
+		// m_LogicalDevice command should be destroyed by Render
 
-		//vkDestroyDevice(device, VK_NULL_HANDLE); 
+		//vkDestroyDevice(m_LogicalDevice, VK_NULL_HANDLE); 
 
-		//// Device queues are implicitly cleaned up when the device is destroyed
+		//// Device queues are implicitly cleaned up when the m_LogicalDevice is destroyed
 		//if (VK_NULL_HANDLE != graphicsQueue) { graphicsQueue = VK_NULL_HANDLE; }
 		//if (VK_NULL_HANDLE != presentQueue) { presentQueue = VK_NULL_HANDLE; }
 
-		device = VK_NULL_HANDLE;
+		m_LogicalDevice = VK_NULL_HANDLE;
 	}
 
 

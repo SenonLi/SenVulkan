@@ -47,20 +47,20 @@ void Sen_06_Triangle::finalizeWidget()
 	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != trianglePipeline) {
-		vkDestroyPipeline(device, trianglePipeline, nullptr);
-		vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
-		vkDestroyRenderPass(device, colorAttachOnlyRenderPass, nullptr);
+		vkDestroyPipeline(m_LogicalDevice, trianglePipeline, nullptr);
+		vkDestroyPipelineLayout(m_LogicalDevice, trianglePipelineLayout, nullptr);
+		vkDestroyRenderPass(m_LogicalDevice, m_ColorAttachOnlyRenderPass, nullptr);
 
 		trianglePipeline = VK_NULL_HANDLE;
 		trianglePipelineLayout = VK_NULL_HANDLE;
-		colorAttachOnlyRenderPass = VK_NULL_HANDLE;
+		m_ColorAttachOnlyRenderPass = VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
 	/************************************************************************************************************/
 	if (VK_NULL_HANDLE != triangleVertexBuffer) {
-		vkDestroyBuffer(device, triangleVertexBuffer, nullptr);
-		vkFreeMemory(device, triangleVertexBufferMemory, nullptr);	// always try to destroy before free
+		vkDestroyBuffer(m_LogicalDevice, triangleVertexBuffer, nullptr);
+		vkFreeMemory(m_LogicalDevice, triangleVertexBufferMemory, nullptr);	// always try to destroy before free
 
 		triangleVertexBuffer = VK_NULL_HANDLE;
 		triangleVertexBufferMemory = VK_NULL_HANDLE;
@@ -74,17 +74,17 @@ void Sen_06_Triangle::updateUniformBuffer()
 	int duration = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
 
 	MvpUniformBufferObject mvpUbo{};
-	mvpUbo.model = glm::rotate(glm::mat4(), -duration * glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	mvpUbo.model = glm::rotate(glm::mat4(1.0f), -duration * glm::radians(15.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	//mvpUbo.view = glm::lookAt(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-	//mvpUbo.projection = glm::perspective(glm::radians(45.0f), widgetWidth / (float)widgetHeight, 0.1f, 100.0f);
+	//mvpUbo.projection = glm::perspective(glm::radians(45.0f), m_WidgetWidth / (float)m_WidgetHeight, 0.1f, 100.0f);
 	mvpUbo.projection[1][1] *= -1;
 
 	void* data;
-	vkMapMemory(device, mvpUniformStagingBufferDeviceMemory, 0, sizeof(mvpUbo), 0, &data);
+	vkMapMemory(m_LogicalDevice, mvpUniformStagingBufferDeviceMemory, 0, sizeof(mvpUbo), 0, &data);
 	memcpy(data, &mvpUbo, sizeof(mvpUbo));
-	vkUnmapMemory(device, mvpUniformStagingBufferDeviceMemory);
+	vkUnmapMemory(m_LogicalDevice, mvpUniformStagingBufferDeviceMemory);
 
-	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, mvpUniformStagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, mvpUniformStagingBuffer,
 		mvpOptimalUniformBuffer, sizeof(mvpUbo));
 }
 
@@ -102,8 +102,8 @@ void Sen_06_Triangle::createTriangleDescriptorSetLayout() {
 	mvpUboDescriptorSetLayoutCreateInfo.bindingCount = 1;
 	mvpUboDescriptorSetLayoutCreateInfo.pBindings = &mvpUboDSL_Binding;
 
-	SenAbstractGLFW::errorCheck(
-		vkCreateDescriptorSetLayout(device, &mvpUboDescriptorSetLayoutCreateInfo, nullptr, &perspectiveProjection_DSL),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateDescriptorSetLayout(m_LogicalDevice, &mvpUboDescriptorSetLayoutCreateInfo, nullptr, &perspectiveProjection_DSL),
 		std::string("Fail to Create perspectiveProjection_DSL !")
 	);
 }
@@ -123,8 +123,8 @@ void Sen_06_Triangle::createTriangleDescriptorPool() {
 	descriptorPoolCreateInfo.pPoolSizes = descriptorPoolSizeVector.data();
 	descriptorPoolCreateInfo.maxSets = 1; // Need a new descriptorSetVector
 
-	SenAbstractGLFW::errorCheck(
-		vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreateDescriptorPool(m_LogicalDevice, &descriptorPoolCreateInfo, nullptr, &descriptorPool),
 		std::string("Fail to Create descriptorPool !")
 	);
 }
@@ -139,8 +139,8 @@ void Sen_06_Triangle::createTriangleDescriptorSet() {
 	descriptorSetAllocateInfo.descriptorSetCount = descriptorSetLayoutVector.size();
 	descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayoutVector.data();
 
-	SenAbstractGLFW::errorCheck(
-		vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &perspectiveProjection_DS),
+	SLVK_AbstractGLFW::errorCheck(
+		vkAllocateDescriptorSets(m_LogicalDevice, &descriptorSetAllocateInfo, &perspectiveProjection_DS),
 		std::string("Fail to Allocate perspectiveProjection_DS !")
 	);
 
@@ -161,13 +161,13 @@ void Sen_06_Triangle::createTriangleDescriptorSet() {
 	writeDescriptorSet.descriptorCount = descriptorBufferInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	writeDescriptorSet.pBufferInfo = descriptorBufferInfoVector.data();
 
-	vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
+	vkUpdateDescriptorSets(m_LogicalDevice, 1, &writeDescriptorSet, 0, nullptr);
 }
 
 void Sen_06_Triangle::createTrianglePipeline() {
 	if (VK_NULL_HANDLE != trianglePipeline) {
-		vkDestroyPipeline(device, trianglePipeline, nullptr);
-		vkDestroyPipelineLayout(device, trianglePipelineLayout, nullptr);
+		vkDestroyPipeline(m_LogicalDevice, trianglePipeline, nullptr);
+		vkDestroyPipelineLayout(m_LogicalDevice, trianglePipelineLayout, nullptr);
 
 		trianglePipeline = VK_NULL_HANDLE;
 		trianglePipelineLayout = VK_NULL_HANDLE;
@@ -175,11 +175,12 @@ void Sen_06_Triangle::createTrianglePipeline() {
 
 	/****************************************************************************************************************************/
 	/**********                Reserve pipeline ShaderStage CreateInfos Array           *****************************************/
-	/****************************************************************************************************************************/
+	/********     Different shader or vertex layout    ==>>   entirely Recreate the graphics pipeline.    ***********************/
+	/*--------------------------------------------------------------------------------------------------------------------------*/
 	VkShaderModule vertShaderModule, fragShaderModule;
 
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Triangle.vert", vertShaderModule);
-	createVulkanShaderModule(device, "SenVulkanTutorial/Shaders/Triangle.frag", fragShaderModule);
+	createVulkanShaderModule(m_LogicalDevice, "SenVulkanTutorial/Shaders/Triangle.vert", vertShaderModule);
+	createVulkanShaderModule(m_LogicalDevice, "SenVulkanTutorial/Shaders/Triangle.frag", fragShaderModule);
 
 	VkPipelineShaderStageCreateInfo vertPipelineShaderStageCreateInfo{};
 	vertPipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -238,20 +239,20 @@ void Sen_06_Triangle::createTrianglePipeline() {
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
-	resizeViewport.x		= 0.0f;									resizeViewport.y		= 0.0f;
-	resizeViewport.width	= static_cast<float>(widgetWidth);		resizeViewport.height	= static_cast<float>(widgetHeight);
-	resizeViewport.minDepth	= 0.0f;									resizeViewport.maxDepth	= 1.0f;
+	m_SwapchainResize_Viewport.x		= 0.0f;									m_SwapchainResize_Viewport.y		= 0.0f;
+	m_SwapchainResize_Viewport.width	= static_cast<float>(m_WidgetWidth);		m_SwapchainResize_Viewport.height	= static_cast<float>(m_WidgetHeight);
+	m_SwapchainResize_Viewport.minDepth	= 0.0f;									m_SwapchainResize_Viewport.maxDepth	= 1.0f;
 
-	resizeScissorRect2D.offset			= { 0, 0 };
-	resizeScissorRect2D.extent.width	= static_cast<uint32_t>(widgetWidth);
-	resizeScissorRect2D.extent.height	= static_cast<uint32_t>(widgetHeight);
+	m_SwapchainResize_ScissorRect2D.offset			= { 0, 0 };
+	m_SwapchainResize_ScissorRect2D.extent.width	= static_cast<uint32_t>(m_WidgetWidth);
+	m_SwapchainResize_ScissorRect2D.extent.height	= static_cast<uint32_t>(m_WidgetHeight);
 
 	VkPipelineViewportStateCreateInfo pipelineViewportStateCreateInfo{};
 	pipelineViewportStateCreateInfo.sType			= VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	pipelineViewportStateCreateInfo.viewportCount	= 1;
-	pipelineViewportStateCreateInfo.pViewports		= &resizeViewport;
+	pipelineViewportStateCreateInfo.pViewports		= &m_SwapchainResize_Viewport;
 	pipelineViewportStateCreateInfo.scissorCount	= 1;
-	pipelineViewportStateCreateInfo.pScissors		= &resizeScissorRect2D;
+	pipelineViewportStateCreateInfo.pScissors		= &m_SwapchainResize_ScissorRect2D;
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
@@ -315,8 +316,8 @@ void Sen_06_Triangle::createTrianglePipeline() {
 	pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayoutVector.data();
 
 
-	SenAbstractGLFW::errorCheck(
-		vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &trianglePipelineLayout),
+	SLVK_AbstractGLFW::errorCheck(
+		vkCreatePipelineLayout(m_LogicalDevice, &pipelineLayoutCreateInfo, nullptr, &trianglePipelineLayout),
 		std::string("Failed to to create pipeline layout !!!")
 	);
 
@@ -336,15 +337,15 @@ void Sen_06_Triangle::createTrianglePipeline() {
 	trianglePipelineCreateInfo.pMultisampleState	= &pipelineMultisampleStateCreateInfo;
 	trianglePipelineCreateInfo.pColorBlendState		= &pipelineColorBlendStateCreateInfo;
 	trianglePipelineCreateInfo.layout				= trianglePipelineLayout;
-	trianglePipelineCreateInfo.renderPass			= colorAttachOnlyRenderPass;
-	trianglePipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the colorAttachOnlyRenderPass
+	trianglePipelineCreateInfo.renderPass			= m_ColorAttachOnlyRenderPass;
+	trianglePipelineCreateInfo.subpass				= 0; // index of this trianglePipeline's subpass of the m_ColorAttachOnlyRenderPass
 														//trianglePipelineCreateInfo.basePipelineHandle	= VK_NULL_HANDLE;
 
 	graphicsPipelineCreateInfoVector.push_back(trianglePipelineCreateInfo);
 
-	SenAbstractGLFW::errorCheck(
+	SLVK_AbstractGLFW::errorCheck(
 		vkCreateGraphicsPipelines(
-			device, VK_NULL_HANDLE,
+			m_LogicalDevice, VK_NULL_HANDLE,
 			(uint32_t)graphicsPipelineCreateInfoVector.size(),
 			graphicsPipelineCreateInfoVector.data(),
 			nullptr,
@@ -352,8 +353,8 @@ void Sen_06_Triangle::createTrianglePipeline() {
 		std::string("Failed to create graphics pipeline !!!")
 	);
 
-	vkDestroyShaderModule(device, vertShaderModule, nullptr);
-	vkDestroyShaderModule(device, fragShaderModule, nullptr);
+	vkDestroyShaderModule(m_LogicalDevice, vertShaderModule, nullptr);
+	vkDestroyShaderModule(m_LogicalDevice, fragShaderModule, nullptr);
 }
 
 
@@ -371,105 +372,105 @@ void Sen_06_Triangle::createTriangleVertexBuffer() {
 	/***************   Create temporary stagingBuffer to transfer from to get Optimal Buffer Resource   *************************************************/
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferDeviceMemory;
-	SenAbstractGLFW::createResourceBuffer(device, verticesBufferSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, verticesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	void* data;
-	vkMapMemory(device, stagingBufferDeviceMemory, 0, verticesBufferSize, 0, &data);
+	vkMapMemory(m_LogicalDevice, stagingBufferDeviceMemory, 0, verticesBufferSize, 0, &data);
 	memcpy(data, vertices, verticesBufferSize);
 	// The driver may not immediately copy the data into the buffer memory, for example because of caching. 
 	// There are two ways to deal with that problem, and what we use is the first one below:
 	//  1. Use a memory heap that is host coherent, indicated with VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
 	//  2. Call vkFlushMappedMemoryRanges to after writing to the mapped memory, and call vkInvalidateMappedMemoryRanges before reading from the mapped memory
-	vkUnmapMemory(device, stagingBufferDeviceMemory);
+	vkUnmapMemory(m_LogicalDevice, stagingBufferDeviceMemory);
 
 	/****************************************************************************************************************************************************/
 	/***************   Transfer from stagingBuffer to Optimal triangleVertexBuffer   ********************************************************************/
-	SenAbstractGLFW::createResourceBuffer(device, verticesBufferSize,
+	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, verticesBufferSize,
 		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
 		triangleVertexBuffer, triangleVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	SenAbstractGLFW::transferResourceBuffer(defaultThreadCommandPool, device, graphicsQueue, stagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, stagingBuffer,
 		triangleVertexBuffer, verticesBufferSize);
 
-	vkDestroyBuffer(device, stagingBuffer, nullptr);
-	vkFreeMemory(device, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
+	vkDestroyBuffer(m_LogicalDevice, stagingBuffer, nullptr);
+	vkFreeMemory(m_LogicalDevice, stagingBufferDeviceMemory, nullptr);	// always try to destroy before free
 }
 
 void Sen_06_Triangle::createTriangleCommandBuffers() {
-	if (swapchainCommandBufferVector.size() > 0) {
-		vkFreeCommandBuffers(device, defaultThreadCommandPool, (uint32_t)swapchainCommandBufferVector.size(), swapchainCommandBufferVector.data());
+	if (m_SwapchainCommandBufferVector.size() > 0) {
+		vkFreeCommandBuffers(m_LogicalDevice, m_DefaultThreadCommandPool, (uint32_t)m_SwapchainCommandBufferVector.size(), m_SwapchainCommandBufferVector.data());
 	}
 	/****************************************************************************************************************************/
 	/**********           Allocate Swapchain CommandBuffers         *************************************************************/
 	/****************************************************************************************************************************/
-	swapchainCommandBufferVector.resize(swapchainImagesCount);
+	m_SwapchainCommandBufferVector.resize(m_SwapChain_ImagesCount);
 
 	VkCommandBufferAllocateInfo commandBufferAllocateInfo{};
 	commandBufferAllocateInfo.sType					= VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	commandBufferAllocateInfo.commandPool			= defaultThreadCommandPool;
+	commandBufferAllocateInfo.commandPool			= m_DefaultThreadCommandPool;
 	commandBufferAllocateInfo.level					= VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	commandBufferAllocateInfo.commandBufferCount	= static_cast<uint32_t>(swapchainCommandBufferVector.size());
+	commandBufferAllocateInfo.commandBufferCount	= static_cast<uint32_t>(m_SwapchainCommandBufferVector.size());
 
-	SenAbstractGLFW::errorCheck(
-		vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, swapchainCommandBufferVector.data()),
+	SLVK_AbstractGLFW::errorCheck(
+		vkAllocateCommandBuffers(m_LogicalDevice, &commandBufferAllocateInfo, m_SwapchainCommandBufferVector.data()),
 		std::string("Failed to allocate Swapchain commandBuffers !!!")
 	);
 
 	/****************************************************************************************************************************/
 	/**********           Record Triangle Swapchain CommandBuffers        *******************************************************/
 	/****************************************************************************************************************************/
-	for (size_t i = 0; i < swapchainCommandBufferVector.size(); i++) {
+	for (size_t i = 0; i < m_SwapchainCommandBufferVector.size(); i++) {
 		//======================================================================================
 		//======================================================================================
 		VkCommandBufferBeginInfo commandBufferBeginInfo{};
 		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		//commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT; // In case we may already be scheduling the drawing commands for the next frame while the last frame hass not finished yet.
-		vkBeginCommandBuffer(swapchainCommandBufferVector[i], &commandBufferBeginInfo);
+		vkBeginCommandBuffer(m_SwapchainCommandBufferVector[i], &commandBufferBeginInfo);
 
 		//======================================================================================
 		//======================================================================================
 		VkRenderPassBeginInfo renderPassBeginInfo{};
 		renderPassBeginInfo.sType				= VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.renderPass			= colorAttachOnlyRenderPass;
-		renderPassBeginInfo.framebuffer			= swapchainFramebufferVector[i];
+		renderPassBeginInfo.renderPass			= m_ColorAttachOnlyRenderPass;
+		renderPassBeginInfo.framebuffer			= m_SwapchainFramebufferVector[i];
 		renderPassBeginInfo.renderArea.offset	= { 0, 0 };
-		renderPassBeginInfo.renderArea.extent.width		= widgetWidth;
-		renderPassBeginInfo.renderArea.extent.height	= widgetHeight;
+		renderPassBeginInfo.renderArea.extent.width		= m_WidgetWidth;
+		renderPassBeginInfo.renderArea.extent.height	= m_WidgetHeight;
 
 		std::vector<VkClearValue> clearValueVector;
 		clearValueVector.push_back(VkClearValue{ 0.2f, 0.3f, 0.3f, 1.0f });
 		renderPassBeginInfo.clearValueCount = (uint32_t)clearValueVector.size();
 		renderPassBeginInfo.pClearValues = clearValueVector.data();
 
-		vkCmdBeginRenderPass(swapchainCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBeginRenderPass(m_SwapchainCommandBufferVector[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		//======================================================================================
 		//======================================================================================
-		vkCmdBindPipeline(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
+		vkCmdBindPipeline(m_SwapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipeline);
 		VkDeviceSize offsetDeviceSize = 0;
-		vkCmdBindVertexBuffers(swapchainCommandBufferVector[i], 0, 1, &triangleVertexBuffer, &offsetDeviceSize);
-		vkCmdBindIndexBuffer(swapchainCommandBufferVector[i], singleRectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(swapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
+		vkCmdBindVertexBuffers(m_SwapchainCommandBufferVector[i], 0, 1, &triangleVertexBuffer, &offsetDeviceSize);
+		vkCmdBindIndexBuffer(m_SwapchainCommandBufferVector[i], singleRectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
+		vkCmdBindDescriptorSets(m_SwapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
 
 		//vkCmdDraw(
-		//	swapchainCommandBufferVector[i],
+		//	m_SwapchainCommandBufferVector[i],
 		//	3, // vertexCount
 		//	1, // instanceCount
 		//	0, // firstVertex
 		//	0  // firstInstance
 		//);
 
-		vkCmdSetViewport(swapchainCommandBufferVector[i], 0, 1, &resizeViewport);
-		vkCmdSetScissor(swapchainCommandBufferVector[i], 0, 1, &resizeScissorRect2D);
+		vkCmdSetViewport(m_SwapchainCommandBufferVector[i], 0, 1, &m_SwapchainResize_Viewport);
+		vkCmdSetScissor(m_SwapchainCommandBufferVector[i], 0, 1, &m_SwapchainResize_ScissorRect2D);
 
-		vkCmdDrawIndexed(swapchainCommandBufferVector[i], 6, 1, 0, 0, 0);
+		vkCmdDrawIndexed(m_SwapchainCommandBufferVector[i], 6, 1, 0, 0, 0);
 
-		vkCmdEndRenderPass(swapchainCommandBufferVector[i]);
+		vkCmdEndRenderPass(m_SwapchainCommandBufferVector[i]);
 
-		SenAbstractGLFW::errorCheck(
-			vkEndCommandBuffer(swapchainCommandBufferVector[i]),
+		SLVK_AbstractGLFW::errorCheck(
+			vkEndCommandBuffer(m_SwapchainCommandBufferVector[i]),
 			std::string("Failed to end record of Triangle Swapchain commandBuffers !!!")
 		);
 	}
