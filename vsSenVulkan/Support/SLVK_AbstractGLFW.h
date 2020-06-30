@@ -48,35 +48,39 @@
 class SLVK_AbstractGLFW
 {
 public:
-	SLVK_AbstractGLFW();
-	virtual ~SLVK_AbstractGLFW();
-
-	void showWidget();
-
-	static void createVulkanShaderModule(const VkDevice& logicalDevice, const std::string& diskFileAddress, VkShaderModule& shaderModule);
+	/*---------------------------------------------------------------------------------------------------------------*/
 	static uint32_t findPhysicalDeviceMemoryPropertyIndex(
 		const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 		const VkMemoryRequirements& memoryRequirements,
 		const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
 	);
 	static void errorCheck(VkResult result, std::string msg);
+	static void createVulkanShaderModule(const VkDevice& logicalDevice, const std::string& diskFileAddress, VkShaderModule& shaderModule);
 
+	/*---------------------------------------------------------------------------------------------------------------*/
+	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
+	static bool hasStencilComponent(VkFormat formatToCheck);
+
+	/*---------------------------------------------------------------------------------------------------------------*/
 	static void beginSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice,
 		VkCommandBuffer& tempCommandBufferToBegin);
 	static void endSingleTimeCommandBuffer(const VkCommandPool& tmpCommandBufferCommandPool, const VkDevice& logicalDevice,
 		const VkQueue& tmpCommandBufferQueue, const VkCommandBuffer& tmpCommandBufferToEnd);
 
+	/*---------------------------------------------------------------------------------------------------------------*/
 	static void createResourceBuffer(const VkDevice& logicalDevice, const VkDeviceSize& bufferDeviceSize,
 		const VkBufferUsageFlags& bufferUsageFlags, const VkSharingMode& bufferSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties,
 		VkBuffer& bufferToCreate, VkDeviceMemory& bufferDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags);
 	static void transferResourceBuffer(const VkCommandPool& bufferTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& bufferMemoryTransferQueue,
 		const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& resourceBufferSize);
-	static void transferResourceBufferToImage(const VkCommandPool& bufferToImageCommandPool, const VkQueue& bufferToImageTransferQueue
-		,const VkDevice& logicalDevice, const VkBuffer& srcBuffer, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight
-		, const uint32_t& layerCount , const uint32_t& regionCount , const VkBufferImageCopy* ptrBufferImageCopyRegionVec);
 
-	static const std::vector<VkFormat> depthStencilSupportCheckFormatsVector;
-	static bool hasStencilComponent(VkFormat formatToCheck);
+	/*---------------------------------------------------------------------------------------------------------------*/
+	static void createDeviceLocalTexture(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
+		, const char*& textureDiskAddress, const VkImageType& imageType, int& textureWidth, int& textureHeight
+		, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
+		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
+	static void createTextureSampler(const VkDevice& logicalDevice, VkSampler& textureSamplerToCreate);
+
 	static void createResourceImage(const VkDevice& logicalDevice, const uint32_t& imageWidth, const uint32_t& imageHeight
 		, const VkImageType& imageType, const VkFormat& imageFormat, const VkImageTiling& imageTiling, const VkImageUsageFlags& imageUsageFlags
 		, VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
@@ -84,18 +88,24 @@ public:
 	static void transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
 		, const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout
 		, const VkDevice& logicalDevice, const VkCommandPool& transitionImageLayoutCommandPool, const VkQueue& imageMemoryTransferQueue);
+	static void transferResourceBufferToImage(const VkCommandPool& bufferToImageCommandPool, const VkQueue& bufferToImageTransferQueue
+		, const VkDevice& logicalDevice, const VkBuffer& srcBuffer, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight
+		, const uint32_t& layerCount, const uint32_t& regionCount, const VkBufferImageCopy* ptrBufferImageCopyRegionVec);
+
 	static void transferResourceImage(const VkCommandPool& imageTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& imageTransferQueue,
 		const VkImage& srcImage, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight);
-	static void createDeviceLocalTexture(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
-		, const char*& textureDiskAddress, const VkImageType& imageType, int& textureWidth, int& textureHeight
-		, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
-		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
-	static void createTextureSampler(const VkDevice& logicalDevice, VkSampler& textureSamplerToCreate);
 
 	static void createDeviceLocalTextureArray(const VkDevice& logicalDevice, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties
 		, const std::vector<std::string> & texturesDiskAddressVector, const VkImageType& imageType
 		, VkImage& deviceLocalTextureToCreate, VkDeviceMemory& textureDeviceMemoryToAllocate, VkImageView& textureImageViewToCreate
 		, const VkSharingMode& imageSharingMode, const VkCommandPool& tmpCommandBufferCommandPool, const VkQueue& imageMemoryTransferQueue);
+
+	/*---------------------------------------------------------------------------------------------------------------*/
+	/*---------------------------------------------------------------------------------------------------------------*/
+	SLVK_AbstractGLFW();
+	virtual ~SLVK_AbstractGLFW();
+
+	void showWidget();
 
 protected:
 	virtual void initVulkanApplication()	= 0;
@@ -112,7 +122,23 @@ protected:
 	void createColorAttachOnlySwapchainFramebuffers();
 	void createDefaultCommandPool();
 	void createSingleRectIndexBuffer();
+	/*****************************************************************************************************************/
+	/*-----------     Necessary Structures for Resources Descrition       -------------------------------------------*/
+	/*---------------------------------------------------------------------------------------------------------------*/
 	void createMvpUniformBuffers();
+
+	struct MvpUniformBufferObject {
+		glm::mat4 model = glm::mat4(1.0f);
+		glm::mat4 view = glm::mat4(1.0f);
+		glm::mat4 projection = glm::mat4(1.0f);
+	};
+
+	const int						m_UniformBuffer_DS_BindingIndex = 0;
+	VkBuffer						mvpUniformStagingBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory					mvpUniformStagingBufferDeviceMemory = VK_NULL_HANDLE;
+	VkBuffer						mvpOptimalUniformBuffer = VK_NULL_HANDLE;
+	VkDeviceMemory					mvpOptimalUniformBufferMemory = VK_NULL_HANDLE;
+
 	/*****************************************************************************************************************/
 	/*-----------             Depth Test FrameBuffer related            ---------------------------------------------*/
 	/*---------------------------------------------------------------------------------------------------------------*/
@@ -127,6 +153,25 @@ protected:
 	VkFormat						depthTestFormat						= VK_FORMAT_UNDEFINED;
 	bool							hasStencil							= false;
 	VkImageSubresourceRange			depthTestImageSubresourceRange{};
+	/*****************************************************************************************************************/
+
+	/*****************************************************************************************************************/
+	/*-----------             Depth Stencil FrameBuffer related, Not Applicable Yet    ------------------------------*/
+	/*---------------------------------------------------------------------------------------------------------------*/
+	VkRenderPass						depthStencilRenderPass = VK_NULL_HANDLE;
+	VkImage								depthStencilImage = VK_NULL_HANDLE;
+	VkDeviceMemory						depthStencilImageDeviceMemory = VK_NULL_HANDLE;
+	VkImageView							depthStencilImageView = VK_NULL_HANDLE;
+	VkFormat							depthStencilFormat = VK_FORMAT_UNDEFINED;
+	bool								stencilAvailable = false;
+
+	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
+		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
+		, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer);
+	void createDepthStencilAttachment();
+	void createDepthStencilRenderPass();
+	void createDepthStencilGraphicsPipeline();
+	/*****************************************************************************************************************/
 	/*****************************************************************************************************************/
 
 #ifdef _DEBUG
@@ -192,38 +237,6 @@ protected:
 	//	It is even possible to reuse the same chunk of memory for multiple resources if they are not used during the same render operations,
 	//		provided that their data is refreshed, of course.
 	// This is known as aliasing and some Vulkan functions have explicit flags to specify that you want to do this.
-	
-	/*****************************************************************************************************************/
-	/*-----------     Necessary Structures for Resources Descrition       -------------------------------------------*/
-	/*---------------------------------------------------------------------------------------------------------------*/
-	struct MvpUniformBufferObject {
-		glm::mat4 model			= glm::mat4(1.0f);
-		glm::mat4 view			= glm::mat4(1.0f);
-		glm::mat4 projection	= glm::mat4(1.0f);
-	};
-
-	const int						m_UniformBuffer_DS_BindingIndex		= 1;
-	VkBuffer						mvpUniformStagingBuffer				= VK_NULL_HANDLE;
-	VkDeviceMemory					mvpUniformStagingBufferDeviceMemory	= VK_NULL_HANDLE;
-	VkBuffer						mvpOptimalUniformBuffer				= VK_NULL_HANDLE;
-	VkDeviceMemory					mvpOptimalUniformBufferMemory		= VK_NULL_HANDLE;
-
-	/*****************************************************************************************************************/
-	/*-----------             Depth Stencil FrameBuffer related, Not Applicable Yet    ------------------------------*/
-	/*---------------------------------------------------------------------------------------------------------------*/
-	VkImage								depthStencilImage				= VK_NULL_HANDLE;
-	VkDeviceMemory						depthStencilImageDeviceMemory	= VK_NULL_HANDLE;
-	VkImageView							depthStencilImageView			= VK_NULL_HANDLE;
-	VkFormat							depthStencilFormat				= VK_FORMAT_UNDEFINED;
-	bool								stencilAvailable				= false;
-
-	void setImageMemoryBarrier(VkImage image, VkImageAspectFlags imageAspectFlags
-		, VkImageLayout oldImageLayout, VkImageLayout newImageLayout
-		, VkAccessFlagBits srcAccessFlagBits, const VkCommandBuffer& imageLayoutTransitionCommandBuffer);
-	void createDepthStencilAttachment();
-	void createDepthStencilRenderPass();
-	void createDepthStencilGraphicsPipeline();
-	/*****************************************************************************************************************/
 
 private:
 	static void onWidgetResized(GLFWwindow* widget, int width, int height);

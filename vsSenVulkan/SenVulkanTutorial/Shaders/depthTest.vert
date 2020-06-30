@@ -4,7 +4,7 @@
 	uniform values in shaders, are globals similar to dynamic state variables;
 	can be changed at drawing time to alter the behavior of your shaders without having to recreate them.
 */
-const int m_UniformBuffer_DS_BindingIndex = 1;
+const int m_UniformBuffer_DS_BindingIndex = 0;
 layout(binding = m_UniformBuffer_DS_BindingIndex) uniform UniformBufferObject {
     mat4 model;
     mat4 view;
