@@ -125,8 +125,8 @@ void SLVK_AbstractGLFW::createResourceImage(const VkDevice& logicalDevice,const 
 }
 
 
-void SLVK_AbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
-	,const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout, const VkFormat& imageFormat
+void SLVK_AbstractGLFW::transitionResourceImageLayout(const VkImage& imageToTransitionLayout
+	,const VkImageSubresourceRange& imageSubresourceRangeToTransition, const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout
 	,const VkDevice& logicalDevice ,const VkCommandPool& transitionImageLayoutCommandPool  ,const VkQueue& imageMemoryTransferQueue) {
 	
 	if (newImageLayout == VK_IMAGE_LAYOUT_UNDEFINED || newImageLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
@@ -339,7 +339,7 @@ void SLVK_AbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDev
 	textureImageSubresourceRange.layerCount		= textureArrayLayerCount;
 
 	SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 
 	/******************************************************************************************************/
 	/**********       Setup buffer copy regions for array layers      *************************************/
@@ -387,7 +387,7 @@ void SLVK_AbstractGLFW::createDeviceLocalTextureArray(const VkDevice& logicalDev
 		, static_cast<uint32_t>(bufferImageCopyRegionsVector.size()), bufferImageCopyRegionsVector.data());
 
 	SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 
 	/***********************************************************************************************************************************************/
 	/**********            Third:  clean the staging Buffer, DeviceMemory                 ***********************************************************/
@@ -569,11 +569,11 @@ void SLVK_AbstractGLFW::createDeviceLocalTexture(const VkDevice& logicalDevice, 
 	textureImageSubresourceRange.layerCount		= 1;
 
 	SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
+		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 	SLVK_AbstractGLFW::transferResourceBufferToImage(tmpCommandBufferCommandPool, imageMemoryTransferQueue,
 		logicalDevice, textureStagingBuffer, deviceLocalTextureToCreate, textureWidth, textureHeight);
 	SLVK_AbstractGLFW::transitionResourceImageLayout(deviceLocalTextureToCreate, textureImageSubresourceRange, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, textureFormat, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, logicalDevice, tmpCommandBufferCommandPool, imageMemoryTransferQueue);
 
 	/***********************************************************************************************************************************************/
 	/**********            Third:  clean the staging Buffer, DeviceMemory                 ***********************************************************/
@@ -664,7 +664,7 @@ void SLVK_AbstractGLFW::initGlfwVulkanDebugWSI()
 	/********* because the check of "surface" support will influence the physical m_LogicalDevice selection.     ****************************/
 	createSurface(); // m_Surface == default framebuffer to draw
 	pickPhysicalDevice();
-	//showPhysicalDeviceSupportedLayersAndExtensions(physicalDevice);// only show physicalDevice after pickPhysicalDevice()
+	//showPhysicalDeviceSupportedLayersAndExtensions(m_PhysicalDevice);// only show m_PhysicalDevice after pickPhysicalDevice()
 	createDefaultLogicalDevice();
 	collectSwapchainFeatures();
 	createSwapchain();
@@ -703,11 +703,11 @@ void SLVK_AbstractGLFW::createMvpUniformBuffers() {
 	VkDeviceSize mvpUboUniformBufferDeviceSize = sizeof(MvpUniformBufferObject);
 
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, mvpUboUniformBufferDeviceSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		mvpUniformStagingBuffer, mvpUniformStagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, mvpUboUniformBufferDeviceSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		mvpOptimalUniformBuffer, mvpOptimalUniformBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
 }
@@ -717,7 +717,7 @@ void SLVK_AbstractGLFW::collectSwapchainFeatures()
 	/****************************************************************************************************************************/
 	/********** Getting Surface Capabilities first to support SwapChain. ********************************************************/
 	/*********** Could not do this right after surface creation, because GPU had not been seleted at that time ******************/
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &m_SurfaceCapabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_PhysicalDevice, m_Surface, &m_SurfaceCapabilities);
 
 	// Do the check & assignment below because what we surface size we got may not equal to what we set
 	// Make sure the size of swapchain match the size of surface
@@ -743,13 +743,13 @@ void SLVK_AbstractGLFW::collectSwapchainFeatures()
 	/****************************************************************************************************************************/
 	/********** Reserve swapchain imageFormat and imageColorSpace ***************************************************************/
 	uint32_t formatCount = 0;
-	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, nullptr);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_Surface, &formatCount, nullptr);
 	if (formatCount == 0) {
 		throw std::runtime_error("No SurfaceFormat found, not a suitable GPU!");
 	}
 	std::vector<VkSurfaceFormatKHR> surfaceFormatVector;
 	surfaceFormatVector.resize(formatCount);
-	vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, m_Surface, &formatCount, surfaceFormatVector.data());
+	vkGetPhysicalDeviceSurfaceFormatsKHR(m_PhysicalDevice, m_Surface, &formatCount, surfaceFormatVector.data());
 	if (surfaceFormatVector[0].format == VK_FORMAT_UNDEFINED) { // the prasentation layer (WSI) doesnot care about the format
 		m_SurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM;
 		m_SurfaceFormat.colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
@@ -759,17 +759,17 @@ void SLVK_AbstractGLFW::collectSwapchainFeatures()
 	}
 
 	/****************************************************************************************************************************/
-	/**********                Reserve presentMode                ***************************************************************/
+	/**********                Reserve m_SwapchainPresentMode                ***************************************************************/
 	/****************************************************************************************************************************/
 	uint32_t presentModeCount = 0;
-	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, nullptr);
+	vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_Surface, &presentModeCount, nullptr);
 	std::vector<VkPresentModeKHR> presentModeVector(presentModeCount);
-	vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, m_Surface, &presentModeCount, presentModeVector.data());
+	vkGetPhysicalDeviceSurfacePresentModesKHR(m_PhysicalDevice, m_Surface, &presentModeCount, presentModeVector.data());
 	for (auto m : presentModeVector) {
 		// VK_PRESENT_MODE_MAILBOX_KHR is good for gaming, but can only get full advantage of MailBox PresentMode with more than 2 buffers,
 		// which means triple-buffering
 		if (m == VK_PRESENT_MODE_MAILBOX_KHR) {
-			presentMode = m;
+			m_SwapchainPresentMode = m;
 			break;
 		}
 	}
@@ -794,14 +794,14 @@ void SLVK_AbstractGLFW::createSwapchain() {
 		swapchainCreateInfo.queueFamilyIndexCount	= 2;
 		swapchainCreateInfo.pQueueFamilyIndices		= queueFamilyIndicesArray;
 	}else {
-		swapchainCreateInfo.imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE;		// share between QueueFamilies or not
+		swapchainCreateInfo.imageSharingMode		= VK_SHARING_MODE_EXCLUSIVE;  // share between QueueFamilies or not
 		swapchainCreateInfo.queueFamilyIndexCount	= 0;// no QueueFamily share
 		swapchainCreateInfo.pQueueFamilyIndices		= nullptr;
 	}
 
 	swapchainCreateInfo.preTransform	= m_SurfaceCapabilities.currentTransform; // Rotate of Mirror before presentation (VkSurfaceTransformFlagBitsKHR)
-	swapchainCreateInfo.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;  // 
-	swapchainCreateInfo.presentMode		= presentMode;
+	swapchainCreateInfo.compositeAlpha	= VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchainCreateInfo.presentMode		= m_SwapchainPresentMode;
 	swapchainCreateInfo.clipped			= VK_TRUE;	// Typically always set this true, such that Vulkan never render the invisible (out of visible range) image 
 
 	swapchainCreateInfo.oldSwapchain	= m_SwapChain;// resize window
@@ -852,7 +852,7 @@ void SLVK_AbstractGLFW::createSwapchain() {
 
 /* Draw frames by acquiring images, submitting the right draw command buffer and returning the images back to the swap chain.
 	1. vkAcquireNextImageKHR:	Acquire an image from the SwapChain;
-	2. vkQueueSubmit:			Select the appropriate command buffer for that image and execute it;
+	2. vkQueueSubmit:			Select the appropriate command buffer for that image and execute it;  m_SwapchainPresentQueue
 	3. vkQueuePresentKHR:		Return the image to the swap chain for presentation to the screen.
 */
 void SLVK_AbstractGLFW::swapSwapchain()
@@ -906,12 +906,12 @@ void SLVK_AbstractGLFW::swapSwapchain()
 	submitInfo.pSignalSemaphores	= submitInfoSignalSemaphoresVector.data();
 
 	SLVK_AbstractGLFW::errorCheck(
-		vkQueueSubmit(graphicsQueue, 1, &submitInfo, m_SC_WaitCommandBufferCompleteFencesVector[swapchainImageIndex]),
+		vkQueueSubmit(m_GraphicsQueue, 1, &submitInfo, m_SC_WaitCommandBufferCompleteFencesVector[swapchainImageIndex]),
 		std::string("Failed to submit draw command buffer !!!")
 	);
 
 	/*******************************************************************************************************************************/
-	/*********  3. vkQueuePresentKHR:		Return the image to the swap chain for presentation to the screen.      ****************/
+	/**  3. m_SwapchainPresentQueue		vkQueuePresentKHR:	Return the image to the swap chain for presentation to the screen.   ***/
 	/*-----------------------------------------------------------------------------------------------------------------------------*/
 	std::vector<VkSemaphore> presentInfoWaitSemaphoresVector;
 	presentInfoWaitSemaphoresVector.push_back(m_SC_PaintReadyToPresentSemaphore);
@@ -925,7 +925,7 @@ void SLVK_AbstractGLFW::swapSwapchain()
 	presentInfo.pSwapchains		= swapChainsArray;
 	presentInfo.pImageIndices	= &swapchainImageIndex;
 
-	result = vkQueuePresentKHR(presentQueue, &presentInfo);
+	result = vkQueuePresentKHR(m_SwapchainPresentQueue, &presentInfo);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		reCreateRenderTarget();
 	}else if (result != VK_SUCCESS) {
@@ -964,7 +964,7 @@ void SLVK_AbstractGLFW::reInitPresentation()
 	vkDeviceWaitIdle(m_LogicalDevice);
 
 	// Have to use this 3 commands to get currentExtent
-	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, m_Surface, &m_SurfaceCapabilities);
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(m_PhysicalDevice, m_Surface, &m_SurfaceCapabilities);
 	if (m_SurfaceCapabilities.currentExtent.width < UINT32_MAX) {
 		m_WidgetWidth = m_SurfaceCapabilities.currentExtent.width;
 		m_WidgetHeight = m_SurfaceCapabilities.currentExtent.height;
@@ -988,14 +988,14 @@ void SLVK_AbstractGLFW::createDepthTestAttachment()
 	/********************************************************************************************************************/
 	/******    If first time (not resize):  Check depthTestImage Format,  Initial depthTestImageSubresourceRange     ****/
 	if (depthTestFormat == VK_FORMAT_UNDEFINED) {
-		VkFormatProperties formatProperties{};
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, VK_FORMAT_D32_SFLOAT, &formatProperties);
-		if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+		VkFormatProperties commonFormatProperties{};
+		vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, VK_FORMAT_D32_SFLOAT, &commonFormatProperties);
+		if (commonFormatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
 			depthTestFormat = VK_FORMAT_D32_SFLOAT; // VK_FORMAT_D32_SFLOAT is extremely common for depthTest
 		else {
 			for (auto f : SLVK_AbstractGLFW::depthStencilSupportCheckFormatsVector) {
 				VkFormatProperties formatProperties{};
-				vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
+				vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, f, &formatProperties);
 				if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
 					depthTestFormat = f;
 					break;
@@ -1017,7 +1017,7 @@ void SLVK_AbstractGLFW::createDepthTestAttachment()
 	/***************************     Create depthTest Image     *********************************************************/
 	SLVK_AbstractGLFW::createResourceImage(m_LogicalDevice, m_WidgetWidth, m_WidgetHeight, VK_IMAGE_TYPE_2D,  // depthTestImage is also a 2D image
 		depthTestFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, depthTestImage
-		, depthTestImageDeviceMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties);
+		, depthTestImageDeviceMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties);
 
 	/********************************************************************************************************************/
 	/******************************     Create depthTest Image View    **************************************************/
@@ -1032,7 +1032,7 @@ void SLVK_AbstractGLFW::createDepthTestAttachment()
 	/********************************************************************************************************************/
 	/******************************     Transition depthTest ImageLayout     ********************************************/
 	SLVK_AbstractGLFW::transitionResourceImageLayout(depthTestImage, depthTestImageSubresourceRange, VK_IMAGE_LAYOUT_PREINITIALIZED,
-		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, depthTestFormat, m_LogicalDevice, m_DefaultThreadCommandPool, graphicsQueue);
+		VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL, m_LogicalDevice, m_DefaultThreadCommandPool, m_GraphicsQueue);
 }
 
 
@@ -1392,7 +1392,7 @@ void SLVK_AbstractGLFW::createSingleRectIndexBuffer()
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferDeviceMemory;
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, indicesBufferSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	void* data;
@@ -1407,10 +1407,10 @@ void SLVK_AbstractGLFW::createSingleRectIndexBuffer()
 	/****************************************************************************************************************************************************/
 	/***************   Transfer from stagingBuffer to Optimal m_TriangleVertexBuffer   ********************************************************************/
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, indicesBufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		singleRectIndexBuffer, singleRectIndexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, stagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, m_GraphicsQueue, stagingBuffer,
 		singleRectIndexBuffer, indicesBufferSize);
 
 	vkDestroyBuffer(m_LogicalDevice, stagingBuffer, nullptr);
@@ -1456,7 +1456,7 @@ void SLVK_AbstractGLFW::initDebugLayers()
 {
 	// choose layers
 	debugInstanceLayersVector.push_back("VK_LAYER_LUNARG_standard_validation");
-	debugDeviceLayersVector.push_back("VK_LAYER_LUNARG_standard_validation");				// depricated
+	debugDeviceLayersVector.push_back("VK_LAYER_LUNARG_standard_validation");	// depricated, but still recommended
 
 	// check layer support
 	if (!checkInstanceLayersSupport(debugInstanceLayersVector)) {
@@ -1510,9 +1510,9 @@ void SLVK_AbstractGLFW::createInstance()
 {
 	VkApplicationInfo appInfo = {};
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = "SL Triangle";
+	appInfo.pApplicationName = "SL Vulkan";
 	appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-	appInfo.pEngineName = "No Engine";
+	appInfo.pEngineName = "SLVK Engine";
 	appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
 	appInfo.apiVersion = VK_MAKE_VERSION(1, 0, 0);
 
@@ -1567,12 +1567,12 @@ void SLVK_AbstractGLFW::pickPhysicalDevice()
 
 	//for (const auto& detectedGPU : physicalDevicesVector) {
 	//	if (isPhysicalDeviceSuitable(detectedGPU, graphicsQueueFamilyIndex, presentQueueFamilyIndex)) {
-	//		physicalDevice = detectedGPU;
+	//		m_PhysicalDevice = detectedGPU;
 	//		break;
 	//	}
 	//}
 
-	//if (VK_NULL_HANDLE == physicalDevice) {
+	//if (VK_NULL_HANDLE == m_PhysicalDevice) {
 	//	throw std::runtime_error("failed to find a suitable GPU!");
 	//}
 
@@ -1584,21 +1584,23 @@ void SLVK_AbstractGLFW::pickPhysicalDevice()
 	std::cout << "All Detected GPUs Properties: \n";
 	for (int i = 0; i < physicalDevicesVector.size(); i++) {
 		int score = ratePhysicalDevice(physicalDevicesVector[i], graphicsQueueFamilyIndex, presentQueueFamilyIndex);// Primary check function in this block
-		std::cout << "\t[" << i + 1 << "]\t";	showPhysicalDeviceInfo(physicalDevicesVector[i]);
+		showPhysicalDeviceInfo(physicalDevicesVector[i]);
 		physicalDevicesScoredMap.insert(std::make_pair(score, physicalDevicesVector[i]));
+		std::cout << "\t\t\t\tGraphics QueueFamily Index = \t" << graphicsQueueFamilyIndex << std::endl;
+		std::cout << "\t\t\t\tPresent  QueueFamily Index = \t" << presentQueueFamilyIndex << std::endl;
+		std::cout << "\t\t\t\tRated Score = \t\t" << score << std::endl;
 	}
 	// Check if the best candidate is suitable at all
 	if (physicalDevicesScoredMap.rbegin()->first > 0) {
-		physicalDevice = physicalDevicesScoredMap.rbegin()->second;
+		m_PhysicalDevice = physicalDevicesScoredMap.rbegin()->second;
 	}
 	else {
 		throw std::runtime_error("failed to find a suitable GPU!");
 	}
 	/******************************************************************************************************/
-	/*****  Acquire the physicalDeviceMemoryProperties & physicalDeviceFeatures of the selected GPU   *****/
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &physicalDeviceMemoryProperties);
-	vkGetPhysicalDeviceFeatures(physicalDevice, &physicalDeviceFeatures);
-	std::cout << "\n\nSelected GPU Properties:\n\t\t";	showPhysicalDeviceInfo(physicalDevice);
+	/*****  Acquire the m_PhysicalDeviceMemoryProperties of the selected GPU   *****/
+	vkGetPhysicalDeviceMemoryProperties(m_PhysicalDevice, &m_PhysicalDeviceMemoryProperties);
+	std::cout << "\n\nSelected GPU Properties:\n";	showPhysicalDeviceInfo(m_PhysicalDevice);
 	std::cout << std::endl;
 }
 
@@ -1617,14 +1619,13 @@ void SLVK_AbstractGLFW::showPhysicalDeviceInfo(const VkPhysicalDevice & gpuToChe
 	VkPhysicalDeviceProperties physicalDeviceProperties{};
 	vkGetPhysicalDeviceProperties(gpuToCheck, &physicalDeviceProperties);
 	std::ostringstream stream;
-	std::cout << " GPU Name: [" << physicalDeviceProperties.deviceName << "]\tType: \"";
+	stream << "\tGPU Name: [" << physicalDeviceProperties.deviceName << "]\t\tType: \t\"";
 	switch (physicalDeviceProperties.deviceType) {
-	case 0:			stream << "VK_PHYSICAL_DEVICE_TYPE_OTHER\"\n ";				break;
-	case 1:			stream << "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU\"\n ";	break;
-	case 2:			stream << "VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU\"\n ";		break;
-	case 3:			stream << "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU\"\n ";		break;
-	case 4:			stream << "VK_PHYSICAL_DEVICE_TYPE_CPU\"\n ";				break;
-	case 5:			stream << "VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE\"\n ";		break;
+	case 0:			stream << "VK_PHYSICAL_DEVICE_TYPE_OTHER\"\n";				break;
+	case 1:			stream << "VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU\"\n";	break;
+	case 2:			stream << "VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU\"\n";		break;
+	case 3:			stream << "VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU\"\n";		break;
+	case 4:			stream << "VK_PHYSICAL_DEVICE_TYPE_CPU\"\n";				break;
 	default:		stream << "Unrecognized GPU Property.deviceType! \n";		break;
 	}
 	std::cout << stream.str();
@@ -1684,9 +1685,9 @@ int SLVK_AbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, i
 	std::vector<VkQueueFamilyProperties> gpuQueueFamiliesPropertiesVector(gpuQueueFamiliesCount);
 	vkGetPhysicalDeviceQueueFamilyProperties(gpuToCheck, &gpuQueueFamiliesCount, gpuQueueFamiliesPropertiesVector.data());
 
-	//	1. Get the number of Queues supported by the Physical m_LogicalDevice
+	//	1. Get the number of Queues supported by the PhysicalDevice
 	//	2. Get the properties each Queue type or Queue Family
-	//			There could be 4 Queue type or Queue families supported by physical m_LogicalDevice - 
+	//			There could be 4 Queue type or Queue families supported by PhysicalDevice - 
 	//			Graphics Queue	- VK_QUEUE_GRAPHICS_BIT 
 	//			Compute Queue	- VK_QUEUE_COMPUTE_BIT
 	//			DMA				- VK_QUEUE_TRANSFER_BIT
@@ -1726,7 +1727,7 @@ int SLVK_AbstractGLFW::ratePhysicalDevice(const VkPhysicalDevice & gpuToCheck, i
 	VkPhysicalDeviceProperties physicalDeviceProperties{};
 	vkGetPhysicalDeviceProperties(gpuToCheck, &physicalDeviceProperties);
 	if (physicalDeviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-		score += 1000;	// Discrete GPUs have a significant performance advantage
+		score += 100000;	// Discrete GPUs have a significant performance advantage
 	}
 	score += physicalDeviceProperties.limits.maxImageDimension2D;// Maximum possible size of textures affects graphics quality
 
@@ -1752,6 +1753,9 @@ void SLVK_AbstractGLFW::createDefaultLogicalDevice()
 		deviceQueuesCreateInfosVector.push_back(queueCreateInfo);
 	}
 
+	VkPhysicalDeviceFeatures			physicalDeviceFeatures{};
+	vkGetPhysicalDeviceFeatures(m_PhysicalDevice, &physicalDeviceFeatures);
+
 	VkDeviceCreateInfo deviceCreateInfo{};
 	deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(deviceQueuesCreateInfosVector.size());
@@ -1759,20 +1763,20 @@ void SLVK_AbstractGLFW::createDefaultLogicalDevice()
 	deviceCreateInfo.pEnabledFeatures = &physicalDeviceFeatures;
 
 	if (DEBUG_LAYERS_ENABLED) {
-		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(debugDeviceLayersVector.size());   				// depricated
+		deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(debugDeviceLayersVector.size());   // depricated
 		deviceCreateInfo.ppEnabledLayerNames = debugDeviceLayersVector.data();				// depricated
 	}
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(debugDeviceExtensionsVector.size());
 	deviceCreateInfo.ppEnabledExtensionNames = debugDeviceExtensionsVector.data();
 
 	SLVK_AbstractGLFW::errorCheck(
-		vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &m_LogicalDevice),
+		vkCreateDevice(m_PhysicalDevice, &deviceCreateInfo, nullptr, &m_LogicalDevice),
 		std::string("Fail at Create Logical Device!")
 	);
 
 	// Retrieve queue handles for each queue family
-	vkGetDeviceQueue(m_LogicalDevice, graphicsQueueFamilyIndex, 0, &graphicsQueue);
-	vkGetDeviceQueue(m_LogicalDevice, presentQueueFamilyIndex, 0, &presentQueue); // We only need 1 queue, so the third parameter (index) we give is 0.
+	vkGetDeviceQueue(m_LogicalDevice, graphicsQueueFamilyIndex, 0, &m_GraphicsQueue);
+	vkGetDeviceQueue(m_LogicalDevice, presentQueueFamilyIndex, 0, &m_SwapchainPresentQueue); // We only need 1 queue, so the third parameter (index) we give is 0.
 }
 
 void SLVK_AbstractGLFW::finalizeAbstractGLFW() {
@@ -1803,18 +1807,6 @@ void SLVK_AbstractGLFW::finalizeAbstractGLFW() {
 		m_DefaultThreadCommandPool = VK_NULL_HANDLE;
 		
 		m_SwapchainCommandBufferVector.clear();
-	}
-	/************************************************************************************************************/
-	/*************      Destroy descriptorPool,  perspectiveProjection_DSL, perspectiveProjection_DS      ************/
-	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != descriptorPool) {
-		vkDestroyDescriptorPool(m_LogicalDevice, descriptorPool, nullptr);
-		// When a DescriptorPool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid
-		vkDestroyDescriptorSetLayout(m_LogicalDevice, perspectiveProjection_DSL, nullptr);
-
-		perspectiveProjection_DSL	= VK_NULL_HANDLE;
-		descriptorPool				= VK_NULL_HANDLE;
-		perspectiveProjection_DS	= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
@@ -1868,8 +1860,8 @@ void SLVK_AbstractGLFW::finalizeAbstractGLFW() {
 		vkDestroyDevice(m_LogicalDevice, VK_NULL_HANDLE);
 
 		// Device queues are implicitly cleaned up when the m_LogicalDevice is destroyed
-		if (VK_NULL_HANDLE != graphicsQueue) { graphicsQueue = VK_NULL_HANDLE; }
-		if (VK_NULL_HANDLE != presentQueue) { presentQueue = VK_NULL_HANDLE; }
+		if (VK_NULL_HANDLE != m_GraphicsQueue) { m_GraphicsQueue = VK_NULL_HANDLE; }
+		if (VK_NULL_HANDLE != m_SwapchainPresentQueue) { m_SwapchainPresentQueue = VK_NULL_HANDLE; }
 
 		m_LogicalDevice = VK_NULL_HANDLE;
 	}
@@ -1916,7 +1908,6 @@ uint32_t SLVK_AbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
 		}
 	}
 	throw std::runtime_error("Couldn't find proper GPU memory Property Index.");
-	return UINT32_MAX;
 }
 
 bool SLVK_AbstractGLFW::checkInstanceLayersSupport(std::vector<const char*> layersVector) {
@@ -2291,7 +2282,7 @@ void SLVK_AbstractGLFW::createDepthStencilAttachment()
 	/******************************  Check Image Format *****************************************************************/
 	for (auto f : SLVK_AbstractGLFW::depthStencilSupportCheckFormatsVector) {
 		VkFormatProperties formatProperties{};
-		vkGetPhysicalDeviceFormatProperties(physicalDevice, f, &formatProperties);
+		vkGetPhysicalDeviceFormatProperties(m_PhysicalDevice, f, &formatProperties);
 		if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
 			depthStencilFormat = f;
 			break;
@@ -2336,7 +2327,7 @@ void SLVK_AbstractGLFW::createDepthStencilAttachment()
 	vkGetImageMemoryRequirements(m_LogicalDevice, depthStencilImage, &imageMemoryRequirements);
 
 	uint32_t gpuMemoryTypeIndex = SLVK_AbstractGLFW::findPhysicalDeviceMemoryPropertyIndex(
-		physicalDeviceMemoryProperties,
+		m_PhysicalDeviceMemoryProperties,
 		imageMemoryRequirements,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT  // Set the resource to reside on GPU itself
 	);

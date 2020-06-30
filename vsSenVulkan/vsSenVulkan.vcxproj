@@ -125,10 +125,6 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="SenVulkanTutorial\Sen_221_Cube.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">NotUsing</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">NotUsing</PrecompiledHeader>
@@ -181,7 +177,6 @@
     <ClInclude Include="SenVulkanTutorial\Sen_06_Triangle.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_072_TextureArray.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_07_Texture.h" />
-    <ClInclude Include="SenVulkanTutorial\Sen_09_MVP_UniformBuffer.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_221_Cube.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_222_TinyObjLoader.h" />
     <ClInclude Include="SenVulkanTutorial\Sen_22_DepthTest.h" />

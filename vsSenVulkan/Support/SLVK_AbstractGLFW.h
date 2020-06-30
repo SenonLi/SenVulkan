@@ -82,7 +82,7 @@ public:
 		, VkImage& imageToCreate, VkDeviceMemory& imageDeviceMemoryToAllocate, const VkMemoryPropertyFlags& requiredMemoryPropertyFlags
 		, const VkSharingMode& imageSharingMode, const VkPhysicalDeviceMemoryProperties& gpuMemoryProperties, const uint32_t& layerCount);
 	static void transitionResourceImageLayout(const VkImage& imageToTransitionLayout, const VkImageSubresourceRange& imageSubresourceRangeToTransition
-		, const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout, const VkFormat& imageFormat
+		, const VkImageLayout& oldImageLayout, const VkImageLayout& newImageLayout
 		, const VkDevice& logicalDevice, const VkCommandPool& transitionImageLayoutCommandPool, const VkQueue& imageMemoryTransferQueue);
 	static void transferResourceImage(const VkCommandPool& imageTransferCommandPool, const VkDevice& logicalDevice, const VkQueue& imageTransferQueue,
 		const VkImage& srcImage, const VkImage& dstImage, const uint32_t& imageWidth, const uint32_t& imageHeight);
@@ -147,23 +147,21 @@ protected:
 	VkSurfaceFormatKHR				m_SurfaceFormat{};
 	VkSurfaceCapabilitiesKHR		m_SurfaceCapabilities{};
 	
-	VkPhysicalDevice					physicalDevice				= VK_NULL_HANDLE;
-	VkPhysicalDeviceProperties			physicalDeviceProperties{};
-	VkPhysicalDeviceMemoryProperties	physicalDeviceMemoryProperties{};
-	VkPhysicalDeviceFeatures			physicalDeviceFeatures{};
+	VkPhysicalDevice					m_PhysicalDevice			= VK_NULL_HANDLE;
+	VkPhysicalDeviceMemoryProperties	m_PhysicalDeviceMemoryProperties{};
 	int32_t								graphicsQueueFamilyIndex	= -1;	// Index of Graphics QueueFamily of GPU that we will choose to 
 	int32_t								presentQueueFamilyIndex		= -1;	// The Graphics (Drawing) QueueFamily may not support presentation (WSI)
 
 	/********** Default Logical Device ********************************************************/
-	VkDevice						m_LogicalDevice						= VK_NULL_HANDLE;
+	VkDevice						m_LogicalDevice				= VK_NULL_HANDLE;
 	// GPU QueueFamilies can accept different types of work, which means we could assign One form of work in One Unique queue
 	// (e.g.DMA / memoryTransfer-only queue);    Queues are on GPU, auto "multi-threads"
-	VkQueue							graphicsQueue				= VK_NULL_HANDLE;			// Handle to the graphics queue
-	VkQueue							presentQueue				= VK_NULL_HANDLE;			// Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
-	VkPresentModeKHR				presentMode					= VK_PRESENT_MODE_FIFO_KHR; // VK_PRESENT_MODE_FIFO_KHR is always available.
+	VkQueue							m_GraphicsQueue				= VK_NULL_HANDLE;			// Handle to the graphics queue
+	VkQueue							m_SwapchainPresentQueue		= VK_NULL_HANDLE;			// Since presentQueueFamilyIndex may not == graphicsQueueFamilyIndex, make two queue
+	VkPresentModeKHR				m_SwapchainPresentMode		= VK_PRESENT_MODE_FIFO_KHR; // VK_PRESENT_MODE_FIFO_KHR is always available.
 
 	VkSwapchainKHR					m_SwapChain					= VK_NULL_HANDLE;
-	uint32_t						m_SwapChain_ImagesCount = 2;
+	uint32_t						m_SwapChain_ImagesCount		= 2;
 	VkViewport						m_SwapchainResize_Viewport{};
 	VkRect2D						m_SwapchainResize_ScissorRect2D{};
 	std::vector<VkImageView>		m_SwapchainImageViewsVector;	// m_SwapchainImageViewsVector has the same life length as m_SwapchainFramebufferVector
@@ -195,19 +193,20 @@ protected:
 	//		provided that their data is refreshed, of course.
 	// This is known as aliasing and some Vulkan functions have explicit flags to specify that you want to do this.
 	
+	/*****************************************************************************************************************/
+	/*-----------     Necessary Structures for Resources Descrition       -------------------------------------------*/
+	/*---------------------------------------------------------------------------------------------------------------*/
 	struct MvpUniformBufferObject {
 		glm::mat4 model			= glm::mat4(1.0f);
 		glm::mat4 view			= glm::mat4(1.0f);
 		glm::mat4 projection	= glm::mat4(1.0f);
 	};
 
-	VkDescriptorSetLayout			perspectiveProjection_DSL			= VK_NULL_HANDLE;
+	const int						m_UniformBuffer_DS_Index			= 0;
 	VkBuffer						mvpUniformStagingBuffer				= VK_NULL_HANDLE;
 	VkDeviceMemory					mvpUniformStagingBufferDeviceMemory	= VK_NULL_HANDLE;
 	VkBuffer						mvpOptimalUniformBuffer				= VK_NULL_HANDLE;
 	VkDeviceMemory					mvpOptimalUniformBufferMemory		= VK_NULL_HANDLE;
-	VkDescriptorPool				descriptorPool						= VK_NULL_HANDLE;
-	VkDescriptorSet					perspectiveProjection_DS			= VK_NULL_HANDLE;
 
 	/*****************************************************************************************************************/
 	/*-----------             Depth Stencil FrameBuffer related, Not Applicable Yet    ------------------------------*/

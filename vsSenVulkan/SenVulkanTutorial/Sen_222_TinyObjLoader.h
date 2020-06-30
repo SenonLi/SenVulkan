@@ -31,6 +31,15 @@ private:
 	void createTextureAppDescriptorSetLayout();
 	void createTextureAppDescriptorSet();
 
+	/*****************************************************************************************************************/
+	/*------------------------     For Resources Descrition       ---------------------------------------------------*/
+	/*---------------------------------------------------------------------------------------------------------------*/
+	/* uniform values need to be specified during pipeline creation by creating a VkPipelineLayout object */
+	VkDescriptorPool				m_DescriptorPool					= VK_NULL_HANDLE;
+	VkDescriptorSetLayout			m_Default_DSL						= VK_NULL_HANDLE;
+	VkDescriptorSet					m_Default_DS						= VK_NULL_HANDLE;
+
+	const int						m_COMBINED_IMAGE_SAMPLER_DS_Index	= 1;
 	VkImage							tinyObjCompleteImage				= VK_NULL_HANDLE;
 	VkDeviceMemory					tinyObjCompleteImageDeviceMemory	= VK_NULL_HANDLE;
 	VkImageView						tinyObjCompleteImageView			= VK_NULL_HANDLE;

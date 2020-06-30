@@ -81,7 +81,7 @@ void Sen_221_Cube::updateUniformBuffer() {
 	memcpy(data, &mvpUbo, sizeof(mvpUbo));
 	vkUnmapMemory(m_LogicalDevice, mvpUniformStagingBufferDeviceMemory);
 
-	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, mvpUniformStagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, m_GraphicsQueue, mvpUniformStagingBuffer,
 		mvpOptimalUniformBuffer, sizeof(mvpUbo));
 }
 
@@ -89,6 +89,30 @@ void Sen_221_Cube::finalizeWidget()
 {	
 	cleanUpDepthStencil();
 
+	/************************************************************************************************************/
+	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != depthTestPipeline) {
+		vkDestroyPipeline(m_LogicalDevice, depthTestPipeline, nullptr);
+		vkDestroyPipelineLayout(m_LogicalDevice, textureAppPipelineLayout, nullptr);
+		vkDestroyRenderPass(m_LogicalDevice, depthTestRenderPass, nullptr);
+
+		depthTestPipeline			= VK_NULL_HANDLE;
+		textureAppPipelineLayout	= VK_NULL_HANDLE;
+		depthTestRenderPass			= VK_NULL_HANDLE;
+	}
+	/************************************************************************************************************/
+	/*************      Destroy m_DescriptorPool,  m_Default_DSL,  m_Default_DS      ****************************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != m_DescriptorPool) {
+		vkDestroyDescriptorPool(m_LogicalDevice, m_DescriptorPool, nullptr);
+		// When a DescriptorPool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid
+		vkDestroyDescriptorSetLayout(m_LogicalDevice, m_Default_DSL, nullptr);
+
+		m_Default_DSL		= VK_NULL_HANDLE;
+		m_DescriptorPool	= VK_NULL_HANDLE;
+		m_Default_DS		= VK_NULL_HANDLE;
+	}
 	/************************************************************************************************************/
 	/******************           Destroy Memory, ImageView, Image          *************************************/
 	/************************************************************************************************************/
@@ -105,18 +129,6 @@ void Sen_221_Cube::finalizeWidget()
 		backgroundTextureImageDeviceMemory	= VK_NULL_HANDLE;
 		backgroundTextureImageView			= VK_NULL_HANDLE;
 		texture2DSampler					= VK_NULL_HANDLE;
-	}
-	/************************************************************************************************************/
-	/*********************           Destroy Pipeline, PipelineLayout, and RenderPass         *******************/
-	/************************************************************************************************************/
-	if (VK_NULL_HANDLE != depthTestPipeline) {
-		vkDestroyPipeline(m_LogicalDevice, depthTestPipeline, nullptr);
-		vkDestroyPipelineLayout(m_LogicalDevice, textureAppPipelineLayout, nullptr);
-		vkDestroyRenderPass(m_LogicalDevice, depthTestRenderPass, nullptr);
-
-		depthTestPipeline			= VK_NULL_HANDLE;
-		textureAppPipelineLayout	= VK_NULL_HANDLE;
-		depthTestRenderPass			= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
@@ -225,10 +237,12 @@ void Sen_221_Cube::createDepthTestPipeline()
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
+	// Viewport			define HOW,		in which region of the Framebuffer/Widget/GLFW_Window to render; Squeeze your view in your Widget
 	m_SwapchainResize_Viewport.x		= 0.0f;									m_SwapchainResize_Viewport.y		= 0.0f;
-	m_SwapchainResize_Viewport.width	= static_cast<float>(m_WidgetWidth);		m_SwapchainResize_Viewport.height	= static_cast<float>(m_WidgetHeight);
+	m_SwapchainResize_Viewport.width	= static_cast<float>(m_WidgetWidth);	m_SwapchainResize_Viewport.height	= static_cast<float>(m_WidgetHeight);
 	m_SwapchainResize_Viewport.minDepth	= 0.0f;									m_SwapchainResize_Viewport.maxDepth	= 1.0f;
-
+	// ScissorRect2D	define WHERE,	which	pixels    of	the Framebuffer  could be rendered;
+	//									any		pixels	outside the ScissorRect2D will be discarded by the rasterizer.
 	m_SwapchainResize_ScissorRect2D.offset			= { 0, 0 };
 	m_SwapchainResize_ScissorRect2D.extent.width	= static_cast<uint32_t>(m_WidgetWidth);
 	m_SwapchainResize_ScissorRect2D.extent.height	= static_cast<uint32_t>(m_WidgetHeight);
@@ -304,7 +318,7 @@ void Sen_221_Cube::createDepthTestPipeline()
 	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
 	/****************************************************************************************************************************/
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
-	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
+	descriptorSetLayoutVector.push_back(m_Default_DSL);
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType			= VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -379,7 +393,7 @@ void Sen_221_Cube::createCubeIndexBuffer()
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferDeviceMemory;
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, indicesBufferSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	void* data;
@@ -394,10 +408,10 @@ void Sen_221_Cube::createCubeIndexBuffer()
 	/****************************************************************************************************************************************************/
 	/***************   Transfer from stagingBuffer to Optimal triangleVertexBuffer   ********************************************************************/
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, indicesBufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		cubeIndexBuffer, cubeIndexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, stagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, m_GraphicsQueue, stagingBuffer,
 		cubeIndexBuffer, indicesBufferSize);
 
 	vkDestroyBuffer(m_LogicalDevice, stagingBuffer, nullptr);
@@ -458,7 +472,7 @@ void Sen_221_Cube::createCubeVertexBuffer()
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferDeviceMemory;
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, verticesBufferSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	void* data;
@@ -473,10 +487,10 @@ void Sen_221_Cube::createCubeVertexBuffer()
 	/****************************************************************************************************************************************************/
 	/***************   Transfer from stagingBuffer to Optimal cubeVertexBuffer   ********************************************************************/
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, verticesBufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		cubeVertexBuffer, cubeVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, stagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, m_GraphicsQueue, stagingBuffer,
 		cubeVertexBuffer, verticesBufferSize);
 
 	vkDestroyBuffer(m_LogicalDevice, stagingBuffer, nullptr);
@@ -485,10 +499,10 @@ void Sen_221_Cube::createCubeVertexBuffer()
 
 void Sen_221_Cube::initBackgroundTextureImage()
 {
-	SLVK_AbstractGLFW::createDeviceLocalTexture(m_LogicalDevice, physicalDeviceMemoryProperties
+	SLVK_AbstractGLFW::createDeviceLocalTexture(m_LogicalDevice, m_PhysicalDeviceMemoryProperties
 		, backgroundTextureDiskAddress, VK_IMAGE_TYPE_2D, backgroundTextureWidth, backgroundTextureHeight
 		, backgroundTextureImage, backgroundTextureImageDeviceMemory, backgroundTextureImageView
-		, VK_SHARING_MODE_EXCLUSIVE, m_DefaultThreadCommandPool, graphicsQueue);
+		, VK_SHARING_MODE_EXCLUSIVE, m_DefaultThreadCommandPool, m_GraphicsQueue);
 
 	SLVK_AbstractGLFW::createTextureSampler(m_LogicalDevice, texture2DSampler);
 }
@@ -514,7 +528,7 @@ void Sen_221_Cube::createTextureAppDescriptorPool()
 	descriptorPoolCreateInfo.maxSets = 1; // Need a new descriptorSetVector
 
 	SLVK_AbstractGLFW::errorCheck(
-		vkCreateDescriptorPool(m_LogicalDevice, &descriptorPoolCreateInfo, nullptr, &descriptorPool),
+		vkCreateDescriptorPool(m_LogicalDevice, &descriptorPoolCreateInfo, nullptr, &m_DescriptorPool),
 		std::string("Fail to Create descriptorPool !")
 	);
 }
@@ -545,24 +559,24 @@ void Sen_221_Cube::createTextureAppDescriptorSetLayout()
 	perspectiveProjectionDSL_CreateInfo.pBindings		= perspectiveProjectionDSL_BindingVector.data();
 	
 	SLVK_AbstractGLFW::errorCheck(
-		vkCreateDescriptorSetLayout(m_LogicalDevice, &perspectiveProjectionDSL_CreateInfo, nullptr, &perspectiveProjection_DSL),
-		std::string("Fail to Create perspectiveProjection_DSL !")
+		vkCreateDescriptorSetLayout(m_LogicalDevice, &perspectiveProjectionDSL_CreateInfo, nullptr, &m_Default_DSL),
+		std::string("Fail to Create m_Default_DSL !")
 	);
 }
 
 void Sen_221_Cube::createTextureAppDescriptorSet()
 {
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
-	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
+	descriptorSetLayoutVector.push_back(m_Default_DSL);
 	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
 	descriptorSetAllocateInfo.sType					= VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorSetAllocateInfo.descriptorPool		= descriptorPool;
+	descriptorSetAllocateInfo.descriptorPool		= m_DescriptorPool;
 	descriptorSetAllocateInfo.descriptorSetCount	= descriptorSetLayoutVector.size();
 	descriptorSetAllocateInfo.pSetLayouts			= descriptorSetLayoutVector.data();
 
 	SLVK_AbstractGLFW::errorCheck(
-		vkAllocateDescriptorSets(m_LogicalDevice, &descriptorSetAllocateInfo, &perspectiveProjection_DS),
-		std::string("Fail to Allocate perspectiveProjection_DS !")
+		vkAllocateDescriptorSets(m_LogicalDevice, &descriptorSetAllocateInfo, &m_Default_DS),
+		std::string("Fail to Allocate m_Default_DS !")
 	);
 	/**********************************************************************************************************************/
 	/**********************************************************************************************************************/
@@ -575,8 +589,8 @@ void Sen_221_Cube::createTextureAppDescriptorSet()
 	VkWriteDescriptorSet uniformBuffer_DS_Write{};
 	uniformBuffer_DS_Write.sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	uniformBuffer_DS_Write.descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uniformBuffer_DS_Write.dstSet			= perspectiveProjection_DS;
-	uniformBuffer_DS_Write.dstBinding		= 0;	// binding number, same as the binding index specified in shader for a given shader stage
+	uniformBuffer_DS_Write.dstSet			= m_Default_DS;
+	uniformBuffer_DS_Write.dstBinding		= m_UniformBuffer_DS_Index;	// binding number, same with the binding index  in shader
 	uniformBuffer_DS_Write.dstArrayElement	= 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
 	uniformBuffer_DS_Write.descriptorCount	= descriptorBufferInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	uniformBuffer_DS_Write.pBufferInfo		= descriptorBufferInfoVector.data();
@@ -590,8 +604,8 @@ void Sen_221_Cube::createTextureAppDescriptorSet()
 	VkWriteDescriptorSet combinedImageSampler_DS_Write{};
 	combinedImageSampler_DS_Write.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	combinedImageSampler_DS_Write.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	combinedImageSampler_DS_Write.dstSet			= perspectiveProjection_DS;
-	combinedImageSampler_DS_Write.dstBinding		= 1;	// binding number, same as the binding index specified in shader for a given shader stage
+	combinedImageSampler_DS_Write.dstSet			= m_Default_DS;
+	combinedImageSampler_DS_Write.dstBinding		= m_COMBINED_IMAGE_SAMPLER_DS_Index; // binding number, same with the binding index  in shader
 	combinedImageSampler_DS_Write.dstArrayElement	= 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
 	combinedImageSampler_DS_Write.descriptorCount	= descriptorImageInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	combinedImageSampler_DS_Write.pImageInfo		= descriptorImageInfoVector.data();
@@ -663,7 +677,7 @@ void Sen_221_Cube::createCubeCommandBuffers()
 		vkCmdBindVertexBuffers(m_SwapchainCommandBufferVector[i], 0, 1, &cubeVertexBuffer, &offsetDeviceSize);
 		vkCmdBindIndexBuffer(m_SwapchainCommandBufferVector[i], cubeIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
 		vkCmdBindDescriptorSets(m_SwapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
-			textureAppPipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
+			textureAppPipelineLayout, 0, 1, &m_Default_DS, 0, nullptr);
 
 		//vkCmdDraw(
 		//	m_SwapchainCommandBufferVector[i],

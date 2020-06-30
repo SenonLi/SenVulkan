@@ -33,8 +33,18 @@ private:
 
 	VkPipelineLayout					textureAppPipelineLayout		= VK_NULL_HANDLE;
 	VkPipeline							textureAppPipeline				= VK_NULL_HANDLE;
-	VkBuffer							textureAppVertexBuffer			= VK_NULL_HANDLE;
-	VkDeviceMemory						textureAppVertexBufferMemory	= VK_NULL_HANDLE;
+
+	/*****************************************************************************************************************/
+	/*------------------------     For Resources Descrition       ---------------------------------------------------*/
+	/*---------------------------------------------------------------------------------------------------------------*/
+	/* uniform values need to be specified during pipeline creation by creating a VkPipelineLayout object */
+	VkDescriptorPool					m_DescriptorPool					= VK_NULL_HANDLE;
+	VkDescriptorSetLayout				m_Default_DSL						= VK_NULL_HANDLE;
+	VkDescriptorSet						m_Default_DS						= VK_NULL_HANDLE;
+
+	const int							m_COMBINED_IMAGE_SAMPLER_DS_Index	= 1;
+	VkBuffer							textureAppVertexBuffer				= VK_NULL_HANDLE;
+	VkDeviceMemory						textureAppVertexBufferMemory		= VK_NULL_HANDLE;
 
 	int backgroundTextureWidth, backgroundTextureHeight;
 	const char* backgroundTextureDiskAddress;

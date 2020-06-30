@@ -19,7 +19,7 @@
 
 SLVK_AbstractGLFW* widget;
 int main() {
-	widget = new Sen_221_Cube();
+	widget = new Sen_072_TextureArray();
 	try {
 		widget->showWidget();
 	}

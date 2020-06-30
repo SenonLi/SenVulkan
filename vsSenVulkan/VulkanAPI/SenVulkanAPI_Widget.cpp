@@ -246,7 +246,7 @@ void SenVulkanAPI_Widget::finalize()
 		//vkDestroyDevice(m_LogicalDevice, VK_NULL_HANDLE); 
 
 		//// Device queues are implicitly cleaned up when the m_LogicalDevice is destroyed
-		//if (VK_NULL_HANDLE != graphicsQueue) { graphicsQueue = VK_NULL_HANDLE; }
+		//if (VK_NULL_HANDLE != m_GraphicsQueue) { m_GraphicsQueue = VK_NULL_HANDLE; }
 		//if (VK_NULL_HANDLE != presentQueue) { presentQueue = VK_NULL_HANDLE; }
 
 		m_LogicalDevice = VK_NULL_HANDLE;

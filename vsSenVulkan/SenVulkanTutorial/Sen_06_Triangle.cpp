@@ -51,9 +51,21 @@ void Sen_06_Triangle::finalizeWidget()
 		vkDestroyPipelineLayout(m_LogicalDevice, trianglePipelineLayout, nullptr);
 		vkDestroyRenderPass(m_LogicalDevice, m_ColorAttachOnlyRenderPass, nullptr);
 
-		trianglePipeline = VK_NULL_HANDLE;
-		trianglePipelineLayout = VK_NULL_HANDLE;
-		m_ColorAttachOnlyRenderPass = VK_NULL_HANDLE;
+		trianglePipeline				= VK_NULL_HANDLE;
+		trianglePipelineLayout			= VK_NULL_HANDLE;
+		m_ColorAttachOnlyRenderPass		= VK_NULL_HANDLE;
+	}
+	/************************************************************************************************************/
+	/*************      Destroy m_DescriptorPool,  m_Default_DSL,  m_Default_DS      ****************************/
+	/************************************************************************************************************/
+	if (VK_NULL_HANDLE != m_DescriptorPool) {
+		vkDestroyDescriptorPool(m_LogicalDevice, m_DescriptorPool, nullptr);
+		// When a DescriptorPool is destroyed, all descriptor sets allocated from the pool are implicitly freed and become invalid
+		vkDestroyDescriptorSetLayout(m_LogicalDevice, m_Default_DSL, nullptr);
+
+		m_Default_DSL				= VK_NULL_HANDLE;
+		m_DescriptorPool			= VK_NULL_HANDLE;
+		m_Default_DS				= VK_NULL_HANDLE;
 	}
 	/************************************************************************************************************/
 	/******************     Destroy VertexBuffer, VertexBufferMemory     ****************************************/
@@ -84,7 +96,7 @@ void Sen_06_Triangle::updateUniformBuffer()
 	memcpy(data, &mvpUbo, sizeof(mvpUbo));
 	vkUnmapMemory(m_LogicalDevice, mvpUniformStagingBufferDeviceMemory);
 
-	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, mvpUniformStagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, m_GraphicsQueue, mvpUniformStagingBuffer,
 		mvpOptimalUniformBuffer, sizeof(mvpUbo));
 }
 
@@ -103,8 +115,8 @@ void Sen_06_Triangle::createTriangleDescriptorSetLayout() {
 	mvpUboDescriptorSetLayoutCreateInfo.pBindings = &mvpUboDSL_Binding;
 
 	SLVK_AbstractGLFW::errorCheck(
-		vkCreateDescriptorSetLayout(m_LogicalDevice, &mvpUboDescriptorSetLayoutCreateInfo, nullptr, &perspectiveProjection_DSL),
-		std::string("Fail to Create perspectiveProjection_DSL !")
+		vkCreateDescriptorSetLayout(m_LogicalDevice, &mvpUboDescriptorSetLayoutCreateInfo, nullptr, &m_Default_DSL),
+		std::string("Fail to Create m_Default_DSL !")
 	);
 }
 
@@ -124,24 +136,24 @@ void Sen_06_Triangle::createTriangleDescriptorPool() {
 	descriptorPoolCreateInfo.maxSets = 1; // Need a new descriptorSetVector
 
 	SLVK_AbstractGLFW::errorCheck(
-		vkCreateDescriptorPool(m_LogicalDevice, &descriptorPoolCreateInfo, nullptr, &descriptorPool),
+		vkCreateDescriptorPool(m_LogicalDevice, &descriptorPoolCreateInfo, nullptr, &m_DescriptorPool),
 		std::string("Fail to Create descriptorPool !")
 	);
 }
 
 void Sen_06_Triangle::createTriangleDescriptorSet() {
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
-	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
+	descriptorSetLayoutVector.push_back(m_Default_DSL);
 
 	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
 	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorSetAllocateInfo.descriptorPool = descriptorPool;
+	descriptorSetAllocateInfo.descriptorPool = m_DescriptorPool;
 	descriptorSetAllocateInfo.descriptorSetCount = descriptorSetLayoutVector.size();
 	descriptorSetAllocateInfo.pSetLayouts = descriptorSetLayoutVector.data();
 
 	SLVK_AbstractGLFW::errorCheck(
-		vkAllocateDescriptorSets(m_LogicalDevice, &descriptorSetAllocateInfo, &perspectiveProjection_DS),
-		std::string("Fail to Allocate perspectiveProjection_DS !")
+		vkAllocateDescriptorSets(m_LogicalDevice, &descriptorSetAllocateInfo, &m_Default_DS),
+		std::string("Fail to Allocate m_Default_DS !")
 	);
 
 	VkDescriptorBufferInfo mvpDescriptorBufferInfo{};
@@ -155,8 +167,8 @@ void Sen_06_Triangle::createTriangleDescriptorSet() {
 	VkWriteDescriptorSet writeDescriptorSet{};
 	writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	writeDescriptorSet.dstSet = perspectiveProjection_DS;
-	writeDescriptorSet.dstBinding = 0;	// binding number, same as the binding index specified in shader for a given shader stage
+	writeDescriptorSet.dstSet = m_Default_DS;
+	writeDescriptorSet.dstBinding = m_UniformBuffer_DS_Index;	// binding number, same with the binding index  in shader
 	writeDescriptorSet.dstArrayElement = 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
 	writeDescriptorSet.descriptorCount = descriptorBufferInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	writeDescriptorSet.pBufferInfo = descriptorBufferInfoVector.data();
@@ -239,10 +251,12 @@ void Sen_06_Triangle::createTrianglePipeline() {
 
 	/*********************************************************************************************/
 	/*********************************************************************************************/
+	// Viewport			define HOW,		in which region of the Framebuffer/Widget/GLFW_Window to render; Squeeze your view in your Widget
 	m_SwapchainResize_Viewport.x		= 0.0f;									m_SwapchainResize_Viewport.y		= 0.0f;
-	m_SwapchainResize_Viewport.width	= static_cast<float>(m_WidgetWidth);		m_SwapchainResize_Viewport.height	= static_cast<float>(m_WidgetHeight);
+	m_SwapchainResize_Viewport.width	= static_cast<float>(m_WidgetWidth);	m_SwapchainResize_Viewport.height	= static_cast<float>(m_WidgetHeight);
 	m_SwapchainResize_Viewport.minDepth	= 0.0f;									m_SwapchainResize_Viewport.maxDepth	= 1.0f;
-
+	// ScissorRect2D	define WHERE,	which	pixels    of	the Framebuffer  could be rendered;
+	//									any		pixels	outside the ScissorRect2D will be discarded by the rasterizer.
 	m_SwapchainResize_ScissorRect2D.offset			= { 0, 0 };
 	m_SwapchainResize_ScissorRect2D.extent.width	= static_cast<uint32_t>(m_WidgetWidth);
 	m_SwapchainResize_ScissorRect2D.extent.height	= static_cast<uint32_t>(m_WidgetHeight);
@@ -308,7 +322,7 @@ void Sen_06_Triangle::createTrianglePipeline() {
 	/**********   Reserve pipeline Layout, which help access to descriptor sets from a pipeline       ***************************/
 	/****************************************************************************************************************************/
 	std::vector<VkDescriptorSetLayout> descriptorSetLayoutVector;
-	descriptorSetLayoutVector.push_back(perspectiveProjection_DSL);
+	descriptorSetLayoutVector.push_back(m_Default_DSL);
 
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
 	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -373,7 +387,7 @@ void Sen_06_Triangle::createTriangleVertexBuffer() {
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferDeviceMemory;
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, verticesBufferSize,
-		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		stagingBuffer, stagingBufferDeviceMemory, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
 	void* data;
@@ -388,10 +402,10 @@ void Sen_06_Triangle::createTriangleVertexBuffer() {
 	/****************************************************************************************************************************************************/
 	/***************   Transfer from stagingBuffer to Optimal triangleVertexBuffer   ********************************************************************/
 	SLVK_AbstractGLFW::createResourceBuffer(m_LogicalDevice, verticesBufferSize,
-		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, physicalDeviceMemoryProperties,
+		VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE, m_PhysicalDeviceMemoryProperties,
 		triangleVertexBuffer, triangleVertexBufferMemory, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, graphicsQueue, stagingBuffer,
+	SLVK_AbstractGLFW::transferResourceBuffer(m_DefaultThreadCommandPool, m_LogicalDevice, m_GraphicsQueue, stagingBuffer,
 		triangleVertexBuffer, verticesBufferSize);
 
 	vkDestroyBuffer(m_LogicalDevice, stagingBuffer, nullptr);
@@ -452,7 +466,7 @@ void Sen_06_Triangle::createTriangleCommandBuffers() {
 		VkDeviceSize offsetDeviceSize = 0;
 		vkCmdBindVertexBuffers(m_SwapchainCommandBufferVector[i], 0, 1, &triangleVertexBuffer, &offsetDeviceSize);
 		vkCmdBindIndexBuffer(m_SwapchainCommandBufferVector[i], singleRectIndexBuffer, 0, VK_INDEX_TYPE_UINT16);
-		vkCmdBindDescriptorSets(m_SwapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &perspectiveProjection_DS, 0, nullptr);
+		vkCmdBindDescriptorSets(m_SwapchainCommandBufferVector[i], VK_PIPELINE_BIND_POINT_GRAPHICS, trianglePipelineLayout, 0, 1, &m_Default_DS, 0, nullptr);
 
 		//vkCmdDraw(
 		//	m_SwapchainCommandBufferVector[i],
