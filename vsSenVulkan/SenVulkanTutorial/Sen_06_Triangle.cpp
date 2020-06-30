@@ -103,7 +103,7 @@ void Sen_06_Triangle::updateUniformBuffer()
 // createDescriptorSetLayout() need to be called before createPipeline for the pipelineLayout
 void Sen_06_Triangle::createTriangleDescriptorSetLayout() {
 	VkDescriptorSetLayoutBinding mvpUboDSL_Binding{};
-	mvpUboDSL_Binding.binding = 0;
+	mvpUboDSL_Binding.binding = m_UniformBuffer_DS_BindingIndex;
 	mvpUboDSL_Binding.descriptorCount = 1;
 	mvpUboDSL_Binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	mvpUboDSL_Binding.pImmutableSamplers = nullptr;
@@ -168,7 +168,7 @@ void Sen_06_Triangle::createTriangleDescriptorSet() {
 	writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	writeDescriptorSet.dstSet = m_Default_DS;
-	writeDescriptorSet.dstBinding = m_UniformBuffer_DS_Index;	// binding number, same with the binding index  in shader
+	writeDescriptorSet.dstBinding = m_UniformBuffer_DS_BindingIndex;	// binding number, same with the binding index  in shader
 	writeDescriptorSet.dstArrayElement = 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
 	writeDescriptorSet.descriptorCount = descriptorBufferInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	writeDescriptorSet.pBufferInfo = descriptorBufferInfoVector.data();

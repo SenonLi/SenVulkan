@@ -482,7 +482,7 @@ void Sen_222_TinyObjLoader::createTextureAppDescriptorSetLayout()
 	std::vector<VkDescriptorSetLayoutBinding> perspectiveProjectionDSL_BindingVector;
 
 	VkDescriptorSetLayoutBinding mvpUboDSL_Binding{};
-	mvpUboDSL_Binding.binding				= 0;
+	mvpUboDSL_Binding.binding				= m_UniformBuffer_DS_BindingIndex;
 	mvpUboDSL_Binding.descriptorCount		= 1;
 	mvpUboDSL_Binding.descriptorType		= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	mvpUboDSL_Binding.pImmutableSamplers	= nullptr;
@@ -490,7 +490,7 @@ void Sen_222_TinyObjLoader::createTextureAppDescriptorSetLayout()
 	perspectiveProjectionDSL_BindingVector.push_back(mvpUboDSL_Binding);
 
 	VkDescriptorSetLayoutBinding combinedImageSamplerDSL_Binding{};
-	combinedImageSamplerDSL_Binding.binding				= 1;
+	combinedImageSamplerDSL_Binding.binding				= m_COMB_IMA_SAMPLER_DS_BindingIndex;
 	combinedImageSamplerDSL_Binding.descriptorCount		= 1;
 	combinedImageSamplerDSL_Binding.descriptorType		= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	combinedImageSamplerDSL_Binding.pImmutableSamplers	= nullptr;
@@ -534,7 +534,7 @@ void Sen_222_TinyObjLoader::createTextureAppDescriptorSet()
 	uniformBuffer_DS_Write.sType			= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	uniformBuffer_DS_Write.descriptorType	= VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	uniformBuffer_DS_Write.dstSet			= m_Default_DS;
-	uniformBuffer_DS_Write.dstBinding		= m_UniformBuffer_DS_Index;	// binding number, same with the binding index  in shader
+	uniformBuffer_DS_Write.dstBinding		= m_UniformBuffer_DS_BindingIndex;	// binding number, same with the binding index  in shader
 	uniformBuffer_DS_Write.dstArrayElement	= 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
 	uniformBuffer_DS_Write.descriptorCount	= descriptorBufferInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	uniformBuffer_DS_Write.pBufferInfo		= descriptorBufferInfoVector.data();
@@ -549,7 +549,7 @@ void Sen_222_TinyObjLoader::createTextureAppDescriptorSet()
 	combinedImageSampler_DS_Write.sType				= VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	combinedImageSampler_DS_Write.descriptorType	= VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	combinedImageSampler_DS_Write.dstSet			= m_Default_DS;
-	combinedImageSampler_DS_Write.dstBinding		= m_COMBINED_IMAGE_SAMPLER_DS_Index; // binding number, same with the binding index  in shader
+	combinedImageSampler_DS_Write.dstBinding		= m_COMB_IMA_SAMPLER_DS_BindingIndex; // binding number, same with the binding index  in shader
 	combinedImageSampler_DS_Write.dstArrayElement	= 0;	// start from the index dstArrayElement of pBufferInfo (descriptorBufferInfoVector)
 	combinedImageSampler_DS_Write.descriptorCount	= descriptorImageInfoVector.size();// the total number of descriptors to update in pBufferInfo
 	combinedImageSampler_DS_Write.pImageInfo		= descriptorImageInfoVector.data();

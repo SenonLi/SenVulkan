@@ -202,7 +202,7 @@ protected:
 		glm::mat4 projection	= glm::mat4(1.0f);
 	};
 
-	const int						m_UniformBuffer_DS_Index			= 0;
+	const int						m_UniformBuffer_DS_BindingIndex		= 1;
 	VkBuffer						mvpUniformStagingBuffer				= VK_NULL_HANDLE;
 	VkDeviceMemory					mvpUniformStagingBufferDeviceMemory	= VK_NULL_HANDLE;
 	VkBuffer						mvpOptimalUniformBuffer				= VK_NULL_HANDLE;

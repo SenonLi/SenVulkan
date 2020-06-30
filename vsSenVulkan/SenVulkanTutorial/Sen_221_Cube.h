@@ -39,7 +39,7 @@ private:
 	VkDescriptorSetLayout			m_Default_DSL						= VK_NULL_HANDLE;
 	VkDescriptorSet					m_Default_DS						= VK_NULL_HANDLE;
 
-	const int						m_COMBINED_IMAGE_SAMPLER_DS_Index	= 1;
+	const int						m_COMB_IMA_SAMPLER_DS_BindingIndex	= 3;
 	VkImage							backgroundTextureImage				= VK_NULL_HANDLE;
 	VkDeviceMemory					backgroundTextureImageDeviceMemory	= VK_NULL_HANDLE;
 	VkImageView						backgroundTextureImageView			= VK_NULL_HANDLE;
